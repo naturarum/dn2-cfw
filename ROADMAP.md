@@ -7,10 +7,10 @@ Custom firmware for the Digitone II (OS 1.12), built on the community's tools (e
 ## Now
 - **For the user:** the emulator-vs-unit photos and the other items in the vault's `Todo.md`. No flashing planned: the user wants more proof from the emulator first (2026-10-05).
 - **Ready (nothing blocking):** T1.9 (Digitone II core), T2.3, T3.8 (splice method). The flanger waits for the user's yflanger notes; T1.7b waits for the user's go-ahead.
-- **In progress:** nothing. Paused 2026-10-06 while the owner contacts the dn2_firmware_explore author (notes/overlap-dnfw.md); T5.0 and T6.0 paused for overlap. Waiting for the owner: listening round 2 and the FX questions (notes/T3.11 section 12.9).
+- **In progress (2026-10-12):** T3.8, our effects into the DSP section (the flanger in the chorus slot first), background agent. Hardened brickcheck runs on core-DC01 and hooktest-DH01.
 - **Done overnight 2026-10-05/06:** T1.9 Digitone II core (emulator only; a test mod rewrites MIDI notes as intended), stock-vs-new A/B page and the new effects' SHARC cost halved, T3.2 DSP memory map, T2.4b audio clock (PLAY runs), T2.4 MIDI in/out + LEDs + 0.8x real time, T3.11 tape delay + 3-band compressor workbench, T3.6 SHARC interpreter (stock effects render to WAV).
 - **Next:** the user listens and answers the T3.11 design questions; records the stock takes (T3.5) for T3.7; sends the yflanger notes. Then the tier-1 mods (T1.9 core, T2.5/T2.6), now testable in the emulator with MIDI out.
-- **Public steps (C0–C8):** none until we have actual results; then ask the user first.
+- **Public (2026-10-12):** this project is public as github.com/naturarum/dn2-cfw (GPL-2.0-or-later, fresh history). Our digikit and elekloader `dn2-1.12` branches are public forks. Pull requests and issues upstream (C0-C8) still need the user's go for each.
 
 ## User priorities (2026-10-05)
 - **Tier 1:** G5 arp on MIDI tracks, G4 MIDI polyphony, G10 more synth voices (32 voices, not more tracks; corrected by the user 2026-10-05).
