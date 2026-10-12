@@ -58,9 +58,10 @@
 #define SE_WOW_MAX  0.006f       /* speed deviation of the wow sine at AGE 127, x a^2: 0.6 %, 0.15 % at 64 */
 #define SE_FLUT_MAX 0.003f       /* flutter, x a^2: 0.3 %, 0.075 % at 64 */
 #define SE_M_LEAK   0.000133f    /* leak of the speed integral per block (tau 5 s), keeps it bounded */
-/* top-end loss: a one-pole low-pass in the loop, coefficient 2^(-SE_HF_OCT a): about 10.8 kHz
-   at AGE 32, 6.5 kHz at 64, 3.1 kHz at 127; exactly no filter at AGE 0 */
-#define SE_HF_OCT   1.6f
+/* top-end loss: a one-pole low-pass in the loop, coefficient 2^(-SE_HF_OCT a): about 13.1 kHz
+   at AGE 32, 8.5 kHz at 64, 4.6 kHz at 127; exactly no filter at AGE 0. 1.6 until 2026-10-12
+   (6.5 kHz at 64); the owner wanted "a little more top range" */
+#define SE_HF_OCT   1.15f
 /* drive into the saturator 2^(SE_DRV_OCT a): +3.9 dB at AGE 64 (FTD1's DRIV 32), +7.8 dB at 127 */
 #define SE_DRV_OCT  1.2954f
 /* hiss and crackle: tapedelay.c's AGE laws, which the owner approved (2026-10-06) */
