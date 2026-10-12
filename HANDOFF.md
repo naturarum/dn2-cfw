@@ -1169,3 +1169,32 @@ tape engine; `fx/tapedelay.c` (FTD1) unchanged and its renders bit-identical.
   worked around, repro in the note 6.2.
 - Page: 6 stock rows map (TIME, X->PAN, WID->WIDTH, FDBK->INTENSITY, HPF->CENTER, LPF->BW); MODE and AGE need 2 more.
   Open questions for the owner in the note's last section (vault: `Space Echo questions.md`).
+
+# 2026-10-12: T6.1, can the parameter table grow? (background agent)
+
+Full note: `notes/T6.1-table-growth-study.md` (task id T6.1 reused; the old T6.1 "map the stock compressor" is now
+T6.4). Emulator (hot-patched RAM) and static analysis only.
+- **Answer: yes, with conditions.** High confidence for the table itself, medium for "behaves like stock
+  everywhere" until a cold boot of a grown build and a session on the unit.
+- **Row ids are never saved:** kits, sounds, p-locks, LFO and mod destinations are stored by slot k through fixed
+  k -> stored-id tables [verified]. A new row's effect on projects depends only on its k and display flags.
+- **114 sites**, all same-length operand edits: 56 base references, 58 row-count compares (55 functions; T5.0's
+  "about 84" was an over-count). Relocated to our DDR with all sites patched and the boot-time maps rebuilt: 25
+  screens byte-identical to stock, slot and CC/NRPN maps identical; with 8 rows added, the new knobs draw, turn,
+  show value text and write the kit's FX setup through the stock setter [verified, emulator].
+- **Risks found and reproduced:** (1) lockability comes from display flags (bits 0 and 3), not the group: a new FX
+  row copied from a lockable template took a p-lock that was saved as a lock on sound slot 70 (filter envelope
+  delay). **T5.0's `fx-page2-dn2` has this bug** (SHPE copies display row 0x63); set flag bit 3. (2)
+  `ParameterUpdateCache` (MIDI CC/NRPN input, 17 lanes x 0x141) overflows for a new row: a CC corrupted the other
+  bank and the flush sent bogus changes for track 1 rows 0x18/0x19. Resize it or keep new rows out before any new
+  row gets a CC. (3) Per-row rules and id tests (MIDI CC out sends only rows 0x69..0x83 on the FX channel; section
+  3.4's list: free surviving k, 0 = classic, no randomiser, no CC in 32..63, Overbridge id > 387).
+- **Where growth matters:** new synth parameters: every machine has free k slots that survive save/load (FM Tone
+  2, WaveTone 15, FM Drum 10, Swarmer 32, the unused 5th machine 40). Shared filter/amp parameters are limited by
+  storage, not rows (k 65 and 100 are lost on save).
+- **Cheapest extra knob per send page, no growth:** stock row 0x7a "Delay FX Routing" (k 40) on the empty delay G
+  slot (one page-slot write at run time `0x42433f0c` <- 0x7a, plus name/range/formatter data); proved as "Delay
+  Mode", 0..6, saved per kit (stored id 16). Reverb G: row 0x83 (k 48). The stock DSP never reads frame word
+  `0xa18`, so new DSP code can. Catch: every existing kit stores 1 there, so 1 must mean the classic behaviour.
+- Not established: Overbridge with unknown ids, rounded-size arrays, MIDI CC out for new rows, the randomiser,
+  +Drive save/load across builds, a cold boot of a grown build, the 1.12 per-machine SYN page table.

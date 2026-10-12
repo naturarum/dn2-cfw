@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# T6.1: which MIDI channel reaches the FX parameters (CC 9 = chorus SPD, k 26): value 40+ch on channel ch
+wait-emu 0.5
+midi-in b0 09 28
+wait-emu 0.1
+midi-in b1 09 29
+wait-emu 0.1
+midi-in b2 09 2a
+wait-emu 0.1
+midi-in b3 09 2b
+wait-emu 0.1
+midi-in b4 09 2c
+wait-emu 0.1
+midi-in b5 09 2d
+wait-emu 0.1
+midi-in b6 09 2e
+wait-emu 0.1
+midi-in b7 09 2f
+wait-emu 0.1
+midi-in b8 09 30
+wait-emu 0.1
+midi-in b9 09 31
+wait-emu 0.1
+midi-in ba 09 32
+wait-emu 0.1
+midi-in bb 09 33
+wait-emu 0.1
+midi-in bc 09 34
+wait-emu 0.1
+midi-in bd 09 35
+wait-emu 0.1
+midi-in be 09 36
+wait-emu 0.1
+midi-in bf 09 37
+wait-emu 0.1
+wait-emu 0.5
+png 00-after

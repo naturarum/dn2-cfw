@@ -1,0 +1,104 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# T6.1: one pass over the parameter pages from the warm 800M snapshot (main screen, track 1), for
+# scripts/t61_grow_emu.py. Every variant runs the same keys; screens are compared with stock.
+# SEND FX: delay G (empty on stock), reverb G and H (empty on stock), chorus E and F (empty on
+# stock) are turned and pushed; then TRIG, SYN, FLTR, AMP, the track FX page and the LFO page,
+# with the LFO destination stepped through its list.
+wait-emu 0.5
+png 00-main
+down space
+wait-emu 0.1
+tap l                # FUNC+FX: SEND FX 1 (delay)
+wait-emu 0.1
+up space
+wait-emu 0.5
+png 01-delay
+tap 7                # encoder G
+wait-emu 0.4
+png 02-delay-g1
+tap 7
+wait-emu 0.2
+tap 7
+wait-emu 0.4
+png 03-delay-g3
+down F7              # encoder G push: value popup
+wait-emu 0.4
+png 04-delay-pushg
+up F7
+wait-emu 0.3
+tap shift+7          # back one
+wait-emu 0.4
+png 05-delay-g2
+tap 1                # encoder A (TIME), a stock knob, as a control
+wait-emu 0.4
+png 06-delay-a
+tap Down
+wait-emu 0.4
+png 10-reverb
+tap 7                # encoder G
+wait-emu 0.4
+png 11-reverb-g
+tap 8                # encoder H
+wait-emu 0.2
+tap 8
+wait-emu 0.4
+png 12-reverb-h2
+tap Down
+wait-emu 0.4
+png 20-chorus
+tap 5                # encoder E
+wait-emu 0.2
+tap 5
+wait-emu 0.4
+png 21-chorus-e2
+tap 6                # encoder F
+wait-emu 0.2
+tap 6
+wait-emu 0.2
+tap 6
+wait-emu 0.4
+png 22-chorus-f3
+down F5              # encoder E push
+wait-emu 0.4
+png 23-chorus-pushe
+up F5
+wait-emu 0.3
+tap 1                # encoder A (DPTH), stock
+wait-emu 0.4
+png 24-chorus-a
+tap o                # TRIG page
+wait-emu 0.5
+png 30-trig
+tap p                # SYN page 1
+wait-emu 0.5
+png 31-syn1
+tap p                # SYN page 2
+wait-emu 0.5
+png 32-syn2
+tap bracketleft      # FLTR
+wait-emu 0.5
+png 33-fltr
+tap bracketright     # AMP
+wait-emu 0.5
+png 34-amp
+tap l                # track FX page
+wait-emu 0.5
+png 35-trackfx
+tap semicolon        # MOD: LFO 1
+wait-emu 0.5
+png 36-lfo1
+tap 4                # encoder D: LFO 1 destination, one step
+wait-emu 0.4
+png 37-lfo-dest1
+tap 4
+wait-emu 0.2
+tap 4
+wait-emu 0.4
+png 38-lfo-dest3
+tap shift+4
+wait-emu 0.2
+tap shift+4
+wait-emu 0.2
+tap shift+4
+wait-emu 0.4
+png 39-lfo-dest0

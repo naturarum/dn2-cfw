@@ -177,8 +177,9 @@ Each new effect is its own mod, so you choose one at build time and only one is 
 | id | task | owner | size | pri | needs | status |
 |---|---|---|---|---|---|---|
 | T6.0 | FX parameter room: frame words and kit storage for extra pages | dn2-fw session | M | P2 | T3.3 | paused 2026-10-06 (overlap with dn2_firmware_explore; owner contacting its author). Found: 32 free frame words (30-word tail + 2), proven end to end in the emulators; 28 reserved words per kit FX record for storage (notes/T6.0-fx-params-room.md) |
-| T6.1 | Map the stock master compressor: DSP routine, parameters, UI page | | M | P2 | T3.4 | todo |
-| T6.2 | Design: crossover plus three compressors. It needs more knobs than the stock page has, so a new page via the core | | M | P2 | T6.1 | todo |
+| T6.1 | Can the parameter table grow? (study; user 2026-10-12: "I took it as off limits") | agent | M | P1 | T5.0, T6.0 | done 2026-10-12, emulator and static only (notes/T6.1-table-growth-study.md): **yes, with conditions**. Row ids are never saved (projects store slot k); 114 same-length operand edits (56 base refs, 58 count compares); relocated + 8 rows in the emulator: 25 screens byte-identical to stock, new knobs draw, turn and save. Conditions: resize `ParameterUpdateCache` before new rows get CCs; set the no-lock display flag on FX rows (else a p-lock lands on sound slot k); per-row rules (section 3.4). Not yet: cold boot of a grown build, +Drive save/load, Overbridge. Cheapest delay-page knob: stock row 0x7a "Delay FX Routing" (k 40) on the empty G slot (reverb: 0x83, k 48), no growth |
+| T6.4 | Map the stock master compressor: DSP routine, parameters, UI page | | M | P2 | T3.4 | todo |
+| T6.2 | Design: crossover plus three compressors. It needs more knobs than the stock page has, so a new page via the core | | M | P2 | T6.4, T6.1 | todo |
 | T6.3 | Build, simulate, test on the unit | | L | P2 | T6.2, T5.1 | todo |
 
 ## Phase 7: new filter machines (G8)

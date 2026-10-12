@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# T6.1: MIDI CC in for a grown row. In the warm snapshot the FX channel is 9 (status b8; found with
+# scripts/t61-midi-probe.script). Variant grown-cc gives row 0x141 (chorus E, SHPE, k 70) CC 3 (CC 33 is the mod-wheel LSB, which the CC parser 0x40122eec takes before the table).
+# Stock control first: CC 9 (chorus SPD, k 26) to 50. Then CC 3 to 3, 5, 1, 6 with time between
+# them, so the ParameterUpdateCache flushes and swaps its two banks in between.
+wait-emu 0.5
+down space
+wait-emu 0.1
+tap l
+wait-emu 0.1
+up space
+wait-emu 0.4
+tap Down
+wait-emu 0.3
+tap Down
+wait-emu 0.4
+png 00-chorus
+midi-in b8 09 32
+wait-emu 0.3
+png 01-cc9
+midi-in b8 03 03
+wait-emu 0.3
+png 02-cc3-3
+midi-in b8 03 05
+wait-emu 0.3
+png 03-cc3-5
+midi-in b8 03 01
+wait-emu 0.3
+png 04-cc3-1
+midi-in b8 03 06
+wait-emu 0.5
+png 05-cc3-6
