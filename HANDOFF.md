@@ -1218,3 +1218,10 @@ pushed on `naturarum/elekloader` `dn2-1.12`). Brickcheck **ACCEPT 12/12** with b
   of old names at `0x401d0f04`; the FX MIX knobs are the effect pages' VOL (k 31, 39); elektron-firmware-tool `-V`
   cannot overwrite a version field elekloader set; T3.3's frame capture refuses a modded main OS (scratch copy used).
 - Note for later sessions: in `vendor/elekloader`, `origin` is irpina's upstream; our fork's remote is `naturarum`.
+
+# 2026-10-12: FTD1 on the unit
+
+The user flashed FTD1 (flanger + one-head tape delay) over USB: it works. Their verdict on the delay: "sounds not
+amazing, but that's not an issue"; the repitch on TIME changes is "very interesting" (the delay-time glide, tau
+0.12 s, playback speed held within 0.5x..1.5x). The Space Echo (T5.2) is the delay's next design. Next on the unit:
+DH01, then FTN1.

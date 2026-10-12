@@ -8,9 +8,10 @@ The goals: swap the send effects for new ones (a tape delay, a flanger, a better
 
 ## Where things stand (2026-10-12)
 
-**On the unit.** Two builds have run on real hardware:
+**On the unit.** Three builds have run on real hardware:
 - **EF01**, stock 1.12 with only its name changed and the seal redone. That proved our rebuild, seal and flash path.
 - **FLG1**, our flanger in place of the stock chorus. The first new code running on the Digitone II's DSP: the C in [`fx/flanger.c`](fx/flanger.c), compiled with selcc and spliced into the DSP section by [`tools/dspsplice`](tools/dspsplice). It plays on the stock chorus page's knobs (depth, speed, high-pass, width).
+- **FTD1**, FLG1 plus our one-head tape delay in place of the stock delay (resonant loop filters, wow and flutter, wear, and tape-style pitch bends when TIME changes).
 
 **In the ColdFire emulator** (digikit, with our changes on [a branch of our fork](https://github.com/naturarum/digikit/tree/dn2-1.12)):
 - 1.12 boots to the main screen.
@@ -30,7 +31,7 @@ The goals: swap the send effects for new ones (a tape delay, a flanger, a better
 - The STARTUP-menu recovery over DIN MIDI was tested on the unit.
 - An audit of the code that writes flash, and a proof that the STARTUP menu doesn't depend on the main OS (`notes/T1.4*`, `notes/T1.5*`).
 
-**Next:** the tape delay in the delay slot (FTD1) on the unit, then a second page of knobs per effect.
+**Next:** the screen names (FTN1, ready), a Space Echo style delay ([`fx/spaceecho.c`](fx/spaceecho.c), on the A/B page), and growing the parameter table for more knobs (studied in `notes/T6.1-table-growth-study.md`: feasible, with conditions).
 
 ## What's where
 

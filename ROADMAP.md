@@ -5,7 +5,7 @@ Custom firmware for the Digitone II (OS 1.12), built on the community's tools (e
 **For agents:** claim a task by putting your name in its Owner cell before you start. Update Status when you stop, and record what you found in `HANDOFF.md`. Ask the user before any public action: forks, issues, PRs.
 
 ## Now
-- **On the unit (2026-10-12):** EF01 (T1.8) and **FLG1, our flanger in the chorus slot (T3.9, M3): the user reports it works perfectly.** The first new code running on the Digitone II's DSP.
+- **On the unit (2026-10-12):** EF01 (T1.8), **FLG1, our flanger in the chorus slot (T3.9, M3): "it works perfectly"**, the first new code on the Digitone II's DSP, and **FTD1 (+ the tape delay in the delay slot): works**; the user: the delay sounds "not amazing, but that's not an issue", and the TIME repitch is "very interesting". The Space Echo (T5.2) is the delay's next design.
 - **Next candidates, cleared for the user:** FTD1 (FLG1 + the tape delay in the delay slot; ACCEPT 12/12 with the strengthened DSP gate, guide `out/T3.8/FLASH-FTD1.md`); DH01 (the core + a MIDI test mod, M1). DH01 comes before any screen change: labels and glyphs run through the core.
 - **Order agreed with the user (2026-10-12), to avoid fanning out:** FTD1 and DH01 on the unit -> rename the pages (Flanger, Tape; T5.0's mod, paused 2026-10-06, resumes since dnfw is not collaborating yet) -> grow the parameter table (E/F knobs, second pages) with new glyphs for the new rows -> the 3-band compressor.
 - **Then:** the flanger's fixed knobs (feedback, manual) and FLG2 (the friend's in-loop ideas), after listening on the unit; multi-page FX UI (T5.0/T6.0, parameter-table growth) on the ColdFire side.
