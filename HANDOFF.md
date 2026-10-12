@@ -1198,3 +1198,23 @@ T6.4). Emulator (hot-patched RAM) and static analysis only.
   `0xa18`, so new DSP code can. Catch: every existing kit stores 1 there, so 1 must mean the classic behaviour.
 - Not established: Overbridge with unknown ids, rounded-size arrays, MIDI CC out for new rows, the randomiser,
   +Drive save/load across builds, a cold boot of a grown build, the 1.12 per-machine SYN page table.
+
+# 2026-10-12: T5.0b, FTN1 renames the FX pages (background agent)
+
+Full note: `notes/T5.0b-rename.md`. **FTN1** (`out/T5.0b/FTN1.syx`, sha256 `60d1cd1f...58e8`) = FTD1's section 7
+byte for byte + core-dn2 0.1 (same .elemod as DC01/DH01) + `fx-rename` 0.1 (elekloader fork, `examples/fx-rename-dn2`,
+pushed on `naturarum/elekloader` `dn2-1.12`). Brickcheck **ACCEPT 12/12** with both intended images
+(`out/brickcheck/FTN1-2026-10-12/`); cold boot main screen identical to stock.
+- 29 sites, 195 bytes of strings, all data: 23 descriptor name pointers, 6 `pea` operands (two page titles, two page
+  short names, two page boxes). The titles need no boot code: the core copies the strings before the page records
+  are built, which closes T5.0's open cold-boot item.
+- Names: SEND FX 3 "Flanger (3/3)" box FLG; SEND FX 1 "Tape (1/3)" box TAP (TAPE is 15 px, the box holds 13);
+  track FX, the flanger page's G, FX MIX and EXT MIX (LTAP/RTAP, LFLG/RFLG with DUAL), LFO DEST lists, DEST box
+  "FX TAPE". Knob labels unchanged; CC numbers unchanged.
+- Evidence: 28 screens, same keys on stock and FTN1: 7 identical, the other 21 differ only inside renamed words;
+  LEDs identical; after 14 knob turns, an LFO destination and two p-locks, the parameter mirror and the DSP frame
+  are byte-identical to stock.
+- Found: the rows' group-name pointers are never read (T5.0 renamed them for nothing); an unreferenced second table
+  of old names at `0x401d0f04`; the FX MIX knobs are the effect pages' VOL (k 31, 39); elektron-firmware-tool `-V`
+  cannot overwrite a version field elekloader set; T3.3's frame capture refuses a modded main OS (scratch copy used).
+- Note for later sessions: in `vendor/elekloader`, `origin` is irpina's upstream; our fork's remote is `naturarum`.

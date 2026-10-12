@@ -1,0 +1,158 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# T5.0b: every screen where FTN1 renames something, from the warm 800M snapshot (main screen, track 1).
+# Same keys on stock and on FTN1, so the screens compare pixel for pixel (scripts/t50b_compare.py).
+wait-emu 0.5
+png 00-main
+tap l                # FX: the track FX page (BR OVER SRR SR.RT / DEL REV CHR OD.RT)
+wait-emu 0.5
+png 01-trackfx
+tap 5                # encoder E: the delay send, one detent
+wait-emu 0.4
+png 02-trackfx-E
+tap 7                # encoder G: the chorus send
+wait-emu 0.4
+png 03-trackfx-G
+down space           # FUNC held
+wait-emu 0.1
+tap l                # + FX: SEND FX 1 (delay)
+wait-emu 0.1
+up space
+wait-emu 0.5
+png 04-sendfx1
+tap 1                # encoder A: TIME
+wait-emu 0.4
+png 05-sendfx1-A
+tap Down
+wait-emu 0.4
+png 06-sendfx2
+tap Down
+wait-emu 0.4
+png 07-sendfx3
+tap 1                # encoder A: DPTH
+wait-emu 0.4
+png 08-sendfx3-A
+tap 7                # encoder G: the chorus page's delay send
+wait-emu 0.4
+png 09-sendfx3-G
+down space
+wait-emu 0.1
+tap semicolon        # FUNC+MOD: MIXER, COMPRESSOR (1/5)
+wait-emu 0.1
+up space
+wait-emu 0.5
+png 10-mixer1
+tap Down
+wait-emu 0.4
+tap Down
+wait-emu 0.4
+tap Down
+wait-emu 0.4
+png 11-mixer4-fxmix
+tap 5                # encoder E: delay mix volume
+wait-emu 0.4
+png 12-mixer4-E
+tap 7                # encoder G: chorus mix volume
+wait-emu 0.4
+png 13-mixer4-G
+tap Down
+wait-emu 0.4
+png 14-mixer5-extmix
+tap 5                # encoder E: input delay send
+wait-emu 0.4
+png 15-mixer5-E
+tap 7                # encoder G: input chorus send
+wait-emu 0.4
+png 16-mixer5-G
+tap 2                # encoder B: DUAL on (left and right inputs apart)
+wait-emu 0.4
+png 16b-mixer5-dual
+tap 5                # encoder E: input delay send L
+wait-emu 0.4
+png 16c-mixer5-dual-E
+tap 7                # encoder G: input chorus send L
+wait-emu 0.4
+png 16d-mixer5-dual-G
+tap Down             # the right input's page, if there is one
+wait-emu 0.4
+png 16e-mixer-down
+tap semicolon        # MOD: LFO 1
+wait-emu 0.5
+png 17-mod
+tap 4                # encoder D: DEST, one entry down the list
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+tap 4
+wait-emu 0.3
+png 18-dest-list-chorus-send
+tap 4
+wait-emu 0.3
+png 19-dest-list-delay-send
+tap Return           # YES: LFO 1 -> the delay send
+wait-emu 0.5
+png 20-mod-dest-set
+tap l                # FX: the track FX page
+wait-emu 0.5
+tap 0                # RECORD: grid recording
+wait-emu 0.4
+down q               # TRIG 1 held
+wait-emu 0.4
+tap 5                # encoder E while the trig is held: a parameter lock
+wait-emu 0.4
+png 21-plock-E
+tap 7                # encoder G locked too
+wait-emu 0.4
+png 22-plock-G
+up q
+wait-emu 0.4
+tap 0                # RECORD off
+wait-emu 0.5
+png 23-end
