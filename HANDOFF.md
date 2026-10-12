@@ -1114,3 +1114,13 @@ flashed, no hardware, nothing committed; `vendor/`, `elektron-firmware/`, `fx/`,
   first step, FTD1 comes after FLG1 works. T3.9 row updated.
 - **Suggestion (not done, it changes the gate):** check 11's dynamic run feeds only the reverb; adding chorus
   and delay sends would make a replaced effect run on signal inside the gate too.
+
+# 2026-10-12: FLG1 on the unit (T3.9, M3)
+
+The user flashed `out/T3.8/FLG1/FLG1.syx` (sha256 `72c2690c...efed6`; brickcheck ACCEPT 12/12 with the
+strengthened DSP gate, `out/brickcheck/FLG1-2026-10-12/`) over USB and reports: "IT WORKS PERFECTLY". The first
+new code running on the Digitone II's SHARC: the flanger from `fx/flanger.c` in the chorus slot, spliced by
+`tools/dspsplice/`. Milestone M3 reached. The splice method (selcc, fixed-address link, blocks before FINAL,
+register-saving stubs) is now proven on silicon, so FTD1 and later effects reuse it unchanged.
+Next: FTD1 (flanger + tape delay) re-checked with the strengthened gate (its earlier ACCEPT ran the delay slot on
+silence); then the user's listening notes decide the flanger's fixed knobs and FLG2.

@@ -5,11 +5,9 @@ Custom firmware for the Digitone II (OS 1.12), built on the community's tools (e
 **For agents:** claim a task by putting your name in its Owner cell before you start. Update Status when you stop, and record what you found in `HANDOFF.md`. Ask the user before any public action: forks, issues, PRs.
 
 ## Now
-- **For the user:** the emulator-vs-unit photos and the other items in the vault's `Todo.md`. No flashing planned: the user wants more proof from the emulator first (2026-10-05).
-- **Ready (nothing blocking):** T1.9 (Digitone II core), T2.3, T3.8 (splice method). The flanger waits for the user's yflanger notes; T1.7b waits for the user's go-ahead.
-- **In progress (2026-10-12):** T3.8, our effects into the DSP section (the flanger in the chorus slot first), background agent. Hardened brickcheck runs on core-DC01 and hooktest-DH01.
-- **Done overnight 2026-10-05/06:** T1.9 Digitone II core (emulator only; a test mod rewrites MIDI notes as intended), stock-vs-new A/B page and the new effects' SHARC cost halved, T3.2 DSP memory map, T2.4b audio clock (PLAY runs), T2.4 MIDI in/out + LEDs + 0.8x real time, T3.11 tape delay + 3-band compressor workbench, T3.6 SHARC interpreter (stock effects render to WAV).
-- **Next:** the user listens and answers the T3.11 design questions; records the stock takes (T3.5) for T3.7; sends the yflanger notes. Then the tier-1 mods (T1.9 core, T2.5/T2.6), now testable in the emulator with MIDI out.
+- **On the unit (2026-10-12):** EF01 (T1.8) and **FLG1, our flanger in the chorus slot (T3.9, M3): the user reports it works perfectly.** The first new code running on the Digitone II's DSP.
+- **Next candidates:** FTD1 (FLG1 + the tape delay in the delay slot), being re-checked with the strengthened DSP gate; DH01 (the core + a MIDI test mod, M1), cleared for the user.
+- **Then:** the flanger's fixed knobs (feedback, manual) and FLG2 (the friend's in-loop ideas), after listening on the unit; multi-page FX UI (T5.0/T6.0, parameter-table growth) on the ColdFire side.
 - **Public (2026-10-12):** this project is public as github.com/naturarum/dn2-cfw (GPL-2.0-or-later, fresh history). Our digikit and elekloader `dn2-1.12` branches are public forks. Pull requests and issues upstream (C0-C8) still need the user's go for each.
 
 ## User priorities (2026-10-05)
@@ -59,12 +57,12 @@ The user wants to hear new effects A/B against stock; offline rendering is fine.
 
 ## Milestones
 
-| id | milestone | done when | tasks | size | pri |
-|---|---|---|---|---|---|
+| id | milestone | done when | tasks | size | pri | status |
+|---|---|---|---|---|---|---|
 | M0 | Safe to flash | recovery tested on the unit; brick checker passes; an unchanged rebuild flashed and reverted | T0.1–T0.3, T1.1–T1.8 | L | P0 |
 | M1 | First mod | a small mod runs on the unit through the Digitone II core | T1.9–T1.10 | L | P1 |
 | M2 | MIDI machine | G4 and G5 work on the unit | T2.* | L | P1 |
-| M3 | First DSP patch | new code audibly changes the stock chorus on the unit | T3.* | XL? | P1 |
+| M3 | First DSP patch | new code audibly changes the stock chorus on the unit | T3.* | XL? | P1 | **reached 2026-10-12: FLG1, the flanger in the chorus slot, works on the unit** |
 | M4 | CPU monitor | G6: DSP load on screen | T4.* | M | P1 |
 | M5–M7 | Chorus, delay, reverb | G3, G2, G1 on the unit | T5.* | 3 × L | P2 |
 | M8 | 3-band compressor | G9 on the unit | T6.* | L | P2 |
@@ -88,6 +86,7 @@ There are two tracks, and they can run in parallel:
 - Brick checker built (T1.7) and a version-name-only candidate, EF01, built and accepted (T1.8). Not flashed yet.
 - Stock 1.12 moved into `elektron-firmware/`.
 - **First own build on the unit (T1.8, 2026-10-12):** EF01 (stock 1.12 renamed, resealed) flashed over USB and works. The first hardware result.
+- **First new DSP code on the unit (T3.9, M3, 2026-10-12):** FLG1, the flanger in the chorus slot, flashed over USB; the user reports it works perfectly.
 
 ## Phase 0: hardware prep (user)
 
@@ -149,7 +148,7 @@ The brick checker's checks (T1.7):
 | T3.6 | Simulator stage 2: run one DSP routine on an audio buffer on the laptop (build on digikit's `tools/sharcemu.py`) | dn2-fw session | XL | P1 | T3.2, T3.4 | done: own SHARC+ interpreter (`tools/sharcvm/`, C core, 77-93M insn/s); 2,036/2,039 selache C tests pass; stock delay, chorus, reverb, compressor (3-8x real time) and the whole block handler (0.19x, no voices) render to WAV; selcc builds of T3.11 effects match native after a selcc bug workaround (notes/T3.6-sharc-interpreter.md) |
 | T3.7 | Validate the simulator against T3.5's recordings | | M | P1 | T3.5, T3.6 | comparison script ready and self-tested (`scripts/t37_compare.py`: lag, drift, level, residual, third-octave spectrum per take); waits for the T3.5 recordings |
 | T3.8 | Splice method: compile C with selcc, place it in free DSP memory and hook it. First patch: a gain change on the stock chorus | dn2-fw session | L? | P1 | T3.2, T3.4 | done 2026-10-12, emulators only: `tools/dspsplice/` (selcc -> fixed-address link -> blocks before FINAL, CJUMP retargets, register-saving stubs, encoding audit). CG01 (stock chorus -6 dB), FLG1 (flanger in the chorus slot, SHARC = Mac bit for bit, +0.4 % of a block), FTD1 (+ tape delay, +2.8 %); all three brickcheck ACCEPT 12/12 with --intended-dsp (notes/T3.8-dsp-splice.md) |
-| T3.9 | First DSP patch on the unit (M3) | user + agent | S | P1 | T1.7, T1.8, T3.8 | candidate ready: `out/T3.8/FLG1/FLG1.syx` (the flanger in the chorus slot) passes all 12 brick checks with the strengthened DSP run (2026-10-12); the user flashes it, guide `out/T3.8/FLASH-FLG1.md` |
+| T3.9 | First DSP patch on the unit (M3) | user + agent | S | P1 | T1.7, T1.8, T3.8 | **done 2026-10-12: FLG1 (`out/T3.8/FLG1/FLG1.syx`, sha256 `72c2690c...efed6`, the flanger in the chorus slot) flashed over USB; the user: "it works perfectly"**. Guide `out/T3.8/FLASH-FLG1.md` |
 | T3.11 | FX workbench on the Mac: the new effects in portable C (same source later built with selcc), a renderer for WAV files at 48 kHz in 32-sample blocks like the DSP, and A/B against stock recordings (T3.5) | dn2-fw session | M | P1 | | tape delay and 3-band compressor done: C in `fx/`, 76 tests pass, A/B page `out/T3.11/ab.html`; selcc builds are 7-9x the stock cost, need restructuring (notes/T3.11). Flanger waits for yflanger notes; stock A side waits for T3.5 (notes/T3.5-recording-plan.md). 2026-10-06: the page also has the stock effects emulated (T3.6) at the closest knobs; SHARC cost measured and cut ~2.2x, output bit-identical (delay 18.6k, compressor 47.7k insns/block; stock 5.4k, 16.6k); below stock needs hand assembly of 5 loops (notes/T3.11 sections 10-11). 2026-10-06 later, after the user's listening (section 12): one-head tape delay with AGE, resonant loop filters, WID; each compressor band = the stock compressor's design (measured in the emulator), MUP, one sidechain; flanger in the chorus slot; 155 tests pass; SHARC = Mac (flanger bit-identical); delay 19-24k, comp 35-52k, flanger 16-18k insns/block (~7 % of a block in all); 1-page/2-page layouts proposed; renders and page redone |
 | T3.10 | Propose DSP-section mods to elekloader's maintainer. Its mod format can only change the main OS today | | S | P1 | | todo |
 
@@ -166,7 +165,7 @@ The brick checker's checks (T1.7):
 | id | task | owner | size | pri | needs | status |
 |---|---|---|---|---|---|---|
 | T5.0 | Flanger page UI: how the DN2 draws the chorus page, its parameter labels and glyphs, and the chorus send icon; extract them; prove a renamed/redrawn page in the emulator | dn2-fw session | M? | P2 | T1.9 | paused 2026-10-06 (overlap with dn2_firmware_explore; owner contacting its author). Found: fonts, glyph strips, the tables behind each knob, the chorus send glyph; relabel + 3 new glyphs shown by hot-patch; 2 pages per send FX: yes on the UI side, built but not yet cold-booted (notes/T5.0-flanger-page-ui.md) |
-| T5.1 | Chorus slot: a basic, swelly flanger (user 2026-10-06: "for now maybe let's just build a basic flanger"), in C, simulated, then on the unit | | L | P2 | T3.7, T3.9 | in progress: C version done 2026-10-06 (`fx/flanger.c`: 0.05-77 ms, damped feedback/Karplus-Strong, 6 LFO shapes + slew, sync, stereo phase and offset, polarity; SHARC build bit-identical, 16.7k insns/block vs stock chorus 14.5k; notes/T3.11 12.5). Next: the owner listens; memory home (33 KB); then on the unit |
+| T5.1 | Chorus slot: a basic, swelly flanger (user 2026-10-06: "for now maybe let's just build a basic flanger"), in C, simulated, then on the unit | | L | P2 | T3.7, T3.9 | **on the unit 2026-10-12 as FLG1** (DPTH/SPD/HPF/WDTH on the stock chorus knobs; FDBK +68 % and MAN 0.9 ms fixed; the user: it works perfectly). C version 2026-10-06 (`fx/flanger.c`: 0.05-77 ms, damped feedback/Karplus-Strong, 6 LFO shapes + slew, sync, stereo phase and offset, polarity). Next: more knobs need the second page (T5.0/T6.0); FLG2 with in-loop saturation |
 | T5.2 | Delay | | L | P2 | T5.1 | todo |
 | T5.3 | Reverb | | L | P2 | T5.1 | todo |
 
