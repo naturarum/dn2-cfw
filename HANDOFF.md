@@ -1087,3 +1087,30 @@ The user flashed `out/T1.8/EF01.syx` (sha256 `babb1291...41a5`, brickcheck ACCEP
 `out/brickcheck/EF01-2026-10-06/`) over USB with Transfer and reports success. That is the first hardware
 result: our rebuild, seal and flash path works on a real unit. Next: prepare the public repo
 (GPL-2.0-or-later, fresh history, README with an AI-use section, no personal paths).
+
+# 2026-10-12: T3.8, our code in the DSP section (background agent)
+
+Full note: `notes/T3.8-dsp-splice.md` (10-line summary at its end). Emulators and sharcvm only: nothing
+flashed, no hardware, nothing committed; `vendor/`, `elektron-firmware/`, `fx/`, `tools/brickcheck/` and
+`tools/sharcvm/` unchanged.
+- **Pipeline** `tools/dspsplice/` (`build.py NAME`, `ldr.py`, `stub.py`, `audit.py`, `vmrun.py`, `verify_*.py`):
+  selcc -> selas -> seld at fixed addresses -> new blocks before FINAL, the FX bus's CJUMP targets rewritten in
+  place (block 83), FIRST argument recomputed -> `elektron-firmware-tool -c 7 -V NAME`. The unit's own depacker
+  (acceptoracle, run read-only) gives exactly the intended stream for all three candidates. [verified]
+- **selcc and ADI's compiler disagree on preserved registers** (selcc keeps R8-R15, stock code R3, R5-R7,
+  R9-R11, R13-R15; measured with random registers). Every hook goes through a generated stub that saves R0-R15,
+  I0-I5, M1-M4 and MODE1 with stock-exact absolute stores. Encoding audit: no instruction that neither the stock
+  image nor selcc's hardware-validated output uses. Worth reporting to selache (owner's call). [verified]
+- **Memory:** code and save area in L1 block 1 `0x2dd600-0x2e7000` (dnfw's proven range); flanger state 33 KB at
+  `0x300000` (L1 block 2, FILL-zeroed); FTD1's tape code at `0x310000`, its state in the stock delay's DDR.
+- **CG01** (stock chorus, wet x0.5): chorus output exactly half; wet in the output -6.021 dB; rest bit-identical;
+  +1,195 instructions/block. **FLG1** (flanger in the chorus slot): SHARC = Mac bit for bit (768,000 samples);
+  sends at 0 -> output bit-identical to stock; +2,434 instructions/block (+0.4 % of a 1 GHz block), stack
+  +404 B. Knobs: DPTH, SPD, HPF, WDTH drive the flanger's own; FDBK +68 % and MAN 0.9 ms fixed; swelly default
+  DPTH 96 SPD 30 HPF 32 WDTH 48; louder than the stock chorus (2.5-6.7 dB). **FTD1** (+ tape delay): SHARC vs
+  Mac -103.8 dB; +18,707 instructions/block (+2.8 %).
+- **Brick checker** (full runs, `--intended-dsp`): CG01, FLG1, FTD1 all **ACCEPT 12/12**.
+- **For the owner:** `out/T3.8/FLASH-FLG1.md` (vault copy `code/Digitone2/T3.8/`); CG01 is an optional smaller
+  first step, FTD1 comes after FLG1 works. T3.9 row updated.
+- **Suggestion (not done, it changes the gate):** check 11's dynamic run feeds only the reverb; adding chorus
+  and delay sends would make a replaced effect run on signal inside the gate too.

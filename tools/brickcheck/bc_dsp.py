@@ -265,7 +265,7 @@ def dynamic_available():
     return os.path.isdir(MEMDIR) and os.path.exists(os.path.join(MEMDIR, 'l1b3.bin'))
 
 
-def dynamic_run(stored7, blocks_n=256, loud=4.0, fxinit_cap=5 * 10**8, wall_budget=180.0):
+def dynamic_run(stored7, blocks_n=1500, loud=4.0, fxinit_cap=5 * 10**8, wall_budget=180.0):
     """Load the candidate's section 7 into tools/sharcvm, run the effect init
     then the whole block handler for `blocks_n` blocks with a stock-like frame
     and a test input. -> dict. Refuses (sets 'fail') on a trap, an
@@ -314,14 +314,40 @@ def dynamic_run(stored7, blocks_n=256, loud=4.0, fxinit_cap=5 * 10**8, wall_budg
     res['init_seconds'] = round(time.time() - t0, 1)
 
     d = fullblock.FullDSP(vm=vm)
-    d.set(IN_L=40, IN_R=40, IN_REV_L=80, REV_DEC=90, DEL_TIME=32, DEL_FDBK=40)
+    # Every send effect gets signal and is heard: the external input goes to
+    # chorus, delay and reverb, each at full mix volume, with the pattern
+    # volume up. (Until 2026-10-12 only the reverb send was set and every
+    # VOL was 0, so a replaced chorus or delay processed silence and the
+    # loudness ceiling could not see it: peak 0.017 for every candidate.)
+    base = dict(IN_L=40, IN_R=40, IN_CHR_L=80, IN_CHR_R=80, IN_DEL_L=80, IN_DEL_R=80,
+                IN_REV_L=80, IN_REV_R=80,
+                CHR_DPTH=96, CHR_SPD=30, CHR_HPF=32, CHR_WDTH=48, CHR_VOL=127,
+                DEL_TIME=4, DEL_FDBK=64, DEL_HPF=0, DEL_LPF=127, DEL_WID=64, DEL_VOL=127,
+                REV_DEC=90, REV_VOL=127, PATTERN_VOL=127)
+    d.set(**base)
     d.set_raw(TEMPO=120 * 120)
+    # DEL_TIME 4 echoes after about 3,800 samples (TIME+1 eighths of 750 at 120 BPM),
+    # well inside the run, so a replaced delay is heard too.
+    # In the second half, the chorus and delay knobs jump to new values every
+    # 16 blocks (fixed seed): a candidate must stay finite and under the
+    # ceiling across its knob ranges, not only at one setting. Feedback stays
+    # at or below the stock default range's top (DEL_FDBK <= 100), so a stock
+    # delay is not driven into its own runaway.
+    import random
+    rng = random.Random(0x5EED)
+    fuzz_keys = ('CHR_DPTH', 'CHR_SPD', 'CHR_HPF', 'CHR_WDTH', 'DEL_TIME', 'DEL_X',
+                 'DEL_WID', 'DEL_HPF', 'DEL_LPF')
+    res['settings'] = 'all three sends, VOL 127; knob fuzz in the second half (seed 0x5EED)'
     peak = 0.0
     nan_inf = 0
     done = 0
     t0 = time.time()
     try:
         for i in range(blocks_n):
+            if i >= blocks_n // 2 and i % 16 == 0:
+                knobs = {k: rng.randrange(128) for k in fuzz_keys}
+                knobs['DEL_TIME'] = rng.randrange(16)   # echoes inside the run
+                d.set(**knobs, DEL_FDBK=rng.randrange(101))
             L = [math.sin(i * 0.30 + j * 0.11) * 0.3 for j in range(32)]
             R = [math.sin(i * 0.31 + j * 0.13) * 0.3 for j in range(32)]
             a, b = d.block(L, R)

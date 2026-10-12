@@ -830,8 +830,8 @@ def main(argv=None):
     ap.add_argument('--no-dsp-sim', action='store_true',
                     help='skip check 11\'s dynamic SHARC run (tools/sharcvm); check 11 is then at '
                     'best "incomplete" for a changed DSP')
-    ap.add_argument('--dsp-blocks', type=int, default=256,
-                    help='blocks for check 11\'s dynamic SHARC run (default 256)')
+    ap.add_argument('--dsp-blocks', type=int, default=1500,
+                    help='blocks for check 11\'s dynamic SHARC run (default 1500, one second of audio)')
     ap.add_argument('--dsp-loud', type=float, default=4.0,
                     help='loudness ceiling for check 11\'s dynamic run (default 4.0, full scale is 1.0)')
     ap.add_argument('--no-upgrade-watch', action='store_true',
