@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# T6.5: SAVE PROJECT AS slot 1 (to see what the OS asks of the +Drive).
+wait-emu 0.3
+tap grave
+wait-emu 0.4
+tap Return           # PROJECT
+wait-emu 0.4
+tap Down             # SAVE PROJECT AS
+wait-emu 0.3
+tap Return
+wait-emu 0.6
+tap Return
+wait-emu 0.8
+tap Return           # YES: save
+wait-emu 3.0
+png 00-saved

@@ -1,0 +1,88 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# T6.5: format the emulator's +Drive (SETTINGS > SYSTEM > FORMAT +DRIVE: tick PROJ+PST+KIT, ERASE
+# SELECTED DATA, YES), then SAVE PROJECT AS slot 1, from the warm snapshot.
+wait-emu 0.3
+tap grave
+wait-emu 0.4
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down             # SYSTEM
+wait-emu 0.2
+tap Return
+wait-emu 0.4
+tap Down
+wait-emu 0.2
+tap Down             # FORMAT +DRIVE
+wait-emu 0.2
+tap Return
+wait-emu 0.6
+tap Return           # tick PROJ+PST+KIT
+wait-emu 0.4
+tap Down             # ERASE SELECTED DATA
+wait-emu 0.3
+png 00-erase-row
+tap Return
+wait-emu 0.8
+png 01-erase-asked
+tap Return           # YES
+wait-emu 2.0
+png 02-erasing
+wait-emu 6.0
+png 03-erased-8s
+wait-emu 6.0
+png 04-erased-14s
+tap Escape
+wait-emu 0.4
+tap Escape
+wait-emu 0.4
+tap Escape
+wait-emu 0.4
+tap Escape
+wait-emu 0.4
+png 05-main
+tap grave
+wait-emu 0.4
+tap Up
+wait-emu 0.2
+tap Up
+wait-emu 0.2
+tap Up
+wait-emu 0.2
+tap Up
+wait-emu 0.2
+tap Up
+wait-emu 0.2
+tap Up
+wait-emu 0.2
+tap Up
+wait-emu 0.2
+tap Up
+wait-emu 0.2
+png 06-settings-top
+tap Return           # PROJECT
+wait-emu 0.4
+tap Down             # SAVE PROJECT AS
+wait-emu 0.3
+tap Return
+wait-emu 0.6
+png 07-saveas
+tap Return
+wait-emu 0.8
+png 08-name
+tap Return           # YES: save
+wait-emu 2.0
+png 09-saving
+wait-emu 6.0
+png 10-saved-8s
+wait-emu 6.0
+png 11-saved-14s

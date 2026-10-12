@@ -1225,3 +1225,29 @@ The user flashed FTD1 (flanger + one-head tape delay) over USB: it works. Their 
 amazing, but that's not an issue"; the repitch on TIME changes is "very interesting" (the delay-time glide, tau
 0.12 s, playback speed held within 0.5x..1.5x). The Space Echo (T5.2) is the delay's next design. Next on the unit:
 DH01, then FTN1.
+
+# 2026-10-12: T6.5, the parameter table grows (background agent)
+
+Full note: `notes/T6.5-table-growth.md`. Mods on our elekloader fork (`dn2-1.12`, pushed to the `naturarum` remote):
+`examples/param-grow-dn2`, `param-rows-dn2`, `param-test-dn2` (emulator only, never flash). Tests: 25/25 with
+`ELEKLOADER_CROSS=m68k-elf- ELEKLOADER_DN2_SYX=<stock .syx> uv run --with pytest python -m pytest tests/test_digitone2.py`
+(without ELEKLOADER_CROSS the tests "fail" with a Skip).
+- **GT00** (`out/T6.5/GT00.syx`, `4cfe8056...d13d`) = FTN1 + param-grow: the table is copied at boot (from the C start
+  call at `0x40000568`, before any OS code) to `0x47D00000-0x47D10000` (inside the DDR stock never touches, T1.3/T1.9),
+  room for 0x180 rows (ceiling 0x1e0 with same-length edits). 149 sites: 56 address operands, 57 bounds + the display
+  accessor's head, 33 `ParameterUpdateCache` constants (incl. a hidden `move.b #-0x14`); the 5 look-alikes untouched.
+  The display table stays; its reader `0x400c257c` jumps to code giving new rows their own entries. Static table
+  impossible (no room; the image's tail is cleared at boot by `0x400004b2`).
+- **GT01** (`4c64c5dc...e41e`) = GT00 + 17 inert rows for the compressor (not lockable, no CC, on no page; FX slots
+  70..86). Both **ACCEPT 12/12** (`out/brickcheck/GT00-2026-10-12/`, `GT01-2026-10-12/`).
+- Evidence vs FTN1: boot order by read/write watches from reset (first OS reader at 109.4M, after the copy at 26.2M);
+  the same tasks and main screen; boot maps and rows 0..0x140 field by field; p-lock records; LFO list (67 screens);
+  randomisers; copy/paste; MIDI out; a 7,100-message CC/NRPN flood (the same 991 cache writes, none outside it); the
+  12.9 MB working project image byte-identical. Screen tours (218) differ only by emulator timing noise, as FTN1 vs its
+  own rerun.
+- **Storage for the compressor:** a kit save/reload keeps exactly k 25..69 (stored ids 1..45); k 70..100 are not saved
+  (written into stored id 0, the fold sink). The FX record's 28 words +0x60..+0x97 are never read or written: the
+  compressor's ~20 values go there through hooks (T6.0). The DSP frame carries k 25..69 only.
+- **Left for the unit:** Overbridge with ids 0x400+, a real +Drive save/load (digikit cannot: SAVE ERROR, FORMAT writes
+  nothing), a power cycle, MIDI CC out of new FX rows (goes out on the set's channel), the heap (+12.8 KB, free space
+  not measured).
