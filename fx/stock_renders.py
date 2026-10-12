@@ -6,8 +6,8 @@
 
 For every render in OUTDIR/manifest.tsv, the same dry file goes through the Digitone II's own
 effect code (OS 1.12, run in the T3.6 SHARC interpreter, tools/sharcvm) at the stock knob values
-closest to the new effect's settings. The mapping is in map_tapedelay() and map_mbcomp() and in
-notes/T3.11-fx-workbench.md section 10. Renders whose settings map to the same stock knobs share
+closest to the new effect's settings. The mapping is in map_tapedelay(), map_spaceecho() (T5.2),
+map_flanger() and map_mbcomp() and in notes/T3.11-fx-workbench.md section 10 and notes/T5.2-space-echo.md. Renders whose settings map to the same stock knobs share
 one stock file. Also renders the stock chorus and reverb on two dry files, for reference.
 
 This is an emulation, not a recording: T3.7 checks the emulator against the owner's recordings
@@ -41,6 +41,10 @@ for _b in "LMH":
     MB_DEFAULTS.update({f"{_b}.THR": 85, f"{_b}.ATK": 40, f"{_b}.REL": 44, f"{_b}.MUP": 0, f"{_b}.RAT": 2})
 MB_DEFAULTS.update(XLO=38, XHI=90, LSTN=0, SCS=0, SCF=64, MIX=127)
 FL_DEFAULTS = dict(DPTH=96, SPD=30, HPF=32, WDTH=48, FDBK=107, MAN=50, SHP=0, SLEW=0, DAMP=12, SYNC=0, OFS=0, POL=0)
+# the Space Echo (T5.2, fx/spaceecho.c: spaceecho_init); fxrender's long names are aliases
+SE_DEFAULTS = dict(TIME=31, MODE=3, INT=50, AGE=40, CTR=64, BW=127, WID=96, PAN=1)
+SE_ALIAS = {"INTENSITY": "INT", "CENTER": "CTR", "WIDTH": "WID"}
+SE_HEADS = [1, 2, 4, 3, 6, 5, 7]          # MODE index -> heads (bit 0 = head 1)
 
 
 def parse_fxrender(argstr):
@@ -144,6 +148,52 @@ def map_tapedelay(k):
 def describe_delay(s):
     return (f"TIME {s['TIME']:g}, FDBK {s['FDBK']}, HPF {s['HPF']}, LPF {s['LPF']}, "
             f"X {'on' if s['X'] else 'off'}, WID {s['WID'] - 64:+d}")
+
+
+# --- Space Echo -> stock delay ------------------------------------------------------------------------
+def se_macro(k, name):
+    if name in SE_ALIAS:
+        k[SE_ALIAS[name]] = k[name]
+
+
+def map_spaceecho(k):
+    """Space Echo knobs -> stock delay knobs (one head: the shortest active one), plus what the stock
+    delay cannot do. Laws as in fx/spaceecho.c."""
+    c01 = lambda v: min(max(v, 0.0), 127.0) / 127.0
+    hm = SE_HEADS[int(min(max(k["MODE"], 0), 6) + 0.5)]
+    heads = [h for h in (1, 2, 3) if hm & (1 << (h - 1))]
+    h = heads[0]
+    g = 1.1 * c01(k["INT"]) ** 1.5                     # loop gain per head
+    a = c01(k["AGE"])
+    bw = min(max(k["BW"], 0.0), 127.0)
+    if bw >= 127:
+        hp, lp = 5.0, 30000.0
+    else:
+        C = 50.0 * 2 ** (8.0 * c01(k["CTR"]))
+        B = 0.5 * 40.0 ** (bw / 127.0)
+        hp, lp = C / 2 ** (B / 2), C * 2 ** (B / 2)
+    if a > 0:                                          # AGE's top-end loss, a one-pole in the loop
+        c = 2 ** (-1.6 * a)
+        lp = min(lp, -math.log(1 - c) * 48000.0 / (2 * math.pi))
+    pan = int(min(max(k["PAN"], 0), 2) + 0.5)
+    alt = pan == 1 and k["WID"] >= 64
+    t = h * (k["TIME"] + 1) - 1
+    s = dict(TIME=round(min(127.0, t), 3), FDBK=round(min(127.0, g * 64.0)),
+             HPF=SM.delay_hpf_knob(hp), LPF=SM.delay_lpf_knob(lp), X=1 if alt else 0, WID=0 if alt else 64)
+    missing = []
+    if len(heads) > 1:
+        missing.append(f"heads {'+'.join(str(x) for x in heads[1:])} (one head only, at head {h}'s time)")
+    if t > 127:
+        missing.append("the head time (longer than a whole note)")
+    if a > 0:
+        missing.append("wow, flutter, hiss, crackle (AGE)")
+    if bw < 96:
+        missing.append("band resonance")
+    if pan == 2:
+        missing.append("random pan")
+    if pan == 0 and k["WID"] < 64:
+        missing.append("mono width")
+    return s, missing
 
 
 # --- 3-band compressor -> stock master compressor ----------------------------------------------------
@@ -345,11 +395,14 @@ def main():
         with wave.open(str(dry)) as w:
             nframes = w.getnframes() + int(r["tail"] * SR + 0.5)
         nblocks = (nframes + BLOCK - 1) // BLOCK
-        if r["fx"] == "tapedelay":
-            tl = knob_timeline(r, TD_DEFAULTS, nblocks, td_macro)
+        if r["fx"] in ("tapedelay", "spaceecho"):
+            if r["fx"] == "tapedelay":
+                tl = knob_timeline(r, TD_DEFAULTS, nblocks, td_macro)
+            else:
+                tl = knob_timeline(r, SE_DEFAULTS, nblocks, se_macro)
             sched, missing = [], set()
             for b, kn in tl:
-                s, miss = map_tapedelay(kn)
+                s, miss = map_tapedelay(kn) if r["fx"] == "tapedelay" else map_spaceecho(kn)
                 missing.update(miss)
                 if not sched or sched[-1][1] != s:
                     sched.append((b, s))

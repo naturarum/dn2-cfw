@@ -19,6 +19,7 @@
 #include "tapedelay.c"
 #include "mbcomp.c"
 #include "flanger.c"
+#include "spaceecho.c"
 
 static int fails = 0, checks = 0;
 
@@ -1042,6 +1043,9 @@ static void test_smoothing(void)
     free(x); free(yl); free(yr); free(td); free(mb); free(fl);
 }
 
+/* the Space Echo's tests (T5.2) use the helpers above */
+#include "test_spaceecho.c"
+
 /* ---------- bench ---------- */
 
 static void bench(void)
@@ -1075,6 +1079,18 @@ static void bench(void)
     for (i = 0; i < N; i += 32) flanger_process(fl, x + i, x + i, yl + i, yr + i, 32);
     t = (double)(clock() - t0) / CLOCKS_PER_SEC;
     printf("flanger (default patch): %.1f ns/sample, %.0fx real time\n", t / N * 1e9, 20.0 / t);
+    {
+        SpaceEcho *se = malloc(sizeof *se);
+        spaceecho_init(se, 1u);
+        spaceecho_set(se, SE_MODE, 6); spaceecho_set(se, SE_AGE, 100); spaceecho_set(se, SE_BW, 60);
+        spaceecho_set(se, SE_PAN, SE_PAN_ALT); spaceecho_set(se, SE_INT, 50);
+        spaceecho_snap(se);
+        t0 = clock();
+        for (i = 0; i < N; i += 32) spaceecho_process(se, x + i, x + i, yl + i, yr + i, 32);
+        t = (double)(clock() - t0) / CLOCKS_PER_SEC;
+        printf("spaceecho (3 heads, AGE, band, ALT): %.1f ns/sample, %.0fx real time\n", t / N * 1e9, 20.0 / t);
+        free(se);
+    }
 }
 
 int main(int argc, char **argv)
@@ -1099,6 +1115,7 @@ int main(int argc, char **argv)
     test_smoothing();
     test_determinism_blocks();
     test_extremes();
+    test_spaceecho();
     printf("\n%d checks, %d failed\n", checks, fails);
     return fails ? 1 : 0;
 }

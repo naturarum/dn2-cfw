@@ -8,7 +8,8 @@ Stdlib only. Each group plays all its versions in sync, muted except the selecte
 is instant. "Match loudness" turns the louder versions down to the quietest one's RMS.
 Each group holds three kinds of version: the dry input, "stock DN2 (emulated)" renders (the unit's own
 effect code run in the T3.6 SHARC interpreter, from manifest_stock.tsv, written by stock_renders.py)
-and the new effect's renders. Stock recordings (T3.5) dropped into OUTDIR/stock/ appear in their own group.
+and the new effect's renders; the Space Echo groups (T5.2) add a fourth, the one-head tape delay as it
+runs on the unit (FTD1), from manifest rows of kind "tape". Stock recordings (T3.5) dropped into OUTDIR/stock/ appear in their own group.
 """
 import html
 import json
@@ -85,11 +86,12 @@ def main():
                            "items": [{"id": "dry", "kind": "dry", "file": dry, "title": "Dry", "settings": "",
                                       "desc": "The input, unprocessed."}]}
             order.append(gid)
-        elif f[0] in ("render", "stock"):
+        elif f[0] in ("render", "stock", "tape"):
             gid, path, title, settings, desc = f[1], f[2], f[3], f[4], f[5]
             if gid not in groups:
                 continue                         # a stale stock row (its group was removed): make stock redoes them
-            it = {"id": os.path.splitext(os.path.basename(path))[0], "kind": "new" if f[0] == "render" else "stock",
+            it = {"id": os.path.splitext(os.path.basename(path))[0],
+                  "kind": {"render": "new", "stock": "stock", "tape": "tape"}[f[0]],
                   "file": path, "title": title, "settings": settings, "desc": desc}
             if f[0] == "stock":
                 it["pairs"] = [x for x in (f[6] if len(f) > 6 else "").split(",") if x]
@@ -102,7 +104,7 @@ def main():
             groups[gid]["items"].append(it)
     # display order: dry, stock, new; a new render points at its stock counterpart
     for g in groups.values():
-        rank = {"dry": 0, "stock": 1, "new": 2}
+        rank = {"dry": 0, "stock": 1, "tape": 2, "new": 3}
         g["items"].sort(key=lambda it: rank[it["kind"]])
         for i, it in enumerate(g["items"]):
             if it["kind"] == "stock":
@@ -149,9 +151,9 @@ TEMPLATE = r"""<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FX workbench A/B</title>
 <style>
-:root { --bg:#fafaf8; --fg:#1d1d1b; --muted:#6b6b66; --card:#ffffff; --line:#e3e2dc; --accent:#b4501e; --accent-fg:#ffffff; --btn:#f0efea; --stock:#2f6690; --stock-fg:#ffffff; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#161615; --fg:#ecebe6; --muted:#9a9993; --card:#1f1f1d; --line:#33332f; --accent:#e07a45; --accent-fg:#161615; --btn:#2a2a27; --stock:#6fa8d6; --stock-fg:#161615; } }
-:root[data-theme="dark"] { --bg:#161615; --fg:#ecebe6; --muted:#9a9993; --card:#1f1f1d; --line:#33332f; --accent:#e07a45; --accent-fg:#161615; --btn:#2a2a27; --stock:#6fa8d6; --stock-fg:#161615; }
+:root { --bg:#fafaf8; --fg:#1d1d1b; --muted:#6b6b66; --card:#ffffff; --line:#e3e2dc; --accent:#b4501e; --accent-fg:#ffffff; --btn:#f0efea; --stock:#2f6690; --stock-fg:#ffffff; --tape:#5b7f3a; --tape-fg:#ffffff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#161615; --fg:#ecebe6; --muted:#9a9993; --card:#1f1f1d; --line:#33332f; --accent:#e07a45; --accent-fg:#161615; --btn:#2a2a27; --stock:#6fa8d6; --stock-fg:#161615; --tape:#9cc27a; --tape-fg:#161615; } }
+:root[data-theme="dark"] { --bg:#161615; --fg:#ecebe6; --muted:#9a9993; --card:#1f1f1d; --line:#33332f; --accent:#e07a45; --accent-fg:#161615; --btn:#2a2a27; --stock:#6fa8d6; --stock-fg:#161615; --tape:#9cc27a; --tape-fg:#161615; }
 * { box-sizing: border-box; }
 body { margin:0; background:var(--bg); color:var(--fg); font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
 main { max-width: 900px; margin: 0 auto; padding: 24px 16px 64px; }
@@ -171,6 +173,9 @@ h1 { font-size: 22px; margin: 0 0 4px; }
 .badge.stock { background: var(--stock); color: var(--stock-fg); }
 .badge.new { background: var(--accent); color: var(--accent-fg); }
 .badge.dry, .badge.rec { background: var(--btn); color: var(--fg); border: 1px solid var(--line); }
+.badge.tape { background: var(--tape); color: var(--tape-fg); }
+.versions button.tape { border-style: dotted; border-color: var(--tape); }
+.versions button.tape.on { background: var(--tape); color: var(--tape-fg); border-style: solid; }
 .info .lvl { color: var(--muted); font-size: 12px; margin-top: 4px; font-variant-numeric: tabular-nums; }
 .note { border-left: 3px solid var(--stock); padding: 6px 10px; margin: 0 0 16px; font-size: 14px; background: var(--card); }
 .versions button { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--btn); color: var(--fg); cursor: pointer; }
@@ -191,10 +196,13 @@ h1 { font-size: 22px; margin: 0 0 4px; }
 <h1>FX workbench: A/B</h1>
 <p class="lede">Tape delay, 3-band master compressor and the chorus slot's new flanger (T3.11, revised 2026-10-06 after your listening:
 one-head tape delay with AGE, resonant loop filters and WID; each compressor band now built like the stock compressor, with MUP;
-a flanger/comb in the chorus slot), rendered on the Mac in 32-sample blocks from synthesised material,
-next to the Digitone II's own effects on the same material.
+a flanger/comb in the chorus slot), and since 2026-10-12 the <b>Space Echo</b> for the delay slot (T5.2: three heads, MODE, INTENSITY, AGE,
+a resonant band filter on CENTER and BW, WIDTH and a PAN switch; the groups whose titles start with "Space Echo"),
+rendered on the Mac in 32-sample blocks from synthesised material,
+next to the Digitone II's own effects on the same material. In the Space Echo groups a fourth row,
+<span class="badge tape">FTD1</span>, is the one-head tape delay as it runs on the unit now, at the same head-1 time and feedback per head.
 Each group holds the dry input, <span class="badge stock">STOCK</span> renders and <span class="badge new">NEW</span> renders; the buttons (or keys 1-9) switch while it plays.
-Keys: <b>d</b> dry, <b>s</b> the stock version that matches the selected new one, <b>n</b> back to the new one, space play/pause.
+Keys: <b>d</b> dry, <b>s</b> the stock version that matches the selected new one, <b>t</b> the FTD1 version (Space Echo groups), <b>n</b> back to the new one, space play/pause.
 "Match loudness" turns louder versions down to the quietest one (by RMS), so louder does not win by default; it starts on in the compressor and flanger groups.</p>
 <p class="note"><b>Multiband compression and EQ.</b> /*BANDNOTE*/</p>
 <p class="note"><b>"Stock" here is an emulation, not a recording.</b> It is the DN2's own DSP code (OS 1.12: delay, master compressor, chorus, reverb)
@@ -203,7 +211,7 @@ running in the SHARC interpreter from T3.6 (<code>tools/sharcvm</code>), at the 
 ways nobody has heard. Recordings dropped into <code>stock/</code> appear as their own group after <code>make renders</code>.</p>
 <p class="help" id="mode"></p>
 <div id="groups"></div>
-<p class="help">Files: <code>dry/</code> (24-bit sources), <code>wav/</code> (new: 16-bit renders; <code>stock_*</code>: 24-bit emulator renders). Built by <code>fx/renders.sh</code>, <code>fx/stock_renders.py</code> (<code>make stock</code>) and <code>fx/make_ab.py</code>. Notes: <code>notes/T3.11-fx-workbench.md</code>, section 12.</p>
+<p class="help">Files: <code>dry/</code> (24-bit sources), <code>wav/</code> (new: 16-bit renders; <code>stock_*</code>: 24-bit emulator renders; <code>se_*</code> Space Echo, <code>ftd_*</code> FTD1). Built by <code>fx/renders.sh</code>, <code>fx/stock_renders.py</code> (<code>make stock</code>) and <code>fx/make_ab.py</code>. Notes: <code>notes/T3.11-fx-workbench.md</code>, section 12; <code>notes/T5.2-space-echo.md</code>.</p>
 </main>
 <script>
 const DATA = /*DATA*/;
@@ -227,7 +235,7 @@ class Group {
     this.card = card; root.appendChild(card);
     const vb = card.querySelector(".versions");
     const rows = {};
-    const LABELS = { dry: "Dry", stock: "Stock DN2 (emulated)", new: "New", rec: "Recordings" };
+    const LABELS = { dry: "Dry", stock: "Stock DN2 (emulated)", tape: "FTD1 (one-head tape, on the unit)", new: "New", rec: "Recordings" };
     this.buttons = g.items.map((it, i) => {
       if (!rows[it.kind]) {
         const r = document.createElement("div"); r.className = "vrow";
@@ -296,7 +304,7 @@ class Group {
     const it = this.g.items[i];
     if (it.kind === "new") this.lastNew = i;
     const t = this.card.querySelector(".info .title");
-    t.innerHTML = `<span class="badge ${it.kind}">${{dry: "DRY", stock: "STOCK, EMULATED", new: "NEW", rec: "RECORDING"}[it.kind] || ""}</span>`;
+    t.innerHTML = `<span class="badge ${it.kind}">${{dry: "DRY", stock: "STOCK, EMULATED", tape: "FTD1", new: "NEW", rec: "RECORDING"}[it.kind] || ""}</span>`;
     t.appendChild(document.createTextNode(it.desc));
     this.card.querySelector(".info .settings").textContent = it.settings;
     this.card.querySelector(".info .bands").textContent = it.bands || "";
@@ -318,7 +326,8 @@ class Group {
     const items = this.g.items, cur = items[this.active];
     let j = -1;
     if (kind === "dry") j = items.findIndex(it => it.kind === "dry");
-    else if (kind === "stock") j = cur.kind === "new" && cur.pair !== undefined ? cur.pair
+    else if (kind === "tape") j = items.findIndex(it => it.kind === "tape");
+    else if (kind === "stock") j = (cur.kind === "new" || cur.kind === "tape") && cur.pair !== undefined ? cur.pair
          : (this.lastNew >= 0 && items[this.lastNew].pair !== undefined ? items[this.lastNew].pair : items.findIndex(it => it.kind === "stock"));
     else if (kind === "new") j = cur.kind === "stock" && cur.pairIdx && !cur.pairIdx.includes(this.lastNew) ? cur.pairIdx[0] : this.lastNew;
     if (j >= 0) this.select(j);
@@ -387,6 +396,7 @@ document.addEventListener("keydown", e => {
   if (n >= 1 && n <= current.g.items.length) current.select(n - 1);
   if (e.key === "d") current.jump("dry");
   if (e.key === "s") current.jump("stock");
+  if (e.key === "t") current.jump("tape");
   if (e.key === "n") current.jump("new");
 });
 </script>

@@ -1152,3 +1152,20 @@ GPL-2.0+ adaptations and some bad wording. Fixed with the user's go:
   table" fixed inline; FIRMWARE.md says the 1.12 file is Elektron's own download.
 - Kept, by the user's call: `analysis/rtti_classes.json` (class names and addresses, for interoperability).
 - Checked: every .py compiles, every shell script parses, `fx` `make test` 155/155.
+
+# 2026-10-12: T5.2, the Space Echo in C (background agent)
+
+Full note: `notes/T5.2-space-echo.md`. The owner changed the delay's direction: an RE-201 style echo with 3 heads
+picked by MODE, 8 controls (TIME, MODE, INTENSITY, AGE, CENTER, BW, WIDTH, PAN). `fx/spaceecho.c/.h`, reusing the
+tape engine; `fx/tapedelay.c` (FTD1) unchanged and its renders bit-identical.
+- Heads 1:2:3 (Roland GX-1/RE-202 manuals), MODE order 1, 2, 3, 1+2, 2+3, 1+3, 1+2+3 (RE-202; RE-201 [inferred]).
+  INTENSITY 1.1 x^1.5 on the sum of active heads; AGE = wow, flutter, hiss, crackle, top loss, drive; BW 127 is an
+  exact bypass, BW 0 a half-octave band at +6 dB; PAN MONO/ALT/RND; motor inertia on TIME glides.
+- `make test` 282/282 (127 new: head positions per mode, transparency, BW bypass, no clicks on any knob, 120 s fuzz
+  + 300 s silence). SHARC vs Mac: bit-identical to -108 dB (worst case, selcc's division in a runaway loop).
+  Cost 18.4k (one head) to 38.0k (three) instructions/block; worst 48.6k mean, 67.9k peak; state 4,163,232 B (fits
+  the stock delay's DDR with 31.6 KB spare), code ~38 KB.
+- A fifth selcc bug: the preprocessor substitutes macro parameters inside number literals (`1.0f` -> `1.0x`);
+  worked around, repro in the note 6.2.
+- Page: 6 stock rows map (TIME, X->PAN, WID->WIDTH, FDBK->INTENSITY, HPF->CENTER, LPF->BW); MODE and AGE need 2 more.
+  Open questions for the owner in the note's last section (vault: `Space Echo questions.md`).

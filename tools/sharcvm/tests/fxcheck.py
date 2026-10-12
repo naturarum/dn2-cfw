@@ -44,8 +44,11 @@ KNOBS = {
     "tapedelay": {0: 40.0, 1: 70.0, 2: 22.0, 3: 102.0, 4: 40.0, 5: 64.0, 6: 50.0, 7: 40.0, 8: 30.0, 9: 30.0},
     "mbcomp": None,   # use the effect's defaults after init (none set)
     "flanger": None,  # the default patch (the slow resonant swell)
+    # T5.2: TIME MODE INT AGE CTR BW WID PAN: heads 1+2+3, a resonant band, AGE 64, ALT
+    "spaceecho": {0: 23.0, 1: 6.0, 2: 50.0, 3: 64.0, 4: 64.0, 5: 40.0, 6: 100.0, 7: 1.0},
 }
-FXID = {"tapedelay": 0, "mbcomp": 1, "flanger": 2}
+FXID = {"tapedelay": 0, "mbcomp": 1, "flanger": 2, "spaceecho": 3}
+PREFIX = {"tapedelay": "TD", "mbcomp": "MB", "flanger": "FL", "spaceecho": "SE"}
 
 
 class NativeCtx(C.Structure):
@@ -170,25 +173,26 @@ def build(src, profile=False, annot=False):
     objs = []
     for name, path, extra in (("fxdrv", HERE.parent / "harness/fxdrv.c", ["-D__SHARC_HARNESS__"]),
                               ("tapedelay", src / "tapedelay.c", []), ("mbcomp", src / "mbcomp.c", []),
-                              ("flanger", src / "flanger.c", [])):
+                              ("flanger", src / "flanger.c", []), ("spaceecho", src / "spaceecho.c", [])):
         subprocess.check_call([str(S / "selcc"), *flags, *extra, "-S", "-o", str(OUT / f"{name}.s"), str(path)])
         if profile and name != "fxdrv":
-            globalize(OUT / f"{name}.s", {"tapedelay": "TDx_", "mbcomp": "MBx_", "flanger": "FLx_"}[name])
+            globalize(OUT / f"{name}.s", PREFIX[name] + "x_")
         if annot and name != "fxdrv":
-            label_lines(OUT / f"{name}.s", {"tapedelay": "TDL", "mbcomp": "MBL", "flanger": "FLL"}[name])
+            label_lines(OUT / f"{name}.s", PREFIX[name] + "L")
         subprocess.check_call([str(S / "selas"), "-proc", "ADSP-21569", "-o", str(OUT / f"{name}.doj"), str(OUT / f"{name}.s")])
         objs.append(str(OUT / f"{name}.doj"))
     subprocess.check_call([str(S / "seld"), "-proc", "ADSP-21569", "-T", str(ROOT / "vendor/selache/libsel/link.ldf"),
                            "-o", str(OUT / "fxdrv.dxe"), *objs, str(ROOT / "out/T3.6/libsel/libsel.dlb")])
     subprocess.check_call(["clang", "-O2", "-ffp-contract=off", "-fno-strict-aliasing", "-shared", "-fPIC", f"-I{src}", "-o",
                            str(OUT / "libfxnative.dylib"), str(HERE.parent / "harness/fxdrv.c"),
-                           str(src / "tapedelay.c"), str(src / "mbcomp.c"), str(src / "flanger.c")])
+                           str(src / "tapedelay.c"), str(src / "mbcomp.c"), str(src / "flanger.c"),
+                           str(src / "spaceecho.c")])
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", default="fx")
-    ap.add_argument("--fx", default="tapedelay", choices=["tapedelay", "mbcomp", "flanger"])
+    ap.add_argument("--fx", default="tapedelay", choices=["tapedelay", "mbcomp", "flanger", "spaceecho"])
     ap.add_argument("--seconds", type=float, default=2.0)
     ap.add_argument("--set", nargs="*", default=None, help="P=V: knob index P to value V (replaces the defaults)")
     ap.add_argument("--profile", action="store_true")
@@ -207,7 +211,7 @@ def main():
     for impl in (Native(a.fx), Sharc(a.fx)):
         prof = a.profile and isinstance(impl, Sharc)
         impl.cmd(0, seed=1)
-        if a.fx in ("tapedelay", "flanger"):
+        if a.fx in ("tapedelay", "flanger", "spaceecho"):
             impl.cmd(4, bpm=120.0)
         for p, v in (KNOBS[a.fx] or {}).items():
             impl.cmd(1, param=p, value=v)
@@ -257,8 +261,8 @@ def main():
                 name = funcs[i][1] if i >= 0 else "?"
                 per[name] = per.get(name, 0) + h
         if a.annotate:
-            annotate(sh, blocks, [("tapedelay", "TDL"), ("mbcomp", "MBL"), ("flanger", "FLL")])
-            per = {k: v for k, v in per.items() if not re.match(r"^_?(TDL|MBL|FLL)\d+$", k)}
+            annotate(sh, blocks, [("tapedelay", "TDL"), ("mbcomp", "MBL"), ("flanger", "FLL"), ("spaceecho", "SEL")])
+            per = {k: v for k, v in per.items() if not re.match(r"^_?(TDL|MBL|FLL|SEL)\d+$", k)}
         tot = sum(per.values())
         print("by function (exclusive, per block):")
         for name, h in sorted(per.items(), key=lambda t: -t[1]):

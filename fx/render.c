@@ -9,11 +9,12 @@
  *            -ramp 2 6 WOW 0 127 -at 8 AGE=64 -bpm 120 -tail 4
  *   fxrender -fx mbcomp -i loop.wav -o comp.wav -p L.THR=60 -p L.RAT=4 ...
  *   fxrender -fx flanger -i pad.wav -o fl.wav -p SPD=30 -p FDBK=110 -vol 127
+ *   fxrender -fx spaceecho -i pluck.wav -o se.wav -p TIME=23 -p MODE=6 -p INT=60 -p PAN=1
  *   fxrender -bands -i any.wav [-p XLO=38 -p XHI=90]   (RMS of the three bands, dB)
  *   fxrender -fx tapedelay -list
  *
  * Options:
- *   -fx NAME          tapedelay | mbcomp | flanger
+ *   -fx NAME          tapedelay | mbcomp | flanger | spaceecho
  *   -i FILE, -o FILE  input / output WAV (input must be 48 kHz)
  *   -key FILE         external sidechain input (mbcomp, SCS=1)
  *   -p NAME=V         knob value at t = 0 (0..127, fractional allowed)
@@ -22,7 +23,7 @@
  *   -bpm B            tempo for TIME (default 120)
  *   -tail S           seconds of silence appended to the input (default 0)
  *   -block N          block length (default 32, the DSP's)
- *   -mix send|wet|insert   send: out = dry + VOL*wet (default for tapedelay and flanger);
+ *   -mix send|wet|insert   send: out = dry + VOL*wet (default for the delays and the flanger);
  *                     wet: effect output only; insert: effect output (default for mbcomp)
  *   -vol V            VOL (LEVEL) knob for -mix send, 0..127 -> gain V/127 (default 100) [guess]
  *   -gain DB          input gain in dB (default 0)
@@ -39,6 +40,7 @@
 #include "tapedelay.h"
 #include "mbcomp.h"
 #include "flanger.h"
+#include "spaceecho.h"
 
 typedef struct { const char *name; int id; } PName;
 
@@ -63,13 +65,20 @@ static const PName FL_NAMES[] = {
     { "DAMP", FL_DAMP }, { "SYNC", FL_SYNC }, { "OFS", FL_OFS }, { "POL", FL_POL }, { 0, 0 }
 };
 
+/* the Space Echo (T5.2); the long names are aliases */
+static const PName SE_NAMES[] = {
+    { "TIME", SE_TIME }, { "MODE", SE_MODE }, { "INT", SE_INT }, { "INTENSITY", SE_INT },
+    { "AGE", SE_AGE }, { "CTR", SE_CTR }, { "CENTER", SE_CTR }, { "BW", SE_BW },
+    { "WID", SE_WID }, { "WIDTH", SE_WID }, { "PAN", SE_PAN }, { 0, 0 }
+};
+
 typedef struct { double t0, t1; int id; double v0, v1; int ramp; } Ev;
 
-enum { FX_TD, FX_MB, FX_FL };
+enum { FX_TD, FX_MB, FX_FL, FX_SE };
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: fxrender -fx tapedelay|mbcomp|flanger -i in.wav -o out.wav [-p NAME=V] [-at T NAME=V]\n"
+    fprintf(stderr, "usage: fxrender -fx tapedelay|mbcomp|flanger|spaceecho -i in.wav -o out.wav [-p NAME=V] [-at T NAME=V]\n"
                     "       [-ramp T0 T1 NAME V0 V1] [-key key.wav] [-bpm B] [-tail S] [-block N]\n"
                     "       [-mix send|wet|insert] [-vol V] [-gain DB] [-bits 16|24|32] [-meter] | -list\n"
                     "       fxrender -bands -i in.wav [-p XLO=V -p XHI=V]\n");
@@ -113,6 +122,7 @@ int main(int argc, char **argv)
     TapeDelay *td = NULL;
     MBComp *mb = NULL;
     Flanger *fl = NULL;
+    SpaceEcho *se = NULL;
     long pos, frames;
     float *tl, *tr, *zl;
     double grsum[3] = { 0, 0, 0 }, grmin[3] = { 0, 0, 0 };
@@ -146,6 +156,7 @@ int main(int argc, char **argv)
     if (!strcmp(fxname, "tapedelay")) { fx = FX_TD; names = TD_NAMES; }
     else if (!strcmp(fxname, "mbcomp")) { fx = FX_MB; names = MB_NAMES; }
     else if (!strcmp(fxname, "flanger")) { fx = FX_FL; names = FL_NAMES; }
+    else if (!strcmp(fxname, "spaceecho")) { fx = FX_SE; names = SE_NAMES; }
     else usage();
     if (list) {
         for (i = 0; names[i].name; i++) printf("%s\n", names[i].name);
@@ -231,11 +242,16 @@ int main(int argc, char **argv)
         mb = malloc(sizeof *mb);
         if (!mb) return 1;
         mbcomp_init(mb);
-    } else {
+    } else if (fx == FX_FL) {
         fl = malloc(sizeof *fl);
         if (!fl) return 1;
         flanger_init(fl);
         flanger_set_bpm(fl, (float)bpm);
+    } else {
+        se = malloc(sizeof *se);
+        if (!se) return 1;
+        spaceecho_init(se, 1u);
+        spaceecho_set_bpm(se, (float)bpm);
     }
     /* t = 0 settings, then snap the smoothers so the render starts settled */
     for (i = 0; i < nev; i++) {
@@ -243,12 +259,14 @@ int main(int argc, char **argv)
             float v = (float)ev[i].v0;
             if (fx == FX_TD) tapedelay_set(td, ev[i].id, v);
             else if (fx == FX_MB) mbcomp_set(mb, ev[i].id, v);
-            else flanger_set(fl, ev[i].id, v);
+            else if (fx == FX_FL) flanger_set(fl, ev[i].id, v);
+            else spaceecho_set(se, ev[i].id, v);
         }
     }
     if (fx == FX_TD) tapedelay_snap(td);
     else if (fx == FX_MB) mbcomp_snap(mb);
-    else flanger_snap(fl);
+    else if (fx == FX_FL) flanger_snap(fl);
+    else spaceecho_snap(se);
 
     {
         double g = pow(10.0, gain_db / 20.0), vg = vol / 127.0;
@@ -271,7 +289,8 @@ int main(int argc, char **argv)
                 }
                 if (fx == FX_TD) tapedelay_set(td, e->id, (float)v);
                 else if (fx == FX_MB) mbcomp_set(mb, e->id, (float)v);
-                else flanger_set(fl, e->id, (float)v);
+                else if (fx == FX_FL) flanger_set(fl, e->id, (float)v);
+                else spaceecho_set(se, e->id, (float)v);
             }
             for (j = 0; j < n; j++) {
                 long k = pos + j;
@@ -284,7 +303,8 @@ int main(int argc, char **argv)
             }
             if (fx == FX_TD) tapedelay_process(td, bl, br, tl, tr, n);
             else if (fx == FX_MB) mbcomp_process(mb, bl, br, keyf ? kl : NULL, keyf ? kr : NULL, tl, tr, n);
-            else flanger_process(fl, bl, br, tl, tr, n);
+            else if (fx == FX_FL) flanger_process(fl, bl, br, tl, tr, n);
+            else spaceecho_process(se, bl, br, tl, tr, n);
             for (j = 0; j < n; j++) {
                 double l, r;
                 if (mixmode == 0) { l = bl[j] + vg * tl[j]; r = br[j] + vg * tr[j]; }

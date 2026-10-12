@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-# T3.11 FX workbench. Mac builds with clang; build outputs go to ../out/T3.11/.
+# T3.11 FX workbench (and T5.2, the Space Echo). Mac builds with clang; build outputs go to ../out/T3.11/.
 #   make            build fxrender, fxgen, fxtest
 #   make test       run the tests
 #   make dry        generate the dry test material (out/T3.11/dry/)
@@ -19,8 +19,8 @@ FXWARN  := -std=c99 -Wall -Wextra -Wpedantic -Wdouble-promotion -Wfloat-conversi
 CFLAGS  := -O2 -fno-strict-aliasing -ffp-contract=off $(FXWARN)
 SELCC   := $(ROOT)/vendor/selache/target/release/selcc
 
-FX_SRC  := tapedelay.c mbcomp.c flanger.c
-FX_HDR  := fxmath.h tapedelay.h mbcomp.h flanger.h
+FX_SRC  := tapedelay.c mbcomp.c flanger.c spaceecho.c
+FX_HDR  := fxmath.h tapedelay.h mbcomp.h flanger.h spaceecho.h
 
 all: $(BIN)/fxrender $(BIN)/fxgen $(BIN)/fxtest
 
@@ -34,7 +34,7 @@ $(BIN)/fxgen: gen.c wav.c wav.h | $(BIN)
 	$(CC) -O2 -std=c99 -Wall -Wextra -o $@ gen.c wav.c -lm
 
 # test.c includes the effect sources itself, to reach their internals
-$(BIN)/fxtest: test.c $(FX_SRC) $(FX_HDR) | $(BIN)
+$(BIN)/fxtest: test.c test_spaceecho.c $(FX_SRC) $(FX_HDR) | $(BIN)
 	$(CC) $(CFLAGS) -Wno-double-promotion -Wno-float-conversion -o $@ test.c -lm
 
 test: $(BIN)/fxtest

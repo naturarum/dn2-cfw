@@ -7,10 +7,11 @@
 #include "tapedelay.h"
 #include "mbcomp.h"
 #include "flanger.h"
+#include "spaceecho.h"
 
 typedef struct {
     int32_t cmd;        /* 0 init, 1 set, 2 snap, 3 process, 4 set bpm */
-    int32_t fx;         /* 0 tapedelay, 1 mbcomp, 2 flanger */
+    int32_t fx;         /* 0 tapedelay, 1 mbcomp, 2 flanger, 3 spaceecho (T5.2) */
     void *state;
     const float *inL, *inR;
     float *outL, *outR;
@@ -40,6 +41,15 @@ void fxdrv(FxCtx *c)
         case 2: flanger_snap(s); break;
         case 3: flanger_process(s, c->inL, c->inR, c->outL, c->outR, c->n); break;
         case 4: flanger_set_bpm(s, c->bpm); break;
+        }
+    } else if (c->fx == 3) {
+        SpaceEcho *s = (SpaceEcho *)c->state;
+        switch (c->cmd) {
+        case 0: spaceecho_init(s, c->seed); break;
+        case 1: spaceecho_set(s, c->param, c->value); break;
+        case 2: spaceecho_snap(s); break;
+        case 3: spaceecho_process(s, c->inL, c->inR, c->outL, c->outR, c->n); break;
+        case 4: spaceecho_set_bpm(s, c->bpm); break;
         }
     } else {
         MBComp *s = (MBComp *)c->state;

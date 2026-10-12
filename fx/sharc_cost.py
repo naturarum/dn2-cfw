@@ -133,7 +133,7 @@ def main():
         print(f"{name:24s} {n:12d} {nl:5d} {c:26d}")
     global SKIP_RARE
     for top, run, ctl in (("tapedelay", "td_run", "td_control"), ("mbcomp", "mb_run", "mb_control"),
-                          ("flanger", "fl_run", "fl_control")):
+                          ("flanger", "fl_run", "fl_control"), ("spaceecho", "se_run", "se_control")):
         if run not in funcs or top == "flanger":
             if top == "flanger":
                 # fl_run and fl_control are inlined into flanger_process (each called once), and the
