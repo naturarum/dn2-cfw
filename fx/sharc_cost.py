@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """sharc_cost.py - static instruction count for selcc's SHARC+ output (T3.11).
 
 Same method as T3.4's scripts/t34_cost.py, so the numbers compare with the

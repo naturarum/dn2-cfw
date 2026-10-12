@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T2.4c: tempo check from the sequencer position (0x42c4f900, +900,000 per sub-step, 5.4M per step).
 
 Run from vendor/digikit:

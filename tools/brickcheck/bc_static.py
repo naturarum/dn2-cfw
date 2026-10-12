@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Static checks on the unpacked main OS (brick checker checks 6, 7 and 10).
 
 Everything compares the candidate's depacked main OS with the stock one, both

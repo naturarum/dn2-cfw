@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
+# The FFT bit-reversal loop is the textbook one, as in octabam's tools/harness/send_probe.py
+# (Sam Banks, MIT).
 """T3.7: compare the owner's recordings of the stock effects (T3.5) with the SHARC emulator (T3.6).
 
     python3 scripts/t37_compare.py                 # every take found in out/T3.11/stock/

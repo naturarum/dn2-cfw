@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T1.3: digikit's tools/guirun.py with write watches over large ranges.
 
 guirun's --watch takes at most 0x1000 bytes. This wrapper runs guirun

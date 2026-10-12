@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """make_ab.py - build the T3.11 A/B listening page from manifest.tsv (written by renders.sh).
 
     python3 make_ab.py OUTDIR      -> OUTDIR/ab.html (relative links to dry/, wav/, stock/)

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Dynamic in-OS upgrade flash watch for the brick checker (check 12, T1.7b).
 
 Drives the DN2 1.12 in-OS OS-upgrade WRITER FUN_40139104 in digikit's emulator

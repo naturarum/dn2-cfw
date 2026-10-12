@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /* cg_post.c - T3.8 milestone 1, the first DSP patch: after the stock chorus has run, halve its
  * wet output (-6.02 dB) in place. Called from the hook stub (tools/dspsplice/stub.py) with
  * R4 = the FX bus's I/O descriptor. A multiply by 0.5 is exact in float, so the patched chorus

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Milestone 3 proof (T3.8): FTD1 = stock, with the flanger in the chorus slot and the tape delay in the
 delay slot.
 

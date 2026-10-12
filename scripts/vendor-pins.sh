@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
 # Print the VENDOR.md table rows for every clone in vendor/.
 cd "$(dirname "$0")/../vendor" || exit 1
 for d in */; do

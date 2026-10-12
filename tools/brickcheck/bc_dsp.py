@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Section 7 (SHARC/DSP) checks for the brick checker (check 11, task T1.7b).
 
 A changed section 7 used to only have to depack. This module makes a DSP

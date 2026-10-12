@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  * tapedelay.c - tape delay for the Digitone II delay slot (T3.11, G2).
  * See tapedelay.h for the signal flow and notes/T3.11-fx-workbench.md for the

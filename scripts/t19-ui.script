@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 # T1.9: screens to compare stock with a core build, from the warm 800M snapshot (no MIDI set-up).
 # Main screen, the SETTINGS menu scrolled row by row (PERSONALIZE among them), PERSONALIZE opened,
 # then the SYN and FLTR pages, a trig key, and an encoder turn on the FLTR page.

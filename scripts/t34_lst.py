@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T3.4 helper: print digikit sharcdb listing for SW ranges of dn2-1.12.
 usage: t34_lst.py START [END|+N] ...   (hex SW addresses)"""
 import sqlite3, sys

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  * fxmath.h - small helpers shared by the T3.11 effects.
  *

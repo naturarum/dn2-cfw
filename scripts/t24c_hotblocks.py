@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T2.4c: which guest code runs while the sequencer plays (block histogram, weighted by block size).
 
 Run from vendor/digikit:

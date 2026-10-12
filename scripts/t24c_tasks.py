@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T2.4c: where each RTOS task is while emu.live runs a --script (emu/taskprof.py).
 
 Run from vendor/digikit:

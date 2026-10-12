@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T1.9: find core-dt2's sites and routines (Digitakt II 1.17) in Digitone II 1.12.
 
 For each DT2 address, take a window of code around it, mask every 32-bit word that

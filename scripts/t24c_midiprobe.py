@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T2.4c: read the DIN MIDI (UART9) state of a Digitone II 1.12 snapshot.
 
 Run from vendor/digikit:

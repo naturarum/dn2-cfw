@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Run the stock effects and the whole block handler with random parameter settings on noise,
 looking for traps (unimplemented paths) and non-finite output.
 

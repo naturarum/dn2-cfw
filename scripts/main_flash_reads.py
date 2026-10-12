@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Cold-boot the main OS in digikit's emulator to 70M instructions and list its
 flash reads (task T1.2: shows where it fetches section 7 from).
 

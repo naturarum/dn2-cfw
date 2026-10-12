@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 # pyright: reportMissingImports=false
 """T1.8: render the two places where the Digitone II 1.12 bootstrap shows the
 OS version, for stock and for a candidate .syx, by running the unit's own

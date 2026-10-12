@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later
+   Trimmed from selache's xtest/main.c (Copyright (c) 2026 Jakob Kastelic, MIT; see NOTICE). */
 /* Minimal xtest harness for the SHARC interpreter: no UART, no timer.
    test_main()'s result lands in xt_result and in R0 on return to startup's .halt. */
 extern int test_main(void);

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Run the Digitone II OS 1.12 in-OS upgrade writer FUN_40139104 alone under Unicorn
 and log every SPI NOR command it sends on DSPI0.
 

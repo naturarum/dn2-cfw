@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  * flanger.h - a flanger / comb for the Digitone II chorus slot (T3.11/T5.1, G3).
  *

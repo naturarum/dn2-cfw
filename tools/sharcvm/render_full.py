@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Render audio through the DN2's whole DSP block handler 0x1c9d6b (T3.6 stretch goal).
 
     python3 tools/sharcvm/render_full.py [--in input.wav] [--seconds 4] \

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Milestone 2 proof (T3.8): FLG1 = stock, with the flanger in the chorus slot.
 
     python3 tools/dspsplice/verify_flg.py [--seconds 8] [--in out/T3.11/dry/chords.wav]

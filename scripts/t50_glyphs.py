@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T5.0: extract the Digitone II 1.12 UI fonts and icons to PNG atlases and a contact sheet.
 
     venv/bin/python scripts/t50_glyphs.py [--snap out/T5.0/snaps/chorus.snap] [--out out/T5.0/atlas]

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Knob values (as the ColdFire sends them) -> the floats the stock effects read (T3.4, T3.6).
 
 The ColdFire sends each FX knob as a 16-bit frame word `v << 8` (TIME and FDBK may carry a

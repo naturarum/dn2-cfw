@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 # T5.0: the FX pages, from the warm 800M snapshot (main screen, track 1).
 # Track FX page (FX key, CHR = chorus send on encoder G), then SEND FX 1-3 (FUNC+FX, DOWN, DOWN),
 # then an encoder turn on the chorus page (value display) and the encoder-push value popup.

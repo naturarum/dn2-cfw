@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-or-later
 # T5.0: boot a candidate .syx cold in digikit's emulator and take the FX-page screens
 # (notes/T5.0-flanger-page-ui.md). Same recipe as scripts/t19-emu.sh (T1.9).
 #

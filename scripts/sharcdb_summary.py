@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Summarise one digikit SHARC database (vendor/digikit/tools/sharcdb.py).
 
 Reads out/sharcdb/<image>.sqlite through digikit's tools/sharc.py and prints:

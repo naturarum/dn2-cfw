@@ -6,7 +6,7 @@ updated: 2026-10-06
 
 A comparison of this project with dn2_firmware_explore, made on 2026-10-06 so the two don't duplicate work.
 
-Their repo: <https://github.com/angellinares/dn2_firmware_explore> ("dnfw"), AGPL-3.0, very active (last commit 2026-10-06), with a web builder at <https://angellinares.github.io/dn2_firmware_explore/>. Our local read-only clone is `Elektron-CFW/vendor/dn2_firmware_explore`. Full survey: `Elektron-CFW/notes/prior-art-2026-10.md`.
+Their repo: <https://github.com/angellinares/dn2_firmware_explore> ("dnfw"), AGPL-3.0-or-later, very active (last commit 2026-10-06), with a web builder at <https://angellinares.github.io/dn2_firmware_explore/>. Our local read-only clone is `Elektron-CFW/vendor/dn2_firmware_explore`. Full survey: `Elektron-CFW/notes/prior-art-2026-10.md`.
 
 ## The key fact for working together
 **1.11 to 1.12 changed only the main OS (+4 KB).** The DSP program, bootstrap, board test and Outbox 8 firmware are byte-identical (we hashed them). So:

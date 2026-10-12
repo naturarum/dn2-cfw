@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
 # T1.3: write watches over the Digitone II 1.12 candidate free areas, in
 # digikit's emulator. Two runs, both read-only on digikit:
 #   session  from the cold-boot rung boot400M, ~800M instructions of guirun

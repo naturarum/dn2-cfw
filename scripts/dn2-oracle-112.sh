@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-or-later
 # Run the unit's own unpack and acceptance code on rebuilt Digitone II 1.12
 # files, under Unicorn (task T1.2). See notes/T1.2-device-oracle.md.
 #

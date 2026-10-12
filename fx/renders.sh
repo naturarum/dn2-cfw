@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
 # Renders for the T3.11 A/B page. Usage: ./renders.sh OUTDIR  (run from fx/, after make dry)
 # Writes OUTDIR/wav/*.wav and OUTDIR/manifest.tsv (group, id, file, title, settings, description, args),
 # which make_ab.py turns into OUTDIR/ab.html.

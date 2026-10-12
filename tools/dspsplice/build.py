@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Build a DSP-section (section 7) candidate with our own code spliced in (T3.8).
 
     python3 tools/dspsplice/build.py CG01      # milestone 1: stock chorus, wet output -6.02 dB

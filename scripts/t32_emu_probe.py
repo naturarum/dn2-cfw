@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
+# peek() and the pypcode IMARK loop follow digikit's tools/sharcemu.py (Em D, GPL-2.0-or-later).
 """T3.2 (for T3.6): how far does digikit's tools/sharcemu.py get on the Digitone II DSP program?
 
 Run with digikit's environment (it needs pypcode):

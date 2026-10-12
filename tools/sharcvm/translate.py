@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Translate digikit-decoded SHARC+ instructions into the core's insn_t records.
 
 Input: (form name, fields, pc, length) from decode.py (digikit's decoder).

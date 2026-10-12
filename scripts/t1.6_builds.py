@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T1.6: Digitone II 1.12 test builds made with elekloader (vendor/elekloader,
 branch dn2-1.12), for the device oracle and the emulator. Writes to
 out/T1.6/ (git-ignored), never anywhere else:

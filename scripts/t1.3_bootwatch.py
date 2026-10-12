@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T1.3: digikit's tools/bootwatch.py, unchanged, with one fix around it.
 
 bootwatch reads every watched range back after the run. A range that holds a

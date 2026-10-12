@@ -1136,3 +1136,19 @@ silence); then the user's listening notes decide the flanger's fixed knobs and F
   Read-only audit: `notes/license-audit-2026-10-12.md` (no dnfw code or prose copied; missing SPDX/NOTICE, two
   uncredited GPL-2.0+ adaptations from digikit and elekloader, one README sentence close to theirs, two notes
   worded like licence avoidance). Fixes wait for the user's go.
+
+# 2026-10-12: licence notices and credits
+
+After dnfw's "check the licensing in your files", a read-only audit (kept out of the repo, `out/license-audit-2026-10-12.md`,
+vault copy) found no dnfw code or prose copied, but no licence lines, no named copyright holder, two uncredited
+GPL-2.0+ adaptations and some bad wording. Fixed with the user's go:
+- `NOTICE`: copyright (naturarum and contributors), the GPL-2.0-or-later grant, code adapted from other projects
+  (digikit, elekloader, selache MIT with its licence text, UCL, octabam) and the findings we build on, per task.
+- `SPDX-License-Identifier: GPL-2.0-or-later` in all 150 code files; origin lines in the adapted files
+  (`scripts/decompile_dump.py`, `tools/brickcheck/bc_syx.py`, `t33_frame.py`, `t60_cf_frame.py`, `t32_emu_probe.py`,
+  `t37_compare.py`, `ele3_unpack.py`, `tools/dspsplice/audit.py`, `hmain.c`, `t60_probe.ldf`).
+- Our own wording for the README's firmware sentence (it was close to dnfw's); the README's credits now say what we
+  build on; `notes/prior-art-2026-10.md` no longer reads like licence avoidance; T5.0's wrong "dnfw relocated the
+  table" fixed inline; FIRMWARE.md says the 1.12 file is Elektron's own download.
+- Kept, by the user's call: `analysis/rtti_classes.json` (class names and addresses, for interoperability).
+- Checked: every .py compiles, every shell script parses, `fx` `make test` 155/155.

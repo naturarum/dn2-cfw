@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T6.0 proof of concept, DSP side, in the T3.6 SHARC interpreter (tools/sharcvm).
 
     python3 scripts/t60_dsp_poc.py [--wire out/T6.0/cf/main720M-poc.wire.bin] [--blocks 300]

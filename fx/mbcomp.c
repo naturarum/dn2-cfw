@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  * mbcomp.c - 3-band master compressor (T3.11, G9). See mbcomp.h.
  *

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /* fxio.h - the stock FX bus's I/O descriptor (T3.4 section 2), as the effects receive it in R12.
  * DM 0x257e6c: +0 block length (32), +4 pointer to the input pointer pair, +0xc pointer to the
  * output pointer pair, +0x14 tempo (BPM, float; read by the stock delay). [verified: 0x1c1bc6-0x1c1bdb

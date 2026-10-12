@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /* sharcvm.c -- SHARC+ (ADSP-2156x) interpreter core. See sharcvm.h.
  *
  * Semantics sources (cited in notes/T3.6-sharc-interpreter.md):

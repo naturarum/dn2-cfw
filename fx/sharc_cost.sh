@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
 # Compile the effects with selache's selcc for the ADSP-21569 and count instructions (T3.11).
 # Usage: ./sharc_cost.sh OUTDIR   (run from fx/)
 set -e

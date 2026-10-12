@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
+# The resume and raise_vector follow digikit's tools/sharcframe.py (Em D, GPL-2.0-or-later).
 """T6.0: the ColdFire side of the frame room, in digikit's emulator (DN2 OS 1.12).
 
 Run from vendor/digikit (it imports digikit's emu package):

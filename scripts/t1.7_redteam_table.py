@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Merge all out/brickcheck-redteam/results*.json and replace the
 <!--RESULTS-TABLE--> marker in notes/T1.7-redteam.md with a verdict table."""
 import glob

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 # T3.11 FX workbench. Mac builds with clang; build outputs go to ../out/T3.11/.
 #   make            build fxrender, fxgen, fxtest
 #   make test       run the tests

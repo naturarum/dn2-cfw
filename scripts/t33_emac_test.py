@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T3.3: does digikit's patched Unicorn implement the ColdFire EMAC fractional mode?
 
 Runs the two multiply-accumulates of FUN_400db28e (0x400db2c4 macw, 0x400db2c8 macl) with MACSR 0

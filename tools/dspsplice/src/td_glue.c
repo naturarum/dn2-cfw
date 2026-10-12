@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /* td_glue.c - T3.8 milestone 3: the tape delay (fx/tapedelay.c) in the stock delay slot.
  *
  * The hook stubs (tools/dspsplice/stub.py) call:

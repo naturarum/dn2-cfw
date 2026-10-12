@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Parse an ADSP-2156x (SHARC+) boot stream (LDR) such as Digitone II section 7.
 
     python3 scripts/sharc_ldr_parse.py                       # section 7 of 1.12

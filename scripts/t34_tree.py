@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T3.4: walk a SHARC routine from an entry address in digikit's dn2-1.12 sharcdb.
 
 Follows fallthrough / jump / cond_jump edges from the entry (delay slots included),

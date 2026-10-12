@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T5.0: trace what the Digitone II 1.12 runs and writes while it composes a frame.
 
 Runs digikit's emu.live headless (same arguments, --script etc.) and, while the frame

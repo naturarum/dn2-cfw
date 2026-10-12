@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /* fxdrv.c - one entry point for the T3.11 effects, built twice: with selache's selcc
  * for the SHARC interpreter and with clang as a native library, so the two builds can
  * be compared on the same input (T3.6, "selcc build behaves like the native build").

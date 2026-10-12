@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T5.0: draw the flanger glyphs in the Digitone II's icon format and write them out.
 
     venv/bin/python scripts/t50_flanger_art.py [--out out/T5.0/art]

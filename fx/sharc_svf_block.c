@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /* sharc_svf_block.c - selcc experiment for T3.11 (not part of the effects): one SVF written as a
    32-sample loop with its state in locals, the shape the stock code uses. Compare the loop body
    with fx_svf_tick in out/T3.11/sharc/mbcomp.s. Build: make sharc. */

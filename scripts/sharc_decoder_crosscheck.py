@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Cross-check digikit's SHARC+ decoder (as stored in its tools/sharcdb.py
 database) against selache's seldump listings, instruction by instruction.
 

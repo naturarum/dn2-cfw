@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-or-later
 # Boot Digitone II OS 1.12 in digikit's ColdFire emulator, headless, and check
 # that the real main screen is reached (task T1.1). See notes/T1.1-emulator-1.12.md.
 #

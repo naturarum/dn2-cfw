@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Where the instructions of one DSP block go (whole block handler, no voices playing).
 
 Runs the block handler 0x1c9d6b to successive stop points at the render's stage call sites

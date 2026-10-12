@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
+# nrv2b() follows the NRV2B decoder of UCL (Markus F.X.J. Oberhumer, GPL-2.0-or-later), as UPX uses it.
 """Unpack an Elektron "ELE3" OS update (.syx). Tested on Digitone II OS 1.12.
 
 Usage: python3 ele3_unpack.py elektron-firmware/Digitone_II_OS1_12.syx [out_dir]

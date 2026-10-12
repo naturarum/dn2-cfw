@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """selcc build vs native build of the T3.11 effects (T3.6 goal 2).
 
 The same driver (tools/sharcvm/harness/fxdrv.c) and effect sources (fx/*.c) are built

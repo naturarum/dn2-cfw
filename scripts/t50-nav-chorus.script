@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 # T5.0: from the warm 800M snapshot to SEND FX 3 (chorus); the run is saved with --save.
 wait-emu 0.3
 down space

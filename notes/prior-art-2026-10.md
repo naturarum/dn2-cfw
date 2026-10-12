@@ -41,15 +41,13 @@ inline). Our own scripts and images were used read-only (masked matches, table d
    to digikit: 31 of its PRs are angellinares's, 21 still open, among them #29 "Digitone II machine selection,
    the row -> type table" and #19 "three hardcoded Digitakt II values that stop Digitone II booting").
 2. **Licences.** dnfw is **AGPL-3.0-or-later**. Its own licence audit (`docs/references.md`, 2026-09-27) says
-   elekloader, digihealth and digislicer are GPL-2.0-only and so cannot be combined with it; **that is out of date**:
-   elekloader was relicensed GPL-2.0-or-later the same day (upstream commit `7d47886`, #4; `NOTICE` now reads "version
+   elekloader, digihealth and digislicer are GPL-2.0-only and so cannot be combined with it; elekloader has since changed:
+   it was relicensed GPL-2.0-or-later the same day (upstream commit `7d47886`, #4; `NOTICE` now reads "version
    2 ... or (at your option) any later version"), and digihealth, digislicer, digineighbor, digitables and
    digitakt2-perform all declare `GPL-2.0-or-later` in their `mod.json`/headers [verified]. elekloader's new
-   TypeScript engine (`js/`) is GPL-3.0-or-later. So: facts from dnfw (addresses, formats, measurements) are free to
-   use; **dnfw or capicola code** copied into a mod would make that mod AGPL-3.0 (combinable with elekloader's core
-   taken under GPL-3.0, but whoever gets the `.syx`/`.elemod` must be offered the source, and it could not go into
-   elekloader's own repo, which is GPL-2.0-or-later). Keep anything we upstream to elekloader or digikit free of
-   AGPL code. Same for syxgrid-digitone-ii and DNX (AGPL). [verified licence texts; legal reading inferred, not
+   TypeScript engine (`js/`) is GPL-3.0-or-later. So: we use dnfw's published findings with credit (listed per task in `NOTICE`) and write our own code; to
+   reuse their code we would ask them first. Anything we offer upstream to elekloader or digikit stays
+   GPL-2.0-or-later like those projects. [verified licence texts; legal reading inferred, not
    advice] Our `VENDOR.md` now says GPL-2.0-or-later for elekloader and digikit.
 3. **digikit has a coupled ColdFire + SHARC emulator that renders DN2 voices** (branch `work/sharc-emulator`,
    158 commits ahead of main, 2026-10-04; Rust, generated from Python semantics; DN2 **1.11** only; ~1.22x slower than
@@ -79,7 +77,7 @@ repos updated since mid-August shows no time-stretch work; modwerk's only "times
 Octatrack REPITCH mode; elekloader's mod shop (62 items, `web/catalog.json` on main) has only Octatrack, Digitakt
 mk1 and Digitone mk1 mods. So there is nothing to align with.
 
-**Reusable DSP ideas** (all float C++ headers in `lib/`; ideas are free to reuse, the code is AGPL):
+**Reusable DSP ideas** (all float C++ headers in `lib/`; we take ideas, credited, not code):
 
 | idea | where | notes for us |
 |---|---|---|
@@ -90,12 +88,7 @@ mk1 and Digitone mk1 mods. So there is nothing to align with.
 | TKEO transient detector: TKEO on a B-spline read, SVF low-pass envelope, peak picking on the sign change of the derivative, sub-sample peak time, adaptive threshold = ratio over a 100 ms one-pole average, 150 ms hold-off | `lib/Detector.h` `Detector::Analyze` | Possible sidechain/transient logic for the 3-band compressor (G9) or a future "punch" control; not needed now |
 | Keyframe time stretch: store sparse keyframes (local extrema, 12 bytes each) instead of raw audio, read them back on a stretched grid with two crossfading grains; on a kept transient the read head snaps to "now" with a short crossfade so rhythm stays tight | `lib/KeyframeRecorder.h`, `SparseLine.h`, `Granule.h`, `Analyzer.h`; the paper | Float-heavy but light on memory; the DN2 SHARC has the float throughput and DDR for it. A sampler-style stretch is not a roadmap goal; park as an idea [inferred] |
 
-**AGPL, if we ever borrowed code:** AGPL-3.0 is GPL-3.0 plus a network clause. Code copied from capicola into our
-firmware would make that firmware AGPL-3.0: anyone we give the `.syx` or `.elemod` to must also get the
-corresponding source under AGPL. elekloader's core is GPL-2.0-or-later, so an AGPL effect mod could be combined
-with it (the core taken under GPL-3.0), but the effect could never go upstream into elekloader's repo, and every
-build that includes it carries the AGPL duties. Reimplementing the ideas from the paper or from first principles
-carries no such duty. [verified licence texts; legal reading inferred, not legal advice]
+**Licence:** capicola is AGPL-3.0. We take ideas from it, credited where used, and copy no code.
 
 **What it means for us:** nothing urgent. T5.1 (flanger): A/B a B-spline modulated tap against our Hermite.
 T3.11/T6.*: tabulated saturators if selcc's maths stays expensive. Otherwise park.
@@ -623,8 +616,8 @@ every patched site match our loaded image (`out/T3.2/mem/*.bin`). Their ColdFire
 What it means for us:
 - **T3.8 is mostly solved upstream, for our exact DSP image.** Use their method (append blocks before FINAL, patch in
   place, keep section 7 < 1 MiB, place code in L1 block 1 `0x2dd600-0x2e7000` below the DM cache, hook by a JUMP with
-  full register save and re-executed displaced instructions, or retarget a CALL through an adapter), rebuild it in our
-  own code (their code is AGPL; the facts are free), and add their two gates before T3.9: an **encoding audit of
+  full register save and re-executed displaced instructions, or retarget a CALL through an adapter), write our own
+  implementation, crediting their method, and add their two gates before T3.9: an **encoding audit of
   every assembled byte against the stock encodings** and the **cache map** in T3.2. Our first patch (a gain on the
   stock chorus) fits their "adapter around a stock CALL" pattern: retarget the FX bus's `CALL` to the chorus
   (`0xb84d5c`, T3.4) to an adapter that calls the stock chorus and scales its output.
@@ -736,8 +729,8 @@ of places; the "zeroed by a stock re-save" rule is the price of each.
 
 What it means for us:
 - **T2.6:** not redundant (no 1.12 build exists), but it becomes "re-implement midiarp's proven design on 1.12 from
-  the facts above, plus our key-release and p-lock fixes", hooked through our core where possible. Their code is AGPL;
-  re-implement or ask. **T2.5:** guard the MIDI pool (reserve >= 4) in any mod that adds notes.
+  the facts above, plus our key-release and p-lock fixes", hooked through our core where possible, crediting their
+  design; to reuse their code, ask them first. **T2.5:** guard the MIDI pool (reserve >= 4) in any mod that adds notes.
 - **T1.9:** two of our core sites are hooks they also use (`ev_personalize`, `ev_tick`); if the projects ever merge,
   their mods would subscribe to our events. Note the IPL 2 context of `ev_midi_step` (section 5).
 - **T1.3/E1:** add the MMC bounce buffer to the T1.3 map explicitly; keep mods above `0x46800000`.

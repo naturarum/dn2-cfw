@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T3.4: rough per-block cost of a SHARC routine tree (dn2-1.12 sharcdb).
 
 cost(routine) = sum over its reachable instructions of (product of enclosing DO-loop

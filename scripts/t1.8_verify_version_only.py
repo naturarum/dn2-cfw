@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 # pyright: reportMissingImports=false
 """T1.8: show that a Digitone II 1.12 rebuild differs from stock only in the
 ELE3 version field (container 0x14..0x17), the HMAC trailer, the content

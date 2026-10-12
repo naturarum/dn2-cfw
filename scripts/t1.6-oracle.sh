@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-or-later
 # T1.6: run the unit's own code on elekloader's Digitone II 1.12 builds
 # (made by scripts/t1.6_builds.py into out/T1.6/), under Unicorn, and boot the
 # no-mod build in digikit's emulator. See notes/T1.6-elekloader-dn2.md.

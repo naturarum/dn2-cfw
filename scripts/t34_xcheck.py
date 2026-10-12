@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T3.4: put digikit (sharcdb) and selache (seldump listings from T3.1) side by side
 for a list of SW addresses or ranges. usage: t34_xcheck.py OUT ADDR|START-END ..."""
 import glob, re, sqlite3, sys

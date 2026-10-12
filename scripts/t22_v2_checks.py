@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Byte-level checks for notes/T2.2-arp-midi-v2.md (arp on MIDI-machine tracks, Digitone II OS 1.12).
 
 Reads ele3_out/02_type3.unpacked.bin (main OS, file offset 0 = 0x40000400). Writes nothing.

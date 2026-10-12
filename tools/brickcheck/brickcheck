@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-or-later
 # brickcheck: refuse a candidate Digitone II OS 1.12 .syx unless every safety
 # check passes. See tools/brickcheck/README.md.
 #

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Hook stubs in SHARC+ assembly for selas (T3.8), generated so the addresses stay in one place.
 
 Why a stub at all (notes/T3.8 section 2):

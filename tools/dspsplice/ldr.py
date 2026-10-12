@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Section 7 (the SHARC+ boot stream) as an editable list of blocks (T3.8).
 
 The stream format is the ADSP-2156x boot-ROM block format (notes/T3.1-selache.md section 2):

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# The dump stage is adapted from digikit's tools/ghidradump.py (Em D, GPL-2.0-or-later,
+# https://github.com/m-dwyer/digikit); modified for the Digitone II 1.12 by naturarum, 2026.
 """Searchable static-analysis dump of the Digitone II OS 1.12 main OS and bootstrap.
 
     venv/bin/python scripts/decompile_dump.py setup     # language + project copy

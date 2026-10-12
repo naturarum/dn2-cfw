@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  * mbcomp.h - 3-band master compressor for the Digitone II (T3.11, G9).
  *

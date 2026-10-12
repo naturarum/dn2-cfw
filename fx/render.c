@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  * render.c - offline renderer for the T3.11 effects (Mac side).
  *

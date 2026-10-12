@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Milestone 1 proof (T3.8): CG01 = stock, except the chorus's wet output is exactly halved.
 
     python3 tools/dspsplice/verify_cg01.py [--seconds 2]

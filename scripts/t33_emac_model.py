@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T3.3 check: is every emulated global-block frame word the steady state of FUN_400db28e's filter
 as digikit's Unicorn computes it (macw without the fractional <<1, macl >>32)?
   python3 scripts/t33_emac_model.py      (reads out/T3.3/frames/*/; writes nothing)

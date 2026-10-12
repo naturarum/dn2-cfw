@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T1.7b: dynamic flash watch over the DN2 1.12 in-OS OS-upgrade WRITER.
 
 Feasibility prototype for the brick checker's new dynamic flash watch

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  * test.c - tests for the T3.11 effects (make test). The effect sources are
  * included directly so the tests can reach their static internals.

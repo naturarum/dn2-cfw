@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /* sharcvm.h -- SHARC+ (ADSP-2156x) instruction-set interpreter core.
  *
  * The Python side (tools/sharcvm/vm.py) decodes instructions with digikit's

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-or-later
 # T3.3: run the emulator page sessions, capture the TX frame for every snapshot, diff them.
 #   scripts/t33_run.sh PAGE NAV [PAGE NAV ...]     e.g. scripts/t33_run.sh sendfx2 17+5,14
 # SESSION_ARGS="--pairs 2 --encoders 3-3" passes extra options to scripts/t33_session.py.

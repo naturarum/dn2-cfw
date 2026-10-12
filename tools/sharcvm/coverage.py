@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Static translation coverage of the DN2 1.12 DSP program.
 
 Decodes (decode.py, digikit) and translates (translate.py) every aligned instruction that

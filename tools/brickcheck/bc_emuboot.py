@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Emulated cold boot of a candidate in digikit's emulator (brick checker check 8),
 with a watch on every flash write, erase and protection command.
 

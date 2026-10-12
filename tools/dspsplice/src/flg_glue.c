@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /* flg_glue.c - T3.8 milestone 2: the flanger (fx/flanger.c) in the stock chorus slot.
  *
  * The hook stubs (tools/dspsplice/stub.py) call:

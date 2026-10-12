@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T1.9: run digikit's emu.live headless with a modded main OS, and read mod symbols at the end.
 
 Two ways to get the modded code into the emulator:

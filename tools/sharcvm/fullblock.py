@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Run the DN2's whole DSP block handler 0x1c9d6b offline (T3.2 section 3.5 (b)).
 
 Per block: write the ColdFire frame (T3.3 layout, command word 3) into the SPI receive

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T3.3: dump the active FX setup block (101 parameter words + the long at +0xca) from snapshots.
 
 The frame handler copies it into raw-mirror row 16 with FUN_40025444 when the pointer

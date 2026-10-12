@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Small PyGhidra helper for the Digitone II firmware work.
 
 Run with the venv python:   venv/bin/python script.py

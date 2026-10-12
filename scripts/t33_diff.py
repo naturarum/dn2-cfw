@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T3.3: diff consecutive frame captures of one page session (scripts/t33_frame.py output).
 
   python3 scripts/t33_diff.py PAGE [PAGE ...]

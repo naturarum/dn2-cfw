@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Build red-team candidates for the brick checker (task T1.7 red team).
 
     vendor/digikit/.venv/bin/python scripts/t1.7_redteam_build.py

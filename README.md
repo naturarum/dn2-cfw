@@ -4,7 +4,7 @@ Custom firmware research for the **Elektron Digitone II**, OS 1.12. This is my l
 
 The goals: swap the send effects for new ones (a tape delay, a flanger, a better reverb), a 3-band master compressor, the arpeggiator on MIDI tracks, more MIDI and synth voices, and a CPU meter. The plan and the state of each task are in [`ROADMAP.md`](ROADMAP.md).
 
-**This repository contains no Elektron firmware, original or modified, and never will.** Bring your own OS file from Elektron. The tools check its sha256 before they touch it.
+**No Elektron firmware is stored here.** You download the OS file from Elektron yourself, and the tools check its sha256 before using it. Every build happens on your own machine.
 
 ## Where things stand (2026-10-12)
 
@@ -85,13 +85,13 @@ This builds on other people's work:
 - [selache](https://github.com/js216/selache) by js216: the SHARC+ C compiler and toolchain.
 - [elektron-firmware-tool](https://github.com/mischa85/elektron-firmware-tool) by mischa85: the `.syx` format and rebuild.
 - [octabam](https://github.com/sambanks/octabam) by sambanks: the template for the overall approach.
-- [dn2_firmware_explore](https://github.com/angellinares/dn2_firmware_explore) by angellinares: the facts we cite from their Digitone II 1.11 research (their code is AGPL, and none of it is copied here).
+- [dn2_firmware_explore](https://github.com/angellinares/dn2_firmware_explore) by angellinares: their Digitone II 1.11 research, which much of our DSP and UI work builds on (the splice method, the DSP memory and cache map, the page records, and more; listed per task in [`NOTICE`](NOTICE)).
 - The community around [modwerk](https://modwerk.app).
 
-Where a note uses someone else's finding, it says so.
+Where a note uses someone else's finding, it says so. Code adapted from other projects is listed in [`NOTICE`](NOTICE) and named in each file's header.
 
 ## Licence
 
-GPL-2.0-or-later. See [`LICENSE`](LICENSE).
+GPL-2.0-or-later, Copyright (C) 2026 naturarum and contributors. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
 
 Elektron and Digitone are trademarks of Elektron Music Machines. This project is not affiliated with or endorsed by Elektron.

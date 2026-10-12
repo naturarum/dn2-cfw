@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Cross-checks for the T1.4 flash-writer audit (Digitone II OS 1.12). Static only.
 
 Subcommands:

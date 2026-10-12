@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T1.9: compare a candidate's emulator run with stock's.
 
     python3 scripts/t19_compare.py midi STOCK/midi.txt CAND/midi.txt [--expect hooktest|same]

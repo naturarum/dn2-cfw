@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """brickcheck: refuse a candidate Digitone II OS 1.12 .syx unless every safety check passes.
 
     brickcheck <candidate.syx> [--stock elektron-firmware/Digitone_II_OS1_12.syx] [--intended-main <main_os.bin>]

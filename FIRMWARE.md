@@ -2,7 +2,8 @@
 
 `elektron-firmware/` holds the user's archive of stock Elektron OS files. **It is precious and read-only:** every file is `chmod a-w`, and git ignores the folder. Never modify, move or delete anything in it. To use a file, extract a copy to `out/firmware/` (ignored), as below.
 
-- **Source:** the archive.org item `elektron-firmware` ("Archive of firmware for Elektron devices that is no longer available on their website"), published 2026-10-02 and marked "checked for malware" by archive.org.
+- **The Digitone II 1.12 file** is Elektron's own download; its sha256 is pinned below and in the tools.
+- **Source of the older files:** the archive.org item `elektron-firmware` ("Archive of firmware for Elektron devices that is no longer available on their website"), published 2026-10-02 and marked "checked for malware" by archive.org.
 - **Checks run 2026-10-05:** every `.syx` passes elektron-firmware-tool's transport and content checksums (and the HMAC, where the file has one). Files whose sha256 matches a pin in another project are named in the table. For Digitone II 1.12, the pin is our own branch's, which matches the user's own download.
 - **Copies:** extracted copies of every `.syx` are in `out/firmware/<zip name>/`. The full manifest, including readme files, is `out/firmware-manifest.json`.
 

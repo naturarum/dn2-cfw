@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Re-assemble selache's own disassembly with selas and compare the bytes.
 
     python3 scripts/sharc_visa_disasm.py          # first: writes the listings

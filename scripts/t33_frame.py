@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
+# The IPC driver hook and the resume follow digikit's tools/sharcframe.py (Em D, GPL-2.0-or-later).
 """T3.3: capture the ColdFire-to-DSP TX frame of Digitone II OS 1.12 from emulator snapshots.
 
 Run from vendor/digikit (it imports digikit's emu package):

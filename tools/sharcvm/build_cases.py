@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Build selache's C test cases (vendor/selache/xtest/cases/*.c) with selcc/selas/seld
 into ELF executables under out/T3.6/cases/, for the interpreter's oracle tests.
 

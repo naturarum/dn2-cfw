@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T1.4 verification: find every SPI command frame the Digitone II 1.12 images can send.
 
 Two scans over m68k-elf-objdump linear disassemblies (made on first run under

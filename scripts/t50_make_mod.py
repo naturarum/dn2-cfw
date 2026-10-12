@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T5.0: write vendor/elekloader/examples/flanger-ui-dn2/mod.json (sites read from the stock image).
 
     venv/bin/python scripts/t50_make_mod.py

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Minimal ELF32 reader for selache .dxe files (SHARC+), stdlib only.
 
 Returns loadable sections converted to the SHARC+ memory image conventions used by

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T1.3: what a digikit snapshot holds in address ranges.
 
 For each snapshot: which 1 MB pages are mapped (digikit maps a page on first

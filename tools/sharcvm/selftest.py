@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Regression checks for the SHARC+ interpreter (T3.6). Run after any change to the core.
 
     python3 tools/sharcvm/selftest.py [--quick]

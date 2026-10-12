@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Run a spliced section 7 in tools/sharcvm (T3.8): load, effect init, the whole block handler.
 
 The candidate's boot stream is replayed into its final image and written over the stock baseline

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T3.4 verify: is there a path from a function entry to a return that avoids a given instruction?
 Own CFG from digikit sharcdb (aligned insns + edges), delayed branches take effect after 2 slots.
 usage: t34v_avoid.py ENTRY AVOID [AVOID...]   (hex SW)"""

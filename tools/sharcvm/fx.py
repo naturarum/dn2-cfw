@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Run the DN2's stock effects (T3.4) block by block on audio, in the SHARC interpreter.
 
 Each effect is called the way the FX bus 0x1c1738 calls it: R4 = state, R8 = parameter

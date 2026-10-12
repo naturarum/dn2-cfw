@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-or-later
 # T1.9: boot a candidate .syx cold in digikit's emulator and play the MIDI proof on it,
 # the same way as stock (notes/T1.9-dn2-core.md, "Test in the emulator").
 #

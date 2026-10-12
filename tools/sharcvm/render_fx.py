@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Render the DN2's stock effects offline in the SHARC interpreter (T3.6).
 
     python3 tools/sharcvm/render_fx.py delay  --set TIME=0.5 FDBK=0.4 [--in input.wav] [--seconds 6]

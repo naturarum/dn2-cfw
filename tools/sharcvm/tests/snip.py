@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Run a C snippet both natively and as selcc code in the interpreter; compare test_main().
 
     python3 tools/sharcvm/tests/snip.py 'return f2u(fx_log2(196.0f));' [--inc fx/fxmath.h] [-O1]

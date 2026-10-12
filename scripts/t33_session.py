@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T3.3: drive one FX/mixer page in the emulator and save a snapshot after each encoder turn.
 
   venv/bin/python scripts/t33_session.py PAGE_NAME --nav KEYS [--encoders 1-9] [--delta 4]

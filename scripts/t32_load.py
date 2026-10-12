@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T3.2: load the Digitone II DSP boot stream (section 7) into flat memory images.
 
     python3 scripts/t32_load.py                       # section 7 of 1.12 -> out/T3.2/mem/

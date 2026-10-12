@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """The unit's own code under Unicorn (brick checker checks 4, 5 and 9).
 
 Imports digikit's tools/acceptoracle.py (T1.2) and tools/recovery_harness.py

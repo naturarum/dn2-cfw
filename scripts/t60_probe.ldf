@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Follows the form of selache's libsel/link.ldf (Copyright (c) 2026 Jakob Kastelic, MIT; see NOTICE).
 // T6.0: place a selcc function in L1 block 1 space the DN2 DSP image does not use
 // (T3.2: free 0x2dd52c-0x2effff; dnfw found 0x2e2000-0x2e7000 unused and the DM cache at
 // 0x2ec000-0x2effff). Code and data only: no IVT, no stack, no start-up.

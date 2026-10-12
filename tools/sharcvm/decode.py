@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Exact-PC decoding with digikit's table-driven decoder (vendor/digikit/tools).
 
 decode_at(read, pc) -> Decoded. `read(byte_addr, n)` returns bytes or None.

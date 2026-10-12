@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Run the T2.2 v2 caves (out/T2.2-v2/arp_midi_v2.s) under Unicorn against the stock DN2 1.12 image.
 
 Verifier harness for notes/T2.2b-verify-1.md. It does not modify any firmware file.

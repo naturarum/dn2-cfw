@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 # T5.0: SEND FX view page navigation, from the warm 800M snapshot. Stock has 3 pages (DEL, REV,
 # CHO); fx-page2 adds a 4th ("Flanger 2"). FUNC+FX opens the view; DOWN/UP step through pages;
 # FUNC+FX again; encoder turns on the last page; LEDs saved with every png.

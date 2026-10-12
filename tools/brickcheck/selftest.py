@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Self-test of the brick checker (task T1.7).
 
     vendor/digikit/.venv/bin/python tools/brickcheck/selftest.py [--jobs N] [--only NAME,...]

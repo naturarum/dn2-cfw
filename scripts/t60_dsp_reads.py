@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T6.0: which ColdFire frame words does the DN2 DSP code read? (read census in the T3.6 interpreter)
 
     python3 scripts/t60_dsp_reads.py [--blocks 200] [--out out/T6.0/dsp_reads]

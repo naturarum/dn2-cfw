@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /* wav.h - minimal WAV reader/writer for the Mac tools (not for the DSP). */
 #ifndef WAV_H
 #define WAV_H

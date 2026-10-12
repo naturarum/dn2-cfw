@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T2.4c: profile emu.live's worker thread (cProfile) on a headless --script run.
 
 Run from vendor/digikit:

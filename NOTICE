@@ -1,0 +1,135 @@
+dn2-cfw
+Copyright (C) 2026 naturarum and contributors
+
+dn2-cfw is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation, either version 2 of the License, or (at your option)
+any later version. See LICENSE for version 2.
+
+dn2-cfw is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+more details.
+
+Every code file carries the line SPDX-License-Identifier: GPL-2.0-or-later.
+Much of this project was written with Claude, Anthropic's AI model, in
+Claude Code (see "How this is made" in README.md).
+
+
+Code from other projects
+------------------------
+Each file below names its origin in its header.
+
+From digikit (https://github.com/m-dwyer/digikit, by Em D, GPL-2.0 or
+later):
+
+  scripts/decompile_dump.py   the dump stage, the SQLite schema and the
+                              decompiler pool, from tools/ghidradump.py
+  scripts/t33_frame.py        the IPC driver hook and the resume, from
+                              tools/sharcframe.py
+  scripts/t60_cf_frame.py     the resume and raise_vector, from
+                              tools/sharcframe.py
+  scripts/t32_emu_probe.py    peek() and the pypcode IMARK loop, from
+                              tools/sharcemu.py
+
+From elekloader (https://github.com/irpina/elekloader, by irpina and
+contributors, GPL-2.0 or later):
+
+  tools/brickcheck/bc_syx.py  message splitting and 8-in-7 decoding, from
+                              elekloader/syx.py; the per-message checksum
+                              follows elekloader/codec/transport.py
+
+From selache (https://github.com/js216/selache, (c) 2026 Jakob Kastelic,
+MIT; its tools are GPL-3.0 and are only run, never copied):
+
+  tools/sharcvm/harness/hmain.c  trimmed from xtest/main.c
+  scripts/t60_probe.ldf          follows the form of libsel/link.ldf
+
+  The MIT licence of those two files:
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Smaller debts:
+
+  ele3_unpack.py              nrv2b() follows the NRV2B decoder of UCL
+                              (Markus F.X.J. Oberhumer, GPL-2.0 or later),
+                              as used by UPX
+  scripts/t37_compare.py      the FFT bit-reversal loop, as in octabam's
+                              tools/harness/send_probe.py (Sam Banks, MIT)
+
+
+Findings and methods we build on
+--------------------------------
+Facts, methods and ideas from these projects are used in our own code and
+cited in the notes where they are used.
+
+dn2_firmware_explore (https://github.com/angellinares/dn2_firmware_explore,
+by angellinares, AGPL-3.0 or later), the Digitone II 1.11 mod project.
+We use their published findings, credited; none of their code is included.
+  - T3.8, our effects in the DSP section: the splice method (new load
+    blocks before FINAL, code in L1 block 1 0x2dd600-0x2e7000 below the DM
+    cache), the 1 MiB limit on section 7, the cache map, and their silicon
+    finding that selas mis-encodes a shift by a negative immediate. The
+    encoding audit (tools/dspsplice/audit.py) is their idea, our code.
+  - T3.2 and T6.0: the SHARC clock (1 GHz) and the free L1 range; the
+    working project image and the kit and sound storage facts.
+  - T5.0, the FX page UI: the page records, the page-id lists and their
+    36 bound, relabelling by repointing descriptor strings, and the dead
+    ERR rows of the parameter table.
+  - T2.x: the arpeggiator patch points on MIDI tracks match their midiarp
+    (we reached them independently, and use their design notes).
+
+digikit (above): the ColdFire emulator our fork extends, the SHARC+ table
+decoder, the ColdfireEMAC Ghidra language and McfLabels.java.
+
+elekloader (above): the mod format, the core and hook model, and the
+device profiles our Digitone II 1.12 profile follows.
+
+selache (above): selcc, selas and seld build every piece of our DSP code;
+its encoding tables (visa.rs), loader format (ldr.rs) and target notes
+(target.rs) are cited in tools/sharcvm and tools/dspsplice; its 2,039 test
+programs check our SHARC interpreter (read from the user's clone, not
+included).
+
+elektron-firmware-tool (https://github.com/mischa85/elektron-firmware-tool,
+(c) 2026 Marcel Bierling, MIT): the .syx and ELE3 formats, and the rebuild
+and seal; it is run as a program, none of its code is included.
+
+octabam (https://github.com/sambanks/octabam, (c) 2026 Sam Banks, MIT):
+the template for the overall approach.
+
+capicola (https://github.com/heavylight-industries/capicola, AGPL-3.0):
+DSP ideas we studied for the effects; no code.
+
+The modwerk community (https://modwerk.app): shared knowledge about
+Elektron firmware.
+
+
+Elektron
+--------
+Elektron and Digitone are trademarks of Elektron Music Machines. This
+project is not affiliated with or endorsed by Elektron.
+
+No Elektron firmware is distributed here. Every build happens on the
+user's machine, from the stock OS file the user downloads from Elektron.
+Some scripts and notes quote short runs of stock bytes (at most 30) to
+check that a patch lands where intended, and analysis/ lists the C++
+class names and addresses recovered from the OS's own type information,
+for interoperability.

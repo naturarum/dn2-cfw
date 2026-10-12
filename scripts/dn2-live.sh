@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-or-later
 # Play the emulated Digitone II 1.12 from the Mac keyboard (T2.4a; key map: ? in the window, or vendor/digikit/docs/LIVE.md). Extra arguments go to emu.live; DN2_SNAP picks another snapshot.
 # emu.live runs inside vendor/digikit, so relative paths given here (DN2_SNAP, --script, --out, --save, --report, --keymap, --midi-log, --midi-file) are made absolute against the caller's directory first.
 # DN2_RTMIDI=1 adds python-rtmidi for --midi-port / --midi-in (virtual CoreMIDI ports), e.g.: DN2_RTMIDI=1 scripts/dn2-live.sh --ssi0-hz --ips 150e6 --midi-port

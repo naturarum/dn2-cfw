@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Pure-Python model of the main OS depacker run in place (task T1.2): stream and
 output share one memory, so a write past the next unread stream byte changes
 what is read. Reports, per file and stage, where the writer first reaches

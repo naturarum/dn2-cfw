@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T5.0: the contact sheet for the owner: before/after screens, the new glyphs, every font and icon.
 
     venv/bin/python scripts/t50_sheet.py

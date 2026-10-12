@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T1.3: every static reference from the Digitone II 1.12 main OS into an
 address range, three ways, so a "nothing names it" claim has evidence.
 

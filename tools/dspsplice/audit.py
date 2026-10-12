@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
+# The idea of auditing our encodings against stock comes from dn2_firmware_explore's
+# scripts/sharc_encoding_audit.py (angellinares); this is our own implementation.
 """Encoding audit of our spliced SHARC code against the stock image (T3.8).
 
     python3 tools/dspsplice/audit.py out/T3.8/CG01

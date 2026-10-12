@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T3.2: who refers to which memory, from code (digikit sharcdb) and from data words (t32_load images).
 
     python3 scripts/t32_refs.py ranges            # references into every final-image segment and gap

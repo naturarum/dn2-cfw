@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Dump tables from the Digitone II OS 1.12 main OS image (ele3_out/02_type3.unpacked.bin).
 
   params  the parameter descriptor table at 0x401f83a4 (0x141 rows of 0x3c bytes)

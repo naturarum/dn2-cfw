@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """stock_renders.py - the "stock DN2 (emulated)" side of the A/B page (T3.11, 2026-10-06).
 
     python3 stock_renders.py OUTDIR [--force] [--jobs N]     (after renders.sh; make stock)

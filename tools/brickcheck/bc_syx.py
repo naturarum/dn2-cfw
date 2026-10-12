@@ -1,7 +1,12 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Message splitting and the 8-in-7 decoding are adapted from elekloader's elekloader/syx.py
+# (irpina and contributors, GPL-2.0-or-later, https://github.com/irpina/elekloader);
+# modified by naturarum, 2026.
 """Independent reading of an Elektron OS .syx (Digitone II OS 1.12).
 
-Written for the brick checker from the transport facts in notes/T1.2 and
-elekloader's codec/transport.py, without importing either: the decoder, the
+Written for the brick checker from the transport facts in notes/T1.2,
+elekloader's codec/transport.py and its syx.py (adapted, see above), without
+importing them: the decoder, the
 per-message checksum, the framing count, the content checksum and the HMAC
 seal are all recomputed here. The device's own code is run separately
 (bc_device.py); this module is the "computed independently" half of check 4

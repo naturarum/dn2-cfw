@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Disassemble SHARC+ VISA code from a boot stream with selache's seldump, and
 measure whether the listing is coherent.
 

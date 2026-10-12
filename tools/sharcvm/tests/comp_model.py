@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """The stock DN2 master compressor (OS 1.12, 0xb8541d) in the T3.6 interpreter vs a per-sample model
 of its code (T3.11 section 12.2, 2026-10-06).
 

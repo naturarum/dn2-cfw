@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /* wav.c - minimal WAV I/O for the T3.11 tools (Mac side only, uses libc). */
 #include "wav.h"
 #include <stdio.h>

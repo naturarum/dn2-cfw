@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Differential test of compute semantics: this interpreter vs digikit's tracer.
 
 For every distinct 23-bit compute field found in the DN2 1.12 code (sharcdb), and for

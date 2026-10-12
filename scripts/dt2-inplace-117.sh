@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-or-later
 # Digitakt II OS 1.17: section 4's in-place main-OS loader on stock and on
 # elekloader builds (task T1.11). See notes/T1.11-dt2-inplace.md.
 #

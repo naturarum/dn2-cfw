@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  * gen.c - dry test material for the T3.11 workbench (no recordings yet).
  * Everything is synthesised here, deterministic, 48 kHz stereo 24-bit.

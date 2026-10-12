@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T3.4: read 32-bit words from the loaded dn2-1.12 DSP image at bare DM byte addresses
 (L1 bare + 0x28000000 = loader address; DDR 0x8xxxxxxx as is). Prints hex and float.
 Run from vendor/digikit: uv run python ../../scripts/t34_rd.py ADDR N [ADDR N ...]"""

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T2.4b: read the audio-clock state of a Digitone II 1.12 snapshot (vector slots, INTC, eDMA 48/50).
 
 Run from vendor/digikit:

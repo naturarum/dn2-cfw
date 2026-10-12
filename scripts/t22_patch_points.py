@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Check the stock bytes at the T2.2 (arp on MIDI tracks) patch points in the Digitone II 1.12 main OS.
 
 Reads ele3_out/02_type3.unpacked.bin (file offset 0 = 0x40000400) and compares each site with the

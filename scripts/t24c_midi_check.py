@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
 """T2.4c: check a DIN MIDI out log from emu.live --midi-log against the project tempo.
 
   python3 scripts/t24c_midi_check.py LOG [BPM]
