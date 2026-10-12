@@ -1124,3 +1124,15 @@ new code running on the Digitone II's SHARC: the flanger from `fx/flanger.c` in 
 register-saving stubs) is now proven on silicon, so FTD1 and later effects reuse it unchanged.
 Next: FTD1 (flanger + tape delay) re-checked with the strengthened gate (its earlier ACCEPT ran the delay slot on
 silence); then the user's listening notes decide the flanger's fixed knobs and FLG2.
+
+# 2026-10-12: FTD1 cleared; dnfw's reply
+
+- **FTD1** (`out/T3.8/FTD1/FTD1.syx`, sha256 `14123a67...8f88`) rerun with the strengthened DSP gate:
+  **ACCEPT 12/12** (`out/brickcheck/FTD1-2026-10-12/`; dynamic run 1,500 blocks with all three sends at full
+  volume, peak 0.683, 341,040 instructions/block vs stock 320,281). Its earlier ACCEPT had run the delay slot on
+  silence. Guide `out/T3.8/FLASH-FTD1.md` (vault copy `code/Digitone2/T3.8/`).
+- **dnfw replied** on angellinares/dn2_firmware_explore#49: busy shipping their wavetable machine beta, wants to
+  watch our progress for a few weeks before collaborating, and asked us to "check the licensing in your files".
+  Read-only audit: `notes/license-audit-2026-10-12.md` (no dnfw code or prose copied; missing SPDX/NOTICE, two
+  uncredited GPL-2.0+ adaptations from digikit and elekloader, one README sentence close to theirs, two notes
+  worded like licence avoidance). Fixes wait for the user's go.
