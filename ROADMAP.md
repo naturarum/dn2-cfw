@@ -33,6 +33,15 @@ The user wants to hear new effects A/B against stock; offline rendering is fine.
   - Send effects need no p-locks (no FX track on the DN2). Any new synth or filter parameter must be p-lockable.
 - **How to listen (T3.11):** write each effect in portable C, render it on the Mac at full quality from audio files, A/B against recordings of the stock unit (T3.5). The SHARC emulator then checks that the SHARC build matches the Mac build and fits the cycle budget; it is not the listening tool.
 
+## Feature scratchpad: requests from other users (not planned yet)
+Collected by the owner; each one is an idea until the owner promotes it to a goal. Newest last.
+- **2026-10-12: an MPC60-style bitcrusher** (bit depth, downsampling and drive with the MPC60's character), as a
+  per-track FX option next to stock BR, SRR and OVER. The per-track FX run in the voice path of the DSP, which we
+  have not touched yet. The MPC60's sound (12-bit, 40 kHz, its converters and filters) needs research first.
+- **2026-10-12: p-locks on the send FX.** T6.1 found that lockability is a display flag, but p-locks are stored per
+  track in the sound's slots: an FX lock needs its own storage and a rule for which track's lock applies to a
+  shared effect [inferred]. Note: the owner's own FX knobs were planned without p-locks (2026-10-06).
+
 ## Goals
 
 | id | goal | status |
