@@ -1,0 +1,66 @@
+# T5.0: SEND FX view page navigation, from the warm 800M snapshot. Stock has 3 pages (DEL, REV,
+# CHO); fx-page2 adds a 4th ("Flanger 2"). FUNC+FX opens the view; DOWN/UP step through pages;
+# FUNC+FX again; encoder turns on the last page; LEDs saved with every png.
+wait-emu 0.5
+down space
+wait-emu 0.1
+tap l                # FUNC+FX: SEND FX view
+wait-emu 0.1
+up space
+wait-emu 0.5
+png p0-open
+down space
+wait-emu 0.1
+tap l                # FUNC+FX again
+wait-emu 0.1
+up space
+wait-emu 0.5
+png p1-funcfx-again
+tap Down
+wait-emu 0.4
+png p2-down1
+tap Down
+wait-emu 0.4
+png p3-down2
+tap Down
+wait-emu 0.4
+png p4-down3
+tap Down
+wait-emu 0.4
+png p5-down4
+tap Up
+wait-emu 0.4
+png p6-up1
+tap Up
+wait-emu 0.4
+png p7-up2
+tap Down
+wait-emu 0.4
+tap Down
+wait-emu 0.4
+png p8-down2         # the last page again
+tap 1                # encoder A
+wait-emu 0.2
+tap 1
+wait-emu 0.4
+png p9-encA
+tap 2                # encoder B
+wait-emu 0.2
+tap 2
+wait-emu 0.4
+png p10-encB
+tap 8                # encoder H
+wait-emu 0.2
+tap 8
+wait-emu 0.4
+png p11-encH
+tap 9                # LEVEL
+wait-emu 0.4
+png p12-level
+down space
+wait-emu 0.1
+tap l                # FUNC+FX on the last page: does it wrap to the first?
+wait-emu 0.1
+up space
+wait-emu 0.5
+png p13-funcfx-wrap

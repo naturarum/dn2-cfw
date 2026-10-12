@@ -1,0 +1,411 @@
+
+### (global)
+
+- **AbstractValue** (vmi) : Observable
+- **AmpPageView** (si) : ParameterPageView
+- **AnalogEvent** (si) : UIEvent
+- **ArpPatternCopy** (si) : ClipboardData
+- **ArpSetupMenuView** (vmi) : View, Observer, LedHandler
+- **AudioRoutingMenuView** (vmi) : VerticalSettingsMenuView, Observer
+- **BackupFileExportAdapter** (si) : StreamReader
+- **BackupFileImportAdapter** (si) : StreamWriter
+- **BankSelectMenuView** (vmi) : PopupWindow, Observer
+- **BgWorker** (vmi) : BgWorkerBase, StaticSingleton<BgWorker>
+- **BgWorkerBase** (si) : noncopyable
+- **BlockerWindow** (si) : TextWindow
+- **Brain** (vmi) : StaticSingleton<Brain>, Observer, Timer
+- **BreakOutBoxCVOutputConfigMenuView** (vmi) : VerticalSettingsMenuView, Observer
+- **BreakOutBoxEditMenuView** (vmi) : VerticalSettingsMenuView, Observer
+- **BreakOutBoxOutputRoutingMenuView** (si) : RoutingMenuView
+- **BreakOutBoxRoutingMenuView** (vmi) : View, Observer, LedHandler
+- **BreakOutBoxSettings** (vmi) : ValueWithMirror<BOB::bobConfigStorage_v0_t, BOB::bobConfigStorage_v0_t>, noncopyable
+- **BreakOutBoxSettingsCvConfigCopy** (si) : ClipboardData
+- **BufferedStreamReader** (si) : StreamReader
+- **BufferedStreamWriter** (si) : StreamWriter
+- **CalibrationCountdownWindow** (si) : View
+- **CenterPositionMenuView** (vmi) : View, Observer, GlobalInstances, Timer
+- **ChordMemoryEditorMenuView** (vmi) : View, Observer, LedHandler, Timer, GlobalInstances
+- **ChordSlotCopy** (si) : ClipboardData
+- **ClickMenuView** (vmi) : View, Observer, LedHandler
+- **Clipboard** (si) : StaticSingleton<Clipboard>
+- **ClipboardData** (si) : noncopyable
+- **CompactVerticalMenuView** (vmi) : Menu, View
+- **CompressorRoutingMenuView** (vmi) : View, Observer, LedHandler
+- **ConfirmWindow** (vmi) : View, ConfirmWindowBase
+- **ControlAllMenuView** (vmi) : View, Observer, LedHandler
+- **CreateLocksHelperView** (si) : OverlayWindow
+- **DesignerVerticalMenuView** (si) : CompactVerticalMenuView
+- **DigisharcSettingsMenu** (vmi) : VerticalMenuView, Observer
+- **DigisharcSysexDump** (si) : DigisharcSysex
+- **DigisharcSysexRpc** (si) : DigisharcSysex
+- **EncoderEvent** (si) : UIEvent
+- **EncoderFilter** (si) : Timer
+- **EncoderTestView** (si) : View
+- **FancyErrorView** (vmi) : View, Timer
+- **FilterMachineParamPageCopy** (si) : ClipboardData
+- **FilterPageView** (si) : ParameterPageView
+- **FxPageView** (si) : ParameterPageView
+- **FxParameterSet** (si) : ParameterSet
+- **FxSetup** (vmi) : ValueWithMirror<Digisharc::fx_setup_struct, Digisharc::fxSetupStorage_v0_t>, noncopyable
+- **FxSetupConfigChangedInfo** (si) : DataChangeInfo
+- **FxSetupCopy** (si) : ClipboardData
+- **FxSetupParamChangedInfo** (si) : DataChangeInfo
+- **GroupedModDestListView** (si) : ModDestListView
+- **HelpBubbleView** (vmi) : View, Observer, Timer, GlobalInstances
+- **HighScoreView** (si) : View
+- **KeyEvent** (si) : UIEvent
+- **KeyboardHandler** (si) : StaticSingleton<KeyboardHandler>
+- **KeyboardSetup** (vmi) : View, Observer, LedHandler, GlobalInstances
+- **KeyboardView** (vmi) : View, Observer, LedHandler, Timer, GlobalInstances
+- **Kit** (vmi) : ValueWithMirror<Digisharc::kit_t, Digisharc::kitStorage_v4_t>, noncopyable
+- **KitActive** (vmi) : ArrayValueWithMirror<Digisharc::kit_t, Digisharc::kitStorage_v4_t, 129>, noncopyable, SoundLibrary
+- **KitActiveDoNothingChangedInfo** (si) : DataChangeInfo
+- **KitActiveSettingsChangedInfo** (si) : DataChangeInfo
+- **KitActiveTrackLevelChangedInfo** (si) : DataChangeInfo
+- **KitBrowser** (si) : KitManager
+- **KitCopy** (si) : ClipboardData
+- **KitHandler** (si) : RouteTypeHandler
+- **KitManager** (vmi) : MenuWithPopoutSideBarsView, Observer, LedHandler
+- **KitTrackSetupMenuView** (vmi) : VerticalSettingsMenuView, Observer
+- **KitVoiceMuteConfigMenuView** (vmi) : VerticalSettingsMenuView, Observer
+- **LargeConfirmWindow** (vmi) : View, ConfirmWindowBase
+- **LedManager** (vmi) : StaticSingleton<LedManager>, Timer, noncopyable
+- **LedSettingsMenuView** (vmi) : VerticalMenuView, Observer
+- **LfoPageView** (si) : SoundPageView
+- **Lz4StreamCompressor** (si) : StreamReader
+- **Lz4StreamDecompressor** (si) : StreamWriter
+- **MachineListView** (vmi) : View, Menu, Observer, GlobalInstances
+- **MachineParameterPageView** (si) : ParameterPageView
+- **MachineSelectionView** (vmi) : View, LedHandler, Observer, GlobalInstances
+- **MainScreenView** (vmi) : View, Observer, DynamicSingleton<MainScreenView>, LedHandler, Timer, GlobalInstances
+- **MasterPageCopy** (si) : ClipboardData
+- **MasterPageView** (si) : ParameterPageView
+- **MemoryStreamReader** (si) : StreamReader
+- **MemoryStreamWriter** (si) : StreamWriter
+- **MenuWithPopoutSideBarsView** (si) : CompactVerticalMenuView
+- **MessageWindow** (si) : OverlayWindow
+- **MicroTimingMenuView** (vmi) : OverlayWindow, Observer
+- **MidiAsyncWorker** (vmi) : StaticSingleton<MidiAsyncWorker>, noncopyable
+- **MidiChannelsMenuView** (vmi) : VerticalSettingsMenuView, Observer
+- **MidiConfigMenuView** (vmi) : VerticalSettingsMenuView, Observer
+- **MidiEvent** (si) : UIEvent
+- **MidiMenuView** (vmi) : VerticalMenuView, Observer
+- **MidiOutputStream** (si) : Elektron::AbstractOutputStream
+- **MidiParameterPageView** (vmi) : MachineParameterPageView, Timer
+- **MidiParameterSet** (si) : ParameterSet
+- **MidiPreset** (vmi) : ValueWithMirror<Digisharc::midiSetup_t, Digisharc::midiSetupStorage_v3_t>, noncopyable
+- **MidiPresetCopy** (si) : ClipboardData
+- **MidiPresetEnableMaskChangedInfo** (si) : DataChangeInfo
+- **MidiPresetParamChangedInfo** (si) : DataChangeInfo
+- **MidiSyncMenuView** (vmi) : VerticalSettingsMenuView, Observer
+- **MmcFs** (vmi) : StaticSingleton<MmcFs>, noncopyable, SoundLibrary, KitLibrary
+- **MmcStreamReader** (si) : StreamReader
+- **MmcStreamWriter** (si) : StreamWriter
+- **ModConfig** (si) : Observable
+- **ModDestListView** (vmi) : View, Menu, Observer
+- **ModSetupView** (vmi) : View, Observer
+- **ModulationCopy** (si) : ClipboardData
+- **MultiChoiceWindow** (vmi) : OverlayWindow, Observer
+- **MultiSourcePageView** (si) : MachineParameterPageView
+- **MultipleFxParamsChangedInfo** (si) : DataChangeInfo
+- **MultipleSoundParamsChangedInfo** (si) : DataChangeInfo
+- **MuteMenuView** (vmi) : View, Observer, LedHandler, GlobalInstances
+- **NameCopy** (si) : ClipboardData
+- **NameView** (si) : View
+- **NoteEditorMenuView** (vmi) : View, Observer, LedHandler, Timer, GlobalInstances
+- **NoteEvent** (si) : UIEvent
+- **NotePool** (vmi) : ValueWithMirror<Digisharc::patternNotePool_t, Digisharc::patternNotePoolStorage_v0_t>, noncopyable
+- **NotePoolEntryCopy** (si) : ClipboardData
+- **NotePoolStepChangedInfo** (si) : DataChangeInfo
+- **NoteSetupMenuView** (vmi) : View, Observer, LedHandler
+- **NullStreamReader** (si) : StreamReader
+- **ObAsyncCommInterface** (si) : StaticSingleton<ObAsyncCommInterface>
+- **ObAsyncDataOutputStream** (si) : Elektron::AbstractOutputStream
+- **ObAutomationWorker** (vmi) : StaticSingleton<ObAutomationWorker>, noncopyable
+- **ObPluginCommunication** (vmi) : StaticSingleton<ObPluginCommunication>, ObPluginCommunicationBase
+- **ObPluginCommunicationBase** (si) : Timer
+- **ObRequestWorker** (vmi) : StaticSingleton<ObRequestWorker>, noncopyable
+- **ObRpcCommunication** (si) : StaticSingleton<ObRpcCommunication>
+- **ObRpcWorker** (vmi) : StaticSingleton<ObRpcWorker>, noncopyable
+- **ObSyncInProgressMenuView** (vmi) : View, Observer
+- **ObservableAsync** (vmi) : Observable, Timer
+- **Observer** (vmi) : noncopyable
+- **OsUpgradeMenuView** (vmi) : View, Observer, Timer
+- **OsUpgradeState** (si) : OsUpgradeDelegate
+- **OverlayWindow** (si) : View
+- **PageCopy** (si) : ClipboardData
+- **ParamPageCopy** (si) : ClipboardData
+- **ParameterPageView** (vmi) : View, Observer, GlobalInstances
+- **ParameterSet** (si) : noncopyable
+- **ParameterUpdateCache** (si) : StaticSingleton<ParameterUpdateCache>
+- **ParametersSeqNoteView** (si) : ParameterPageView
+- **Pattern** (vmi) : ValueWithMirror<Digisharc::pattern_t, Digisharc::patternStorage_v4_t>, noncopyable
+- **PatternAndKitCopy** (si) : ClipboardData
+- **PatternChainView** (vmi) : View, Observer, LedHandler, GlobalInstances
+- **PatternClearMenuView** (si) : VerticalMenuView
+- **PatternGridView** (vmi) : View, Observer, LedHandler, GlobalInstances
+- **PatternMenuView** (vmi) : VerticalMenuView, Observer
+- **PatternParamLocks** (vmi) : ValueWithMirror<Digisharc::patternParamLocks_t, Digisharc::patternParamLocksStorage_v0_t>, noncopyable
+- **PatternParamLocksParamChangedInfo** (si) : DataChangeInfo
+- **PatternReloadMenuView** (si) : VerticalMenuView
+- **PatternSaveMenuView** (si) : VerticalMenuView
+- **PatternSelectView** (vmi) : View, Observer, LedHandler, GlobalInstances
+- **PatternSettings** (vmi) : ValueWithMirror<Digisharc::patternSettingsStorage_v2_t, Digisharc::patternSettingsStorage_v2_t>, noncopyable
+- **PatternSettingsTrackMutedInfo** (si) : DataChangeInfo
+- **PatternsAndKitsCopy** (si) : ClipboardData
+- **PermanentMuteMenuView** (si) : MuteMenuView
+- **PersonalizeMenuView** (vmi) : VerticalSettingsMenuView, Observer
+- **PlusDriveFormatMenuView** (vmi) : VerticalSettingsMenuView, Observer
+- **PopupWindow** (si) : View
+- **PortamentoSetupMenuView** (vmi) : VerticalSettingsMenuView, Observer
+- **PresetKitMenuView** (vmi) : View, LedHandler
+- **ProgressWindow** (si) : OverlayWindow
+- **Project** (vmi) : ValueWithMirror<Digisharc::project_t, Digisharc::projectStorage_v5_t>, StaticSingleton<Project>, noncopyable
+- **ProjectCache** (vmi) : StaticSingleton<ProjectCache>, Observer
+- **ProjectCopy** (si) : ClipboardData
+- **ProjectDataChangeInfo** (si) : DataChangeInfo
+- **ProjectHandler** (si) : RouteTypeHandler
+- **ProjectManager** (vmi) : MenuWithPopoutSideBarsView, Observer, LedHandler
+- **ProjectMenuView** (si) : VerticalMenuView
+- **ProjectSettings** (vmi) : ValueWithMirror<Digisharc::projectSettings_t, Digisharc::projectSettingsStorage_v2_t>, noncopyable
+- **ProjectSettingsActiveTrackChangedInfo** (si) : DataChangeInfo
+- **ProjectSettingsSongChangedInfo** (si) : DataChangeInfo
+- **ProjectSettingsSongModeChangedInfo** (si) : DataChangeInfo
+- **ProjectSettingsTrackMuteChangedInfo** (si) : DataChangeInfo
+- **ProjectSettingsTrackSoloChangedInfo** (si) : DataChangeInfo
+- **QuickLedIntensityView** (vmi) : View, LedHandler, GlobalInstances
+- **QuickMuteMenuView** (si) : MuteMenuView
+- **QuickNoteMenuView** (vmi) : View, Observer, GlobalInstances, Timer
+- **RoutingMenuView** (vmi) : View, Observer, LedHandler
+- **SMStates** (vmi) : Observable, StaticSingleton<SMStates>, noncopyable
+- **SMVoiceStates** (vmi) : Observable, StaticSingleton<SMVoiceStates>, noncopyable
+- **SafeMmcStreamWriter** (si) : StreamWriter
+- **SampleLoaderBgWorker** (vmi) : BgWorkerBase, StaticSingleton<SampleLoaderBgWorker>
+- **SampleWaveformsFactory** (si) : StaticSingleton<SampleWaveformsFactory>
+- **ScaleMenuView** (vmi) : View, Observer, LedHandler
+- **SdsManager** (si) : StaticSingleton<SdsManager>
+- **SequencerStates** (vmi) : ObservableAsync, StaticSingleton<SequencerStates>, noncopyable
+- **SevenBitEncoderAdapterStream** (vmi) : Elektron::AbstractOutputStream, noncopyable
+- **ShowMsgView** (vmi) : View, LedHandler
+- **Song** (vmi) : ValueWithMirror<Digisharc::song_t, Digisharc::songStorage_v0_t>, noncopyable
+- **SongBrowserView** (vmi) : View, TwoColumnMenu, LedHandler
+- **SongEditView** (vmi) : View, Observer, LedHandler
+- **SongMenuView** (si) : VerticalMenuView
+- **SongModePopup** (vmi) : View, LedHandler
+- **SongRowCopy** (si) : ClipboardData
+- **SongSelectCreateMenuView** (vmi) : View, Observer, LedHandler
+- **SongSelectMenuView** (vmi) : PopupWindow, Observer
+- **SongTempoMenuView** (vmi) : View, Observer, Timer, LedHandler
+- **Sound** (vmi) : ValueWithMirror<Digisharc::sound_struct, Digisharc::soundStorage_v3_t>, noncopyable
+- **SoundBrowser** (si) : SoundManager
+- **SoundConfigChangedInfo** (si) : DataChangeInfo
+- **SoundConfigPlayModeChangedInfo** (si) : DataChangeInfo
+- **SoundCopy** (si) : ClipboardData
+- **SoundManager** (vmi) : MenuWithPopoutSideBarsView, Observer, LedHandler
+- **SoundModConf** (vmi) : ValueWithMirror<Digisharc::modTarget_t [4], Digisharc::modTargetStorage_v0_t [4]>, noncopyable, ModConfig
+- **SoundPageView** (si) : ParameterPageView
+- **SoundParamChangedInfo** (si) : DataChangeInfo
+- **SoundParameterSet** (si) : ParameterSet
+- **SoundPool** (vmi) : ValueWithMirror<Digisharc::soundPool_t, Digisharc::soundPoolStorage_v3_t>, noncopyable, SoundLibrary
+- **SoundSlicesChangedInfo** (si) : DataChangeInfo
+- **SoundSlotListView** (vmi) : View, Menu
+- **SoundbankHandler** (si) : RouteTypeHandler
+- **SrcMachineParamPageCopy** (si) : ClipboardData
+- **StepMaskCopy** (si) : ClipboardData
+- **SynthSettingsMenuView** (vmi) : VerticalMenuView, Observer
+- **SysexMenuView** (vmi) : VerticalMenuView, Observer
+- **SysexObjectCounterView** (vmi) : View, Observer
+- **SysexReceiveMenuView** (vmi) : View, Observer
+- **SysexSdsAck** (si) : SysexSds
+- **SysexSdsCancel** (si) : SysexSds
+- **SysexSdsData** (si) : SysexSds
+- **SysexSdsDumpRequest** (si) : SysexSds
+- **SysexSdsEof** (si) : SysexSds
+- **SysexSdsExtendedHeader** (si) : SysexSdsExtensionsCommand
+- **SysexSdsExtensionsCommand** (si) : SysexSds
+- **SysexSdsHeader** (si) : SysexSds
+- **SysexSdsNak** (si) : SysexSds
+- **SysexSdsNameRequest** (si) : SysexSdsExtensionsCommand
+- **SysexSdsNameTransmission** (si) : SysexSdsExtensionsCommand
+- **SysexSdsWait** (si) : SysexSds
+- **SysexSendMenuView** (vmi) : View, Observer
+- **TagSelector** (vmi) : View, Menu
+- **TapTempoView** (vmi) : View, Timer
+- **TempoLedView** (vmi) : View, LedHandler, GlobalInstances
+- **TempoMenuView** (vmi) : View, Observer, Timer, LedHandler
+- **TestCompletedView** (vmi) : View, LedHandler
+- **TextWindow** (si) : View
+- **TimeoutView** (vmi) : View, Observer, GlobalInstances
+- **TimerManager** (si) : StaticSingleton<TimerManager>
+- **TotalRecallManager** (vmi) : StaticSingleton<TotalRecallManager>, Observable
+- **TotalRecallMenuView** (vmi) : VerticalMenuView, Observer
+- **Track** (vmi) : ValueWithMirror<Digisharc::track_t, Digisharc::trackStorage_v2_t>, noncopyable
+- **TrackCopy** (si) : ClipboardData
+- **TrackNoteCopy** (si) : ClipboardData
+- **TrackNoteMenuView** (vmi) : View, Observer, LedHandler
+- **TrackRelationsMenuView** (vmi) : View, Observer, LedHandler
+- **TrackSelect** (vmi) : TextWindow, LedHandler
+- **TrackSelectionView** (vmi) : View, Observer, LedHandler, GlobalInstances
+- **TrackSettingsChangedInfo** (si) : DataChangeInfo
+- **TrackStepChangedInfo** (si) : DataChangeInfo
+- **TrackSwapMenuView** (vmi) : View, Observer, LedHandler, Timer
+- **TransportView** (vmi) : View, Observer, GlobalInstances
+- **TransposeConfigMenuView** (vmi) : View, Observer, LedHandler
+- **TrigModeMenuView** (vmi) : View, Observer, GlobalInstances
+- **TrigParameterSet** (si) : ParameterSet
+- **TrigToChordMemoryView** (vmi) : View, Observer, LedHandler, Timer, GlobalInstances
+- **TrigsCopy** (si) : ClipboardData
+- **TwoColumnMenu** (si) : Menu
+- **UIStates** (vmi) : ObservableAsync, StaticSingleton<UIStates>, noncopyable
+- **UITestView** (vmi) : View, LedHandler
+- **UsbConfigMenuView** (vmi) : VerticalSettingsMenuView, Observer
+- **Velocity** (vmi) : Value<Digisharc::velParam_t>, noncopyable, ModConfig
+- **VerticalMenuView** (vmi) : Menu, View, LedHandler
+- **VerticalSettingsMenuView** (si) : VerticalMenuView
+- **View** (vmi) : KeyHandler, EncoderHandler, MidiHandler, AnalogHandler, NoteHandler
+- **VoiceConfig** (vmi) : ValueWithMirror<Digisharc::voiceConfigStorage_v0_t, Digisharc::voiceConfigStorage_v0_t>, noncopyable
+- **VoiceConfigChangedInfo** (si) : DataChangeInfo
+- **VoiceConfigCopy** (si) : ClipboardData
+- **VoiceConfigSpreadChangedInfo** (si) : DataChangeInfo
+- **VoiceMenuView** (vmi) : View, Observer, LedHandler
+- **_ZTI*N12_GLOBAL__N_121future_error_categoryE** (si) : std::error_category
+- **_ZTI*N12_GLOBAL__N_121system_error_categoryE** (si) : std::error_category
+- **_ZTI*N12_GLOBAL__N_122generic_error_categoryE** (si) : std::error_category
+- **_ZTI*St23_Sp_counted_ptr_inplaceIZN4Midi15handleSysexDumpEPKhi19midiInInterfaceID_tiE17DumpContainerHeadSaIS4_ELN9__gnu_cxx12_Lock_policyE0EE** (si) : std::_Sp_counted_base<(__gnu_cxx::_Lock_policy)0>
+
+### elektron
+
+- **elektron::MidiRpcDataClearRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataClearResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataCopyRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataCopyResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataListRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataListResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataMoveRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataMoveResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataReadCloseRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataReadCloseResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataReadOpenRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataReadOpenResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataReadPartialRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataReadPartialResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataRenameRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataRenameResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataSetTagsRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataSetTagsResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataSwapRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataSwapResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataWriteCloseRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataWriteCloseResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataWriteOpenRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataWriteOpenResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataWritePartialRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDataWritePartialResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDeviceUIDRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcDeviceUIDResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcEnumerateFilesRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcEnumerateFilesResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawCloseFileReaderRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawCloseFileReaderResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawCloseFileWriterRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawCloseFileWriterResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawCreateDirRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawCreateDirResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawDeleteDirRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawDeleteDirResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawDeleteFileRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawDeleteFileResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawGetFileInfoFromHashAndSizeRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawGetFileInfoFromHashAndSizeResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawGetFileInfoFromPathV1Request** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawGetFileInfoFromPathV1Response** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawGetFileInfoFromPathV2Request** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawGetFileInfoFromPathV2Response** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawOpenFileForReadRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawOpenFileForReadResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawOpenFileForWriteRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawOpenFileForWriteResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawReadDirRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawReadDirResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawReadFileV1Request** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawReadFileV1Response** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawReadFileV2Request** (si) : elektron::MidiRpcReadFileRequest
+- **elektron::MidiRpcFsRawReadFileV2Response** (si) : elektron::MidiRpcReadFileResponse
+- **elektron::MidiRpcFsRawRenameFileRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawRenameFileResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawWriteFileV1Request** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawWriteFileV1Response** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsRawWriteFileV2Request** (si) : elektron::MidiRpcWriteFileRequest
+- **elektron::MidiRpcFsRawWriteFileV2Response** (si) : elektron::MidiRpcWriteFileResponse
+- **elektron::MidiRpcFsSampleAssignRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleAssignResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleClearRamRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleClearRamResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleCloseFileReaderRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleCloseFileReaderResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleCloseFileWriterRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleCloseFileWriterResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleCreateDirRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleCreateDirResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleDeleteDirRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleDeleteDirResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleDeleteFileRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleDeleteFileResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleGetFileInfoFromHashAndSizeRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleGetFileInfoFromHashAndSizeResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleGetFileInfoFromPathV1Request** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleGetFileInfoFromPathV1Response** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleGetFileInfoFromPathV2Request** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleGetFileInfoFromPathV2Response** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleListRamRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleListRamResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleMemoryCompactionRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleMemoryCompactionResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleOpenFileForReadRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleOpenFileForReadResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleOpenFileForWriteRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleOpenFileForWriteResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleReadDirRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleReadDirResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleReadFileV1Request** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleReadFileV1Response** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleReadFileV2Request** (si) : elektron::MidiRpcReadFileRequest
+- **elektron::MidiRpcFsSampleReadFileV2Response** (si) : elektron::MidiRpcReadFileResponse
+- **elektron::MidiRpcFsSampleRenameFileRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleRenameFileResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleWriteFileV1Request** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleWriteFileV1Response** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcFsSampleWriteFileV2Request** (si) : elektron::MidiRpcWriteFileRequest
+- **elektron::MidiRpcFsSampleWriteFileV2Response** (si) : elektron::MidiRpcWriteFileResponse
+- **elektron::MidiRpcOsUpgradeEndRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcOsUpgradeEndResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcOsUpgradeStartRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcOsUpgradeStartResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcOsUpgradeWriteRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcOsUpgradeWriteResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcPingRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcPingResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcQueryRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcQueryResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcReadFileRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcReadFileResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcScreenshotRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcScreenshotResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcSoftwareVersionRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcSoftwareVersionResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcStorageSpaceRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcStorageSpaceResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcTempoReadRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcTempoReadResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcTempoWriteRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcTempoWriteResponse** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcWriteFileRequest** (si) : elektron::MidiRpcMessage
+- **elektron::MidiRpcWriteFileResponse** (si) : elektron::MidiRpcMessage
+
+### SongEditView
+
+- **SongEditView::SongClipboard** (si) : StaticSingleton<SongEditView::SongClipboard>
+
+### Elektron
+
+- **Elektron::VectorOutputStream** (vmi) : Elektron::AbstractOutputStream, noncopyable

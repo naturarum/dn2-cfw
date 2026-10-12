@@ -1,0 +1,71 @@
+# T1.9: screens to compare stock with a core build, from the warm 800M snapshot (no MIDI set-up).
+# Main screen, the SETTINGS menu scrolled row by row (PERSONALIZE among them), PERSONALIZE opened,
+# then the SYN and FLTR pages, a trig key, and an encoder turn on the FLTR page.
+wait-emu 0.5
+png 00-main
+tap grave            # SETTINGS
+wait-emu 0.4
+png 01-settings
+tap Down
+wait-emu 0.2
+png 02-down1
+tap Down
+wait-emu 0.2
+png 03-down2
+tap Down
+wait-emu 0.2
+png 04-down3
+tap Down
+wait-emu 0.2
+png 05-down4
+tap Down
+wait-emu 0.2
+png 06-down5
+tap Down
+wait-emu 0.2
+png 07-down6
+tap Down
+wait-emu 0.2
+png 08-down7
+tap Down
+wait-emu 0.2
+png 09-down8
+tap Down
+wait-emu 0.2
+png 10-down9
+tap Return           # SYSTEM (the last row: ev_settings would add rows after it)
+wait-emu 0.4
+png 11-system
+tap Escape
+wait-emu 0.3
+tap Up               # PERSONALIZE
+wait-emu 0.2
+tap Return
+wait-emu 0.4
+png 12-personalize   # its rows are built where ev_personalize runs (0x400987a2)
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+png 13-personalize-down3
+tap Escape
+wait-emu 0.3
+tap Escape
+wait-emu 0.3
+tap Escape
+wait-emu 0.4
+png 14-back
+tap p                # SYN page
+wait-emu 0.4
+png 15-syn
+tap bracketleft      # FLTR page
+wait-emu 0.4
+png 16-fltr
+tap 1                # encoder A one detent right
+wait-emu 0.4
+png 17-enc
+tap w                # TRIG 2: track 2
+wait-emu 0.4
+png 18-trk2

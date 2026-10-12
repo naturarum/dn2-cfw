@@ -1,0 +1,25 @@
+# Elektron firmware, and anything extracted or built from it. Never commit these.
+*.syx
+*.bin
+*.zip
+*.elemod
+*.snap
+*.sqlite
+ele3_out/
+ghidra/
+out/
+
+# Upstream projects: separate clones, each with its own remote (see VENDOR.md)
+vendor/
+
+# Local environments and OS clutter
+venv/
+.venv/
+__pycache__/
+.DS_Store
+
+# Stock Elektron firmware supplied by the user
+elektron-firmware/
+
+# Photos of the real unit, for emulator comparison
+photos/

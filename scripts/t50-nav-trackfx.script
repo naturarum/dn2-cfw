@@ -1,0 +1,5 @@
+# T5.0: from the warm 800M snapshot to the track FX page (CHR = chorus send); saved with --save.
+wait-emu 0.3
+tap l
+wait-emu 0.6
+png trackfx

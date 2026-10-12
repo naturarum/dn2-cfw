@@ -1,0 +1,13 @@
+# T5.0: from the warm 800M snapshot to SEND FX 3 (chorus); the run is saved with --save.
+wait-emu 0.3
+down space
+wait-emu 0.1
+tap l
+wait-emu 0.1
+up space
+wait-emu 0.4
+tap Down
+wait-emu 0.3
+tap Down
+wait-emu 0.6
+png chorus

@@ -1,0 +1,29 @@
+// T6.0: place a selcc function in L1 block 1 space the DN2 DSP image does not use
+// (T3.2: free 0x2dd52c-0x2effff; dnfw found 0x2e2000-0x2e7000 unused and the DM cache at
+// 0x2ec000-0x2effff). Code and data only: no IVT, no stack, no start-up.
+ARCHITECTURE(ADSP-21569)
+$OBJECTS = $COMMAND_LINE_OBJECTS;
+MEMORY
+{
+   mem_t60_code { TYPE(BW RAM) START(0x002e2000) END(0x002e5fff) WIDTH(8) }
+   mem_t60_data { TYPE(BW RAM) START(0x002e6000) END(0x002e6fff) WIDTH(8) }
+}
+PROCESSOR p0
+{
+   OUTPUT($COMMAND_LINE_OUTPUT_FILE)
+   ENTRY(t60_probe.)
+   SECTIONS
+   {
+      t60_code SW
+      {
+         INPUT_SECTION_ALIGN(2)
+         FILL(0x1)
+         INPUT_SECTIONS( $OBJECTS(seg_swco seg_pmco) )
+      } > mem_t60_code
+      t60_data BW
+      {
+         INPUT_SECTION_ALIGN(4)
+         INPUT_SECTIONS( $OBJECTS(seg_dmda seg_l1_bss) )
+      } > mem_t60_data
+   }
+}
