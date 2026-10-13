@@ -1251,3 +1251,12 @@ Full note: `notes/T6.5-table-growth.md`. Mods on our elekloader fork (`dn2-1.12`
 - **Left for the unit:** Overbridge with ids 0x400+, a real +Drive save/load (digikit cannot: SAVE ERROR, FORMAT writes
   nothing), a power cycle, MIDI CC out of new FX rows (goes out on the set's channel), the heap (+12.8 KB, free space
   not measured).
+
+# 2026-10-13: DH01 on the unit
+
+The user flashed DH01 (core-dn2 + midi-hooktest): it boots and works, so our core's boot path runs on the unit
+without harm. The MIDI test was read on the DN2's TRIG page (held trigs), which shows the pattern's stored data:
+the hooktest never changes that, only the bytes leaving the MIDI port, so the test is not done yet (M1 stays open
+until MIDI OUT is watched). A background investigation was started on the wrong premise and stopped. FLASH-DH01.md
+now says to watch MIDI OUT, not the screen. Next: FTN1, whose page titles come from the core's RAM image, so
+"Flanger (3/3)" on screen also proves the boot copy on the unit.
