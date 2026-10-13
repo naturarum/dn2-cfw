@@ -1291,3 +1291,17 @@ Fixed in README, NOTICE, T5.0, T6.1, T6.5. Rule from their work, kept by ours: w
 which is safe only while every new row keeps k <= 100.
 - New: `docs/parameter-table-growth.md`, the public write-up (drafted, fact-checked and reader-checked by a workflow),
   and a "Latest" section in the README.
+
+# 2026-10-13: T6.0c, dnfw's frame census checked (workflow)
+
+Full note: `notes/T6.0c-frame-census-dnfw.md`. dn2_firmware_explore re-ran our frame census on 1.11 with a stricter
+rule (a word counts only if flipping it changes DSP memory). Our check in sharcvm, with that rule, agrees [verified]:
+the 30 tail words, `0x2a`, `0xa18` and slot +0x50/+0x6e change no DSP memory, MMR store or instruction count (48
+valid scenarios, 12 with random voices, a separate re-run; controls detect one-word changes). So the Space Echo's AGE
+in `0xa18` and the compressor's values in the tail are safe. Two words to avoid: `0xa28` (k 48) is kept as a flag byte
+`0x2579d4 = (value != 0)`, so T6.1's "k 48 on reverb G" needs a range that never sends 0; `0x9a8` is row 15 slot +0x40
+(k 57), a real dependence for machine type 0. Their open questions answered: I0 comes from the owner word `0xa5a+2r`
+(`0x1c293e` -> DM `0x257898+2r` at `0x1c2992`; I0 = `0x258f68 + (sext16(2*owner) << 7)`, I1 = `0x259f68` + the same,
+one block late, no clamp: mods must keep owner words in 0..15); their runner's stops are owners whose row lands in
+core MMR space `0x30068..0x3ff68` (mechanism verified, 227 stops in 2,000 variants; that their three frames are these
+is [inferred]). Notes to update later: T6.0 1.2, T6.1 4.3 (listed in the note's section 7).
