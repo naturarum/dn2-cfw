@@ -23,7 +23,8 @@
  *            speed's wow and flutter as a real tape moves them (the speed now against
  *            the speed when that bit of tape was recorded), and is placed in the
  *            stereo field by WIDTH and PAN.  + AGE hiss and soft crackle that follow
- *            the playback level  ->  wet out, and the feedback sum.
+ *            the playback level  ->  the feedback sum, and the wet out through a
+ *            ceiling (exactly linear up to 0.5, a soft knee, at most 0.7; T5.3).
  * The output is the wet signal only, as for the stock delay: the FX bus mixes it
  * with VOL (LEVEL) and sends some to the reverb (REV).
  *

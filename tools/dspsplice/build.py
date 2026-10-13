@@ -89,6 +89,24 @@ RECIPES = {
         hooks=[(CHORUS_CALL, CHORUS, "fxh_chorus"), (CHORUS_INIT_CALL, CHORUS_INIT, "fxh_chorus_init"),
                (DELAY_CALL, DELAY, "fxh_delay"), (DELAY_INIT_CALL, DELAY_INIT, "fxh_delay_init")],
         fills=[(0x300000, 0x8400, "flanger state (FlgSlot: Flanger + glue), zeroed at boot")]),
+    # T5.3: FTD1 with the Space Echo (fx/spaceecho.c) in place of the tape delay, one-page layout
+    # (src/se_glue.c, verify_se.py). Its code (about 38 KB) does not fit FTD1's 0x310000-0x318000,
+    # so it starts right after the flanger state: 0x308400-0x318000 is below the PM cache whether that
+    # cache is 16 KB (0x31c000, what the start-up's size fields say) or 32 KB (0x318000).
+    "SE01": dict(
+        what="T5.3: the flanger in the chorus slot and the Space Echo (fx/spaceecho.c) in the delay slot, "
+             "one-page layout (AGE from frame word 0xa18, k 40)",
+        c=["fx/flanger.c", "tools/dspsplice/src/flg_glue.c"],
+        c2=["fx/spaceecho.c", "tools/dspsplice/src/se_glue.c"], inc=["fx", "tools/dspsplice/src"],
+        stubs=[("fxh_chorus", [("c", "flg_process", ["R8", "R12"])]),
+               ("fxh_chorus_init", [("c", "flg_init", []), ("tail", CHORUS_INIT)]),
+               ("fxh_delay", [("c", "se_process", ["R8", "R12"])]),
+               ("fxh_delay_init", [("c", "se_init", [])])],
+        hooks=[(CHORUS_CALL, CHORUS, "fxh_chorus"), (CHORUS_INIT_CALL, CHORUS_INIT, "fxh_chorus_init"),
+               (DELAY_CALL, DELAY, "fxh_delay"), (DELAY_INIT_CALL, DELAY_INIT, "fxh_delay_init")],
+        fills=[(0x300000, 0x8400, "flanger state (FlgSlot: Flanger + glue), zeroed at boot")],
+        state=(0x300000, 0x308400), code2=(0x308400, 0x318000),
+        outdir="out/T5.3/SE01-dsp", syx="SE01-dsp.syx", version="SE1D"),
 }
 
 LDF = """ARCHITECTURE(ADSP-21569)
@@ -175,7 +193,8 @@ def compile_link(name, rec, bdir, log):
     run([SEL / "selas", "-proc", "ADSP-21569", "-o", bdir / "stubs.doj", bdir / "stubs.s"], log)
     objs.insert(0, bdir / "stubs.doj")
     (bdir / "t38.ldf").write_text(LDF.format(c0=CODE[0], c1=CODE[1] - 1, d0=DATA[0], d1=DATA[1] - 1,
-                                             e0=CODE2[0], e1=CODE2[1] - 1, entry=rec["stubs"][0][0]))
+                                             e0=rec.get("code2", CODE2)[0], e1=rec.get("code2", CODE2)[1] - 1,
+                                             entry=rec["stubs"][0][0]))
     run([SEL / "seld", "-proc", "ADSP-21569", "-T", bdir / "t38.ldf", "-o", bdir / f"{name}.dxe", *objs], log)
     return E.read_elf(bdir / f"{name}.dxe")
 
@@ -316,7 +335,10 @@ def diff_images(stock, cand):
 
 def build(name, out_root=ROOT / "out/T3.8"):
     rec = RECIPES[name]
-    odir = out_root / name
+    odir = ROOT / rec["outdir"] if "outdir" in rec else out_root / name
+    state, code2 = rec.get("state", STATE), rec.get("code2", CODE2)
+    if state[1] > code2[0] and code2[1] > state[0] and "state" in rec:
+        raise SystemExit("the recipe's state and code2 ranges overlap")
     bdir = odir / "build"
     log = []
     if sha(STOCK_SYX.read_bytes()) != STOCK_SYX_SHA:
@@ -340,7 +362,7 @@ def build(name, out_root=ROOT / "out/T3.8"):
     # where everything landed
     placed = []
     for addr, n, s in ranges_of(e):
-        lo, hi = {"t38_code": CODE, "t38_code2": CODE2}.get(s.name, DATA)
+        lo, hi = {"t38_code": CODE, "t38_code2": code2}.get(s.name, DATA)
         if not (lo <= addr and addr + n <= hi):
             raise SystemExit(f"section {s.name} at {addr:#x}+{n} is outside {lo:#x}-{hi:#x}")
         placed.append({"section": s.name, "kind": s.kind, "core": "%#x" % addr, "bytes": n,
@@ -359,7 +381,7 @@ def build(name, out_root=ROOT / "out/T3.8"):
             st.add_payload(addr, s.data, why=f"{s.name} ({s.kind})")
     st.add_fill(SAVE, (stub.SAVE_BYTES + 3) // 4 * 4, why="hook register save area")
     for addr, n, why in rec["fills"]:
-        if not (STATE[0] <= addr and addr + n <= STATE[1]):
+        if not (state[0] <= addr and addr + n <= state[1]):
             raise SystemExit("state fill outside the planned L1 block 2 range")
         st.add_fill(addr, n, why=why)
     stream = st.to_bytes()
@@ -376,18 +398,26 @@ def build(name, out_root=ROOT / "out/T3.8"):
     diffs = diff_images(final_image(stock7), final_image(stream))
     allowed = [(ldr.loader_addr(2 * site), ldr.loader_addr(2 * site) + 6) for site, _, _ in rec["hooks"]]
     allowed += [(ldr.loader_addr(CODE[0]), ldr.loader_addr(L1B1_LIMIT)),
-                (ldr.loader_addr(STATE[0]), ldr.loader_addr(STATE[1])),
-                (ldr.loader_addr(CODE2[0]), ldr.loader_addr(CODE2[1]))]
-    stray = [(a, b) for a, b in diffs if not any(lo <= a and b <= hi for lo, hi in allowed)]
+                (ldr.loader_addr(state[0]), ldr.loader_addr(state[1])),
+                (ldr.loader_addr(code2[0]), ldr.loader_addr(code2[1]))]
+    merged = []                          # touching ranges as one (SE01's code2 starts where its state ends)
+    for lo, hi in sorted(allowed):
+        if merged and lo <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], hi)
+        else:
+            merged.append([lo, hi])
+    allowed = [tuple(m) for m in merged]
+    stray =[(a, b) for a, b in diffs if not any(lo <= a and b <= hi for lo, hi in allowed)]
     if stray:
         raise SystemExit("final image differs from stock outside the planned ranges: %s"
                          % [(hex(a), hex(b)) for a, b in stray])
 
     odir.mkdir(parents=True, exist_ok=True)
     (odir / "section7.bin").write_bytes(stream)
-    syx = odir / f"{name}.syx"
-    r = run([TOOL, "-i", STOCK_SYX, "-c", "7", odir / "section7.bin", "-V", name, "-o", syx], log)
-    if not any(f'set to "{name}"' in line for line in log):
+    syx = odir / rec.get("syx", f"{name}.syx")
+    version = rec.get("version", name)
+    r = run([TOOL, "-i", STOCK_SYX, "-c", "7", odir / "section7.bin", "-V", version, "-o", syx], log)
+    if not any(f'set to "{version}"' in line for line in log):
         raise SystemExit("the version field was not set (see the tool's output)")
     back = depack7(syx, log)
     if back != stream:

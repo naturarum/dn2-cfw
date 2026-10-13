@@ -1322,3 +1322,26 @@ Owner questions in the note's 6.3 (vault: `Compressor questions.md`).
   neutral SCF 64; FX Mixer page stays stock; old full-band kits let slightly more bass into the detector than stock's
   default SCF 80); crossover ranges OK; ratio 1.00 per band added; old projects open full-band. Reply to dnfw #49
   (census answers + table news + apology for our README's "first") posted with the owner's go.
+
+# 2026-10-13: T5.3, SE01 (the Space Echo for the unit) built (workflow)
+
+Full note: `notes/T5.3-space-echo-on-the-unit.md`. **SE01** (`out/T5.3/SE01.syx`, `760ff3f8...c538`) = GT01's main OS +
+`fx-echo-dn2` (elekloader fork, pushed) + section 7 = FLG1's flanger + the Space Echo in the delay slot (recipe SE01 in
+`tools/dspsplice/build.py`; glue `src/se_glue.c`; `verify_se.py` PASS). Brickcheck ACCEPT 12/12
+(`out/brickcheck/SE01b-2026-10-13`). Built in parallel (DSP, ColdFire), combined, reviewed by two adversarial reviewers,
+then fixed:
+- **Major, fixed:** with three heads and high FDBK the echo held a wet level of 4.24 (stock's runaway: 0.53). A
+  memoryless ceiling on the wet output (linear to 0.5, knee to 0.70 at 0.9) bounds it; below the knee the output is
+  bit-identical to the first build. `make test` 287/287.
+- Knob mapping verified in sharcvm: X arrives as 256 x index; AGE from frame word 0xa18 (low half of DM 0x25cea4),
+  k40 <= 1 = clean (old kits); WID fold with a +-1 dead zone (64 exactly mono).
+- Memory: Space Echo state 4,163,304 B in the stock delay's DDR; code `0x308400-0x311c3e` (L1 block 2).
+- Cost: 355k instructions/block mean (stock 320k, FTD1 341k), worst 391k: est. ~71 % typical, ~78 % worst, above the
+  owner's 2026-10-13 budget in the worst case. Stack 1,672 B of 4,000.
+- **A sixth selcc miscompile:** `t->last[k] = v` after a call, k a parameter, forms the address from the wrong
+  register; the first glue wrote knob values into the tape. Avoided (constant indices; the whole tape checked in
+  verify_se.py); 9-line repro in se_glue.c's header (for the selache report). Also: `se_run` made non-static (selcc
+  inlining deepened the stack past sharcvm's 2,032 B).
+- Minor, open: AGE label doesn't show its value while turning; WID's centre step changes an existing tail by 6 dB;
+  TIME capped below 68 BPM (head 3 must fit); selcc accepts the negative-size typedef slot guards (add a size check
+  to build.py).

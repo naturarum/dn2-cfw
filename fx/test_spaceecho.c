@@ -29,6 +29,21 @@ static float se_sat_ref(float x)
     return (y - 0.14814815f * y * y * y) * 1.0f;
 }
 
+/* the wet ceiling (SE_LIM_* in spaceecho.c), the same float operations as se_run */
+static float se_lim_ref(float v)
+{
+    float x = v;
+    FX_ABS(x);
+    if (x > 0.5f) {
+        x = x - 0.5f;
+        if (x > 0.4f) x = 0.4f;
+        x = (0.5f + x) - 1.25f * x * x;
+        v = v < 0.0f ? -x : x;
+    }
+    return v;
+}
+#define SE_CEIL 0.7000001
+
 /* ---------- TIME: head positions, fractional delay, the clamp to the tape ---------- */
 
 static void test_se_time(void)
@@ -284,8 +299,56 @@ static void test_se_intensity(void)
         tail = rms(yl, N - 48000, N);
         printf("  heads 1+2+3, INT 127 (3 x 110 %%), %s: peak %.3f, RMS of the last second %.3f (held by the saturator)\n",
                m ? "BW 127, AGE 0" : "BW 0 (narrow, resonant), AGE 64", pk, tail);
-        CHECK(pk < 4.5 && tail > 0.05, "runaway: peak %.3f, tail %.3f", pk, tail);
+        CHECK(pk <= SE_CEIL && tail > 0.05, "runaway: peak %.3f, tail %.3f", pk, tail);
         CHECK(fabs(rms(yl, N - 48000, N) - rms(yl, N - 96000, N - 48000)) < 0.5 * tail, "runaway level unsteady");
+    }
+    free(s); free(x); free(yl); free(yr);
+}
+
+/* ---------- the wet ceiling (T5.3 review): the curve, and three heads held running away ---------- */
+
+static void test_se_ceiling(void)
+{
+    SpaceEcho *s = malloc(sizeof *s);
+    const long D = 6000, N = 48000 * 5, H = 48000;
+    float *x = fbuf(N), *yl = fbuf(N), *yr = fbuf(N);
+    long n, same = 0, under = 0, mono_bad = 0, ulp = 0;
+    int p;
+    float prev = 0.0f;
+    printf("space echo wet ceiling: one head, INTENSITY 0, a ramp 0..1.5 into the tape: the echo is lim(sat(input)),\n"
+           "  bit for bit, rises monotonically, and is the plain sat(input) up to the knee 0.5; then MODE 1+2+3 at\n"
+           "  INTENSITY 127 (3 x 110 %%), BW 127, AGE 0, a held tone and 3 s of silence, in MONO, ALT and RND at full width\n");
+    for (n = 0; n < N; n++) x[n] = 1.5f * (float)n / (float)N;
+    se_clean(s, 7, 120, 0);
+    spaceecho_process(s, x, x, yl, yr, (int)N);
+    for (n = D; n < N; n++) {
+        float want = se_lim_ref(se_sat_ref(x[n - D]));
+        if (yl[n] == want && yr[n] == want) same++;
+        if (yl[n] < prev - 1e-6f) mono_bad++;            /* float rounding where the slope is ~0: one ulp */
+        if (yl[n] < prev && yl[n] >= prev - 1e-6f) ulp++;
+        prev = yl[n];
+        if (se_sat_ref(x[n - D]) <= 0.5f && yl[n] != se_sat_ref(x[n - D])) under++;
+    }
+    printf("  ramp: %ld of %ld echo samples = lim(sat(input)); %ld steps down (and %ld of at most 1e-6, rounding where\n"
+           "  the curve is flat); %ld changed below the knee; last %.6f\n",
+           same, N - D, mono_bad, ulp, under, (double)yl[N - 1]);
+    CHECK(same == N - D && mono_bad == 0 && under == 0, "ceiling curve: %ld equal, %ld down, %ld below the knee changed",
+          same, mono_bad, under);
+    CHECK(fabs(yl[N - 1] - 0.7) < 1e-6, "the ceiling is %.7f, not 0.7", (double)yl[N - 1]);
+    for (p = 0; p < 3; p++) {
+        double pk = 0, tail = 0;
+        se_clean(s, 10, 120, 6);
+        spaceecho_set(s, SE_INT, 127);
+        spaceecho_set(s, SE_PAN, (float)p);
+        spaceecho_snap(s);
+        memset(x, 0, sizeof(float) * (size_t)N);
+        for (n = 0; n < H; n++) x[n] = 0.13f * (float)sin(2 * M_PI * 220.0 * n / 48000.0);
+        spaceecho_process(s, x, x, yl, yr, (int)N);
+        for (n = 0; n < N; n++) { if (fabs(yl[n]) > pk) pk = fabs(yl[n]); if (fabs(yr[n]) > pk) pk = fabs(yr[n]); }
+        for (n = N - 48000; n < N; n++) { if (fabs(yl[n]) > tail) tail = fabs(yl[n]); if (fabs(yr[n]) > tail) tail = fabs(yr[n]); }
+        printf("  MODE 1+2+3, INT 127, %s: peak %.5f, peak of the last second %.5f (held; 3.00 / 4.24 / 3.98 before the ceiling)\n",
+               p == 0 ? "MONO" : p == 1 ? "ALT " : "RND ", pk, tail);
+        CHECK(pk <= SE_CEIL && tail > 0.6, "held runaway, PAN %d: peak %.5f, last second %.5f", p, pk, tail);
     }
     free(s); free(x); free(yl); free(yr);
 }
@@ -472,7 +535,9 @@ static void test_se_smoothing(void)
     printf("space echo smoothing: click detector after a knob jump (as for the other effects; TIME bends by design)\n");
     for (i = 0; i < N; i++) {
         double fade = i < 4800 ? 0.5 - 0.5 * cos(M_PI * i / 4800.0) : 1.0;
-        x[i] = (float)(0.3 * fade * sin(2 * M_PI * 220.0 * i / 48000.0));
+        /* 0.1, about the loudest the unit's input reaches the delay slot (0.13): at 0.3 (until T5.3) three
+           heads pass the wet ceiling's knee, whose corners raise the reference window and hide a click */
+        x[i] = (float)(0.1 * fade * sin(2 * M_PI * 220.0 * i / 48000.0));
     }
     for (k = 0; k < sizeof c / sizeof c[0]; k++) {
         se_clean(s, 31, 120, c[k].mode);
@@ -568,8 +633,8 @@ static void test_se_extremes(void)
             if (fabs(yr[j]) > peak) peak = fabs(yr[j]);
         }
     }
-    printf("  peak output %.2f (three heads, hard-panned at +3 dB, each read at most about 1.3 of the saturated tape)\n", peak);
-    CHECK(peak < 8.0, "output not bounded: %.2f", peak);
+    printf("  peak output %.4f (the wet ceiling 0.7; 3.54 here before it)\n", peak);
+    CHECK(peak <= SE_CEIL, "output above the ceiling: %.4f", peak);
     CHECK(bad == 0, "%ld NaN/Inf/denormal output samples", bad);
     spaceecho_set(s, SE_INT, 40.0f);
     spaceecho_set(s, SE_AGE, 0.0f);
@@ -610,6 +675,7 @@ static void test_spaceecho(void)
     test_se_transparent();
     test_se_band();
     test_se_intensity();
+    test_se_ceiling();
     test_se_pan();
     test_se_age();
     test_se_smoothing();

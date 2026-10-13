@@ -30,7 +30,9 @@
  * - a band filter (resonant high-pass and low-pass around CENTER, BW wide, the
  *   resonance rising as the band narrows), bypassed exactly at BW 127;
  * - a mixing matrix for the three PAN modes (input, feedback, each head's
- *   output), every coefficient glided, so MODE, PAN and WIDTH never click.
+ *   output), every coefficient glided, so MODE, PAN and WIDTH never click;
+ * - a ceiling on the wet output (T5.3 review): untouched up to 0.5, at most
+ *   0.7, so a runaway of three heads stays near the stock delay's level.
  */
 #include "spaceecho.h"
 
@@ -86,6 +88,19 @@
 
 /* ---- random pan ---- */
 #define SE_PSLEW    0.0416667f   /* position change per control block: a full swing in 32 ms */
+
+/* ---- the wet ceiling (T5.3 review, 2026-10-13) ----
+   The heads are summed at unity and ALT/RND put a head at up to sqrt 2 on its side, so with the tape
+   held at +-1 by the saturator the wet output reached 3 sqrt 2 = 4.24 when three heads ran away, 18 dB
+   over the stock delay's own runaway (0.53 in sharcvm). A memoryless limiter on the wet output only
+   (the loop, the tape and the feedback sums are untouched): exactly linear up to SE_LIM_T, then the
+   quadratic knee y = T + u - u^2 / (4 (C - T)), u = |x| - T, which reaches SE_LIM_C with zero slope at
+   |x| = 2 C - T = 0.9, and flat beyond. On the unit a full-scale input reaches the delay slot at about
+   0.13, so every echo short of a runaway stays below the knee and is unchanged bit for bit. */
+#define SE_LIM_T    0.5f         /* the knee: below this the output is untouched */
+#define SE_LIM_C    0.7f         /* the ceiling, +2.5 dB over the stock delay's runaway */
+#define SE_LIM_U    0.4f         /* 2 (C - T): the knee's width */
+#define SE_LIM_Q    1.25f        /* 1 / (4 (C - T)) */
 
 float spaceecho_time_samples(float knob, float bpm)
 {
@@ -670,8 +685,14 @@ static void se_crackle_plan(SpaceEcho *s, int n)
      the filter alone, without the mix;
    - the top-end loss runs only for AGE > 0; hiss and crackle as in tapedelay.c;
    - the feedback path is skipped at INTENSITY 0; the gain ramps and the wow/flutter
-     offsets run only while they move. */
-static void se_run(SpaceEcho *s, const float *inL, const float *inR, float *outL, float *outR, int n)
+     offsets run only while they move.
+   Not static on purpose (T5.3): selcc inlines a static void function that is called once and
+   calls nothing, and inlined here its 209-word frame sits under se_control's call chain, which
+   took the delay slot's deepest stack point from 1,660 to 2,092 bytes below the DSP block
+   handler (the Audio Task's whole stack is 4,000 bytes; FTD1 uses 1,516). The arithmetic is
+   the same either way. */
+void se_run(SpaceEcho *s, const float *inL, const float *inR, float *outL, float *outR, int n);
+void se_run(SpaceEcho *s, const float *inL, const float *inR, float *outL, float *outR, int n)
 {
     float *ring = s->ring;
     float c[SE_NMIX], ci[SE_NMIX];
@@ -828,6 +849,26 @@ static void se_run(SpaceEcho *s, const float *inL, const float *inR, float *outL
             FX_SVF(c1a, c1b, ca1, ca2, ca3, impR, lpo, bpo); x = ck * bpo; orr += x; sb += x;
             impL = 0.0f;
             impR = 0.0f;
+        }
+
+        /* the wet ceiling (SE_LIM_*): untouched up to the knee, then bent onto the ceiling */
+        x = ol;
+        FX_ABS(x);
+        if (x > SE_LIM_T) {
+            x = x - SE_LIM_T;
+            if (x > SE_LIM_U) x = SE_LIM_U;
+            x = (SE_LIM_T + x) - SE_LIM_Q * x * x;
+            if (ol < 0.0f) ol = -x;
+            else ol = x;
+        }
+        x = orr;
+        FX_ABS(x);
+        if (x > SE_LIM_T) {
+            x = x - SE_LIM_T;
+            if (x > SE_LIM_U) x = SE_LIM_U;
+            x = (SE_LIM_T + x) - SE_LIM_Q * x * x;
+            if (orr < 0.0f) orr = -x;
+            else orr = x;
         }
 
         FX_UNDENORM(ol);
