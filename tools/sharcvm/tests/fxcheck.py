@@ -172,7 +172,7 @@ def build(src, profile=False, annot=False):
     flags = ["-proc", "ADSP-21569", "-char-size-8", "-O1", f"-I{src}", f"-I{ROOT / 'vendor/selache/libsel/include'}"]
     objs = []
     for name, path, extra in (("fxdrv", HERE.parent / "harness/fxdrv.c", ["-D__SHARC_HARNESS__"]),
-                              ("tapedelay", src / "tapedelay.c", []), ("mbcomp", src / "mbcomp.c", []),
+                              ("tapedelay", src / "tapedelay.c", []), ("mbcomp", src / "mbcomp.c", ["-DMB_LAW_TABLES"]),
                               ("flanger", src / "flanger.c", []), ("spaceecho", src / "spaceecho.c", [])):
         subprocess.check_call([str(S / "selcc"), *flags, *extra, "-S", "-o", str(OUT / f"{name}.s"), str(path)])
         if profile and name != "fxdrv":

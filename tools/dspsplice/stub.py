@@ -97,8 +97,10 @@ def gen(name, steps, save_base):
     return "\n".join(L) + "\n"
 
 
-def module(stubs, save_base):
-    out = [".SECTION/SW seg_swco;", ""]
+def module(stubs, save_base, section="seg_swco"):
+    """the stubs as one assembly module; section names the code segment (build.py's LDF puts seg_swco in
+    L1 block 1 and seg_t38c3 in the third code region, T6.3 CMP0)"""
+    out = [f".SECTION/SW {section};", ""]
     for name, steps in stubs:
         out.append(gen(name, steps, save_base))
     out.append(".ENDSEG;")

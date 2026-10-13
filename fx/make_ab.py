@@ -44,7 +44,7 @@ def rms_db(path):
     return 10 * math.log10(acc / cnt)
 
 
-def band_levels(out, files, xlo=38, xhi=90):
+def band_levels(out, files, xlo=68, xhi=44):
     """RMS of the three compressor bands (dB) of each file, split by the compressor's own crossover
     (fxrender -bands); cached by path, size and mtime in OUTDIR/band_cache.json."""
     exe = os.path.join(out, "bin", "fxrender")

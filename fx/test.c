@@ -32,7 +32,7 @@ static float *fbuf(long n) { float *p = calloc((size_t)n, sizeof(float)); if (!p
 static void mb_neutral(MBComp *s)
 {
     int b;
-    mbcomp_init(s);
+    mbcomp_init(s, NULL);
     for (b = 0; b < 3; b++) {
         mbcomp_set(s, MB_P(b, MB_RAT), 0.0f);
         mbcomp_set(s, MB_P(b, MB_MUP), 0.0f);
@@ -93,63 +93,83 @@ static double click_ratio(const float *y, long a, long b, long ra, long rb)
 }
 
 /* ============================== compressor ============================== */
+/* T6.3 CMP0 (notes/T6.4 4.3): bands of the stock design on the stock tables, the stock MIX one-poles with
+   the raw input as the dry at MIX 0, the wet clip, the guard. These run on the law tables
+   (mbcomp_law_tables); tools/dspsplice/verify_cmp.py runs the same code on the image's own tables. */
+
+/* run a whole buffer through in 32-sample calls, keeping each band's signal (the work buffers) */
+static void mb_run_bands(MBComp *s, const float *x, long N, float *yl, float *bands[3])
+{
+    long i;
+    float tr[32];
+    for (i = 0; i < N; i += 32) {
+        int n = (int)(N - i < 32 ? N - i : 32);
+        int j;
+        mbcomp_process(s, x + i, x + i, NULL, NULL, yl + i, tr, n);
+        for (j = 0; j < n; j++) {
+            bands[0][i + j] = s->buf_lo[0][j];
+            bands[1][i + j] = s->buf_md[0][j];
+            bands[2][i + j] = s->buf_hi[0][j];
+        }
+    }
+}
 
 /* ---------- crossover: bands sum flat, LR4 -6 dB points ---------- */
 
 static void test_crossover(void)
 {
-    static const float pairs[][2] = { { 38, 90 }, { 0, 127 }, { 60, 64 }, { 90, 38 }, { 64, 64 }, { 20, 110 } };
+    static const float pairs[][2] = { { 68, 44 }, { 0, 127 }, { 127, 0 }, { 30, 90 }, { 100, 10 }, { 127, 127 } };
     const long N = 65536;
-    float *x = fbuf(N), *yl = fbuf(N), *yr = fbuf(N);
+    float *x = fbuf(N), *yl = fbuf(N), *b0 = fbuf(N), *b1 = fbuf(N), *b2 = fbuf(N);
+    float *bands[3];
     MBComp *s = malloc(sizeof *s);
     size_t p;
-    printf("compressor crossover: low+mid+high sums to flat magnitude; each LR4 band is -6.02 dB at its crossover\n");
-    x[0] = 1.0f;
+    bands[0] = b0; bands[1] = b1; bands[2] = b2;
+    printf("compressor crossover: low+mid+high sums to flat magnitude (all bands 1:1, MIX 127); each LR4 band\n"
+           "  is -6.02 dB at its crossover (XLO 30 Hz..1 kHz, XHI 1..16 kHz)\n");
+    x[0] = 0.25f;
     for (p = 0; p < sizeof pairs / sizeof pairs[0]; p++) {
-        double worst = 0, f;
-        int k, b;
+        double worst = 0, f, pk = 0, flo, fhi, m;
+        int k;
+        long i;
         mb_neutral(s);
         mbcomp_set(s, MB_XLO, pairs[p][0]);
         mbcomp_set(s, MB_XHI, pairs[p][1]);
         mbcomp_snap(s);
-        mbcomp_process(s, x, x, NULL, NULL, yl, yr, (int)N);
+        mb_run_bands(s, x, N, yl, bands);
+        for (i = 0; i < N; i++) { yl[i] *= 4.0f; if (fabs(yl[i]) > pk) pk = fabs(yl[i]); }
         for (k = 0; k <= 120; k++) {
             f = 20.0 * pow(1000.0, k / 120.0);
             if (f > 23000) break;
             f = fabs(mag_db(yl, N, f));
             if (f > worst) worst = f;
         }
-        printf("  XLO %3.0f (%6.0f Hz) XHI %3.0f (%6.0f Hz): max |sum| deviation %.4f dB\n", pairs[p][0],
-               mbcomp_xover_hz(pairs[p][0]), pairs[p][1], mbcomp_xover_hz(pairs[p][1]), worst);
+        flo = mbcomp_xlo_hz(pairs[p][0]);
+        fhi = mbcomp_xhi_hz(pairs[p][1]);
+        printf("  XLO %3.0f (%6.0f Hz) XHI %3.0f (%6.0f Hz): max |sum| deviation %.4f dB, impulse peak %.3f\n",
+               pairs[p][0], flo, pairs[p][1], fhi, worst, pk);
         CHECK(worst < 0.01, "sum not flat: %.4f dB", worst);
-        if (fabs(pairs[p][0] - pairs[p][1]) >= 40) {
-            float lo = pairs[p][0] < pairs[p][1] ? pairs[p][0] : pairs[p][1];
-            float hi = pairs[p][0] < pairs[p][1] ? pairs[p][1] : pairs[p][0];
-            double flo = mbcomp_xover_hz(lo), fhi = mbcomp_xover_hz(hi), m;
-            for (b = 1; b <= 3; b++) {
-                MBComp *t = malloc(sizeof *t);
-                mb_neutral(t);
-                mbcomp_set(t, MB_XLO, pairs[p][0]);
-                mbcomp_set(t, MB_XHI, pairs[p][1]);
-                mbcomp_set(t, MB_LSTN, (float)b);
-                mbcomp_snap(t);
-                mbcomp_process(t, x, x, NULL, NULL, yl, yr, (int)N);
-                if (b == 1 || b == 2) {
-                    m = mag_db(yl, N, b == 1 ? flo : fhi);
-                    CHECK(fabs(m + 6.0206) < 0.05, "band %d at %.0f Hz: %.3f dB, expected -6.02", b, b == 1 ? flo : fhi, m);
-                }
-                if (b == 2 || b == 3) {
-                    m = mag_db(yl, N, b == 2 ? flo : fhi);
-                    CHECK(fabs(m + 6.0206) < 0.05, "band %d at %.0f Hz: %.3f dB, expected -6.02", b, b == 2 ? flo : fhi, m);
-                }
-                free(t);
-            }
+        CHECK(pk < 4.0, "the band sum clipped (peak %.3f of the 0.25 impulse x 4)", pk);
+        if (fhi / flo > 4.0) {
+            for (i = 0; i < N; i++) { b0[i] *= 4.0f; b1[i] *= 4.0f; b2[i] *= 4.0f; }
+            m = mag_db(b0, N, flo);
+            CHECK(fabs(m + 6.0206) < 0.05, "low band at %.0f Hz: %.3f dB, expected -6.02", flo, m);
+            m = mag_db(b1, N, flo);
+            CHECK(fabs(m + 6.0206) < 0.05, "mid band at %.0f Hz: %.3f dB, expected -6.02", flo, m);
+            m = mag_db(b1, N, fhi);
+            CHECK(fabs(m + 6.0206) < 0.05, "mid band at %.0f Hz: %.3f dB, expected -6.02", fhi, m);
+            m = mag_db(b2, N, fhi);
+            CHECK(fabs(m + 6.0206) < 0.05, "high band at %.0f Hz: %.3f dB, expected -6.02", fhi, m);
         }
     }
-    free(s); free(x); free(yl); free(yr);
+    CHECK(fabs(mbcomp_xlo_hz(68) - 196.2) < 0.5 && fabs(mbcomp_xhi_hz(44) - 2614.6) < 3.0,
+          "defaults %.1f Hz / %.1f Hz, planned 196 Hz / 2.61 kHz", mbcomp_xlo_hz(68), mbcomp_xhi_hz(44));
+    CHECK(fabs(mbcomp_xlo_hz(0) - 30.0) < 0.01 && fabs(mbcomp_xlo_hz(127) - 1000.0) < 0.2 &&
+          fabs(mbcomp_xhi_hz(0) - 1000.0) < 0.2 && fabs(mbcomp_xhi_hz(127) - 16000.0) < 3.0, "crossover ranges");
+    free(s); free(x); free(yl); free(b0); free(b1); free(b2);
 }
 
-/* ---------- the stock laws (notes/T3.11 12.2) ---------- */
+/* ---------- the stock laws, and the stock tables read at trunc(knob) ---------- */
 
 static void test_comp_laws(void)
 {
@@ -158,11 +178,13 @@ static void test_comp_laws(void)
         { 0, 0.1000, 10.000 }, { 1, 0.1062, 10.011 }, { 32, 6.4426, 73.419 }, { 64, 25.4708, 368.687 },
         { 96, 57.1763, 995.788 }, { 127, 99.9968, 2008.756 } };
     static const struct { int v; double db; } mt[] = {
-        { 0, -400 }, { 1, -92.4 }, { 7, -45.75 }, { 8, -37.50 }, { 16, -33.00 }, { 32, -24.00 }, { 48, -15.00 },
+        { 1, -92.4 }, { 7, -45.75 }, { 8, -37.50 }, { 16, -33.00 }, { 32, -24.00 }, { 48, -15.00 },
         { 63, -6.56 }, { 64, -6.00 }, { 96, -3.00 }, { 126, -0.19 }, { 127, 0.0 } };
     static const float rats[9] = { 1, 1.5f, 2, 3, 4, 6, 8, 16, 20 };
+    static float tab[MB_TAB_FLOATS];
     double worst_a = 0, worst_r = 0, worst_m = 0;
     size_t i;
+    int k, b, bad;
     MBComp *s = malloc(sizeof *s);
     printf("compressor knob laws vs the stock tables (ATK, REL time constants; MIX gains; ratios; threshold; makeup)\n");
     for (i = 0; i < sizeof tt / sizeof tt[0]; i++) {
@@ -171,24 +193,57 @@ static void test_comp_laws(void)
         if (ea > worst_a) worst_a = ea;
         if (er > worst_r) worst_r = er;
     }
+    mbcomp_law_tables(tab);
     for (i = 0; i < sizeof mt / sizeof mt[0]; i++) {
-        double g = mt[i].v ? mbcomp_mix_db((float)mt[i].v) : 20 * log10(mb_mix_gain(0.0f) + 1e-20);
-        double e = mt[i].v ? fabs(g - mt[i].db) : (g < -300 ? 0 : 99);
+        double e = fabs(20 * log10(tab[MB_TAB_MIX + mt[i].v]) - mt[i].db);
         if (e > worst_m) worst_m = e;
     }
-    printf("  ATK law: max %.2f %% off the table; REL law: max %.2f %%; MIX law: max %.2f dB off\n",
-           100 * worst_a, 100 * worst_r, worst_m);
+    printf("  ATK law: max %.3f %% off the table; REL law: max %.3f %%; MIX law: max %.2f dB off; MIX T[0] = %g\n",
+           100 * worst_a, 100 * worst_r, worst_m, tab[MB_TAB_MIX]);
     CHECK(worst_a < 0.005, "ATK law %.3f %% off", 100 * worst_a);
     CHECK(worst_r < 0.01, "REL law %.3f %% off", 100 * worst_r);
     CHECK(worst_m < 0.2, "MIX law %.2f dB off", worst_m);   /* the v = 1, 2 references are 6-decimal prints */
-    for (i = 0; i < 9; i++) CHECK(mbcomp_ratio((float)i) == rats[i], "RAT %d -> %g", (int)i, mbcomp_ratio((float)i));
-    mbcomp_init(s);
+    CHECK(tab[MB_TAB_MIX] == 0.0f && tab[MB_TAB_MIX + 127] == 1.0f, "MIX table ends %g %g", tab[MB_TAB_MIX], tab[MB_TAB_MIX + 127]);
+    /* the neutral side-chain filter: high-pass, -3 dB at 20 Hz */
+    {
+        double T = tab[MB_TAB_SCF + MB_SCF_NEUTRAL], b0c = 0.5 - 0.5 * T, w = 2 * M_PI * 20.0 / 48000.0;
+        double re = b0c * (1 - cos(w)), im = b0c * sin(w), dre = 1 + T * cos(w), dim = -T * sin(w);
+        double g = 10 * log10((re * re + im * im) / (dre * dre + dim * dim));
+        printf("  side-chain filter at SCF 64: T = %.7f, %.3f dB at 20 Hz\n", T, g);
+        CHECK(fabs(g + 3.01) < 0.05, "SCF 64 high-pass is %.3f dB at 20 Hz", g);
+    }
+    mbcomp_init(s, NULL);
+    for (i = 0; i < 9; i++) CHECK(mbcomp_ratio(s, (float)i) == rats[i] || fabs(mbcomp_ratio(s, (float)i) / rats[i] - 1) < 1e-6,
+                                  "RAT %d -> %g", (int)i, mbcomp_ratio(s, (float)i));
     mbcomp_set(s, MB_P(1, MB_THR), 0); mbcomp_set(s, MB_P(1, MB_MUP), 127); mbcomp_snap(s);
-    CHECK(fabs(s->band[1].thr + 60.0) < 1e-3, "THR 0 -> %.3f dB", s->band[1].thr);
-    CHECK(fabs(s->band[1].mk - 24.0824) < 1e-3, "MUP 127 -> %.3f dB", s->band[1].mk);
+    CHECK(fabs(s->band[1].thr * FX_DB_PER_LOG2 + 60.0) < 1e-3, "THR 0 -> %.3f dB", s->band[1].thr * FX_DB_PER_LOG2);
+    CHECK(fabs(s->band[1].mk * FX_DB_PER_LOG2 - 24.0824) < 1e-3, "MUP 127 -> %.3f dB", s->band[1].mk * FX_DB_PER_LOG2);
     mbcomp_set(s, MB_P(1, MB_THR), 127); mbcomp_set(s, MB_P(1, MB_MUP), 64); mbcomp_snap(s);
-    CHECK(fabs(s->band[1].thr) < 1e-3, "THR 127 -> %.3f dB", s->band[1].thr);
-    CHECK(fabs(s->band[1].mk - 24.0824 * 64 / 127) < 1e-3, "MUP 64 -> %.3f dB", s->band[1].mk);
+    CHECK(fabs(s->band[1].thr * FX_DB_PER_LOG2) < 1e-3, "THR 127 -> %.3f dB", s->band[1].thr * FX_DB_PER_LOG2);
+    CHECK(fabs(s->band[1].mk * FX_DB_PER_LOG2 - 24.0824 * 64 / 127) < 1e-3, "MUP 64 -> %.3f dB", s->band[1].mk * FX_DB_PER_LOG2);
+    /* the tables are read in place at trunc(knob) (stock: idx = trunc(127 p)): a table of distinct values */
+    for (k = 0; k < MB_TAB_FLOATS; k++) tab[k] = 0.25f + (float)k / 4096.0f;
+    mbcomp_init(s, tab);
+    bad = 0;
+    for (k = 0; k < 128; k++)
+        for (b = 0; b < 3; b++) {
+            float v = (float)k + (b == 1 ? 0.5f : (b == 2 ? 0.999f : 0.0f));
+            mbcomp_set(s, MB_P(b, MB_ATK), v);
+            mbcomp_set(s, MB_P(b, MB_REL), v);
+            mbcomp_set(s, MB_MIX, v);
+            mbcomp_snap(s);
+            if (k == 127 && b) continue;
+            if (s->band[b].ca != tab[MB_TAB_ATK + k] || s->band[b].cr != tab[MB_TAB_REL + k]) bad++;
+            if (s->band[b].ca1 != 1.0f - tab[MB_TAB_ATK + k] || s->band[b].cr1 != 1.0f - tab[MB_TAB_REL + k]) bad++;
+            if (s->t_mw != tab[MB_TAB_MIX + k] || s->t_md != tab[MB_TAB_MIX + 127 - k] || s->mix0 != (k == 0)) bad++;
+        }
+    for (k = 0; k <= 8; k++) {
+        mbcomp_set(s, MB_P(2, MB_RAT), (float)k);
+        mbcomp_snap(s);
+        if (s->band[2].rinv != (k ? tab[MB_TAB_RINV + k - 1] : 1.0f) || s->band[2].on != (k > 0)) bad++;
+    }
+    printf("  ATK/REL/MIX/RAT read from the given table at trunc(knob) (fractions .5, .999 too): %d mismatches\n", bad);
+    CHECK(bad == 0, "table reads: %d mismatches", bad);
     free(s);
 }
 
@@ -201,21 +256,22 @@ static void test_static_curve(void)
     double worst = 0;
     size_t a;
     int r, i;
-    printf("compressor static curve: one band's gain vs the hard-knee formula, 4 thresholds x 9 ratios x 93 levels\n");
+    printf("compressor static curve: one band's gain vs the hard-knee formula, 4 thresholds x 9 ratio steps x 93 levels\n");
     for (a = 0; a < 4; a++)
         for (r = 0; r <= 8; r++) {
             MbBand bd;
-            mbcomp_init(s);
+            mbcomp_init(s, NULL);
             mbcomp_set(s, MB_P(1, MB_THR), thr_k[a]);
             mbcomp_set(s, MB_P(1, MB_RAT), (float)r);
+            mbcomp_set(s, MB_P(1, MB_MUP), 0);
             mbcomp_snap(s);
             bd = s->band[1];
-            bd.ca = 0.0f; bd.cr = 0.0f; bd.mk = 0.0f; bd.mk_i = 0.0f;
+            bd.ca = 0.0f; bd.ca1 = 1.0f; bd.cr = 0.0f; bd.cr1 = 1.0f; bd.mk = 0.0f; bd.mk_step = 0.0f;
             for (i = -80; i <= 12; i++) {
-                double lev = pow(10.0, i / 20.0), g, e, over = i - bd.thr;
+                double lev = pow(10.0, i / 20.0), g, e, thr = bd.thr * FX_DB_PER_LOG2, over = i - thr;
                 bd.y1 = bd.y2 = 0.0f;
                 g = 20.0 * log10(mb_gain(&bd, (float)lev));
-                e = over > 0 ? (1.0 / mbcomp_ratio((float)r) - 1.0) * over : 0.0;
+                e = over > 0 ? (1.0 / mbcomp_ratio(s, (float)r) - 1.0) * over : 0.0;
                 if (fabs(g - e) > worst) worst = fabs(g - e);
             }
         }
@@ -232,21 +288,22 @@ static void test_static_curve(void)
         printf("  whole effect, 1 kHz in the mid band (XLO 100 Hz, XHI 10 kHz), THR -30 dB, 4:1 and 20:1:\n");
         for (b = 0; b < 2; b++)
             for (l = 0; l < 5; l++) {
-                double A = pow(10.0, lev[l] / 20.0), pk = 0, R, e, got;
+                double A = pow(10.0, lev[l] / 20.0), pk = 0, R, e, got, thr;
                 long n;
                 mb_neutral(s);
                 mbcomp_set(s, MB_P(1, MB_THR), 63.5f);
                 mbcomp_set(s, MB_P(1, MB_RAT), b ? 8.0f : 4.0f);
                 mbcomp_set(s, MB_P(1, MB_ATK), 0);
                 mbcomp_set(s, MB_P(1, MB_REL), 100);
-                mbcomp_set(s, MB_XLO, 21.3f);
-                mbcomp_set(s, MB_XHI, 109.0f);
+                mbcomp_set(s, MB_XLO, 46.2f);
+                mbcomp_set(s, MB_XHI, 106.0f);
                 mbcomp_snap(s);
                 for (n = 0; n < N; n++) xl[n] = (float)(A * sin(2 * M_PI * 1000.0 * n / 48000.0));
                 mbcomp_process(s, xl, xl, NULL, NULL, yl, yr, (int)N);
                 for (n = N - 4800; n < N; n++) if (fabs(yl[n]) > pk) pk = fabs(yl[n]);
-                R = mbcomp_ratio(b ? 8.0f : 4.0f);
-                e = lev[l] > s->band[1].thr ? s->band[1].thr + (lev[l] - s->band[1].thr) / R : lev[l];
+                R = mbcomp_ratio(s, b ? 8.0f : 4.0f);
+                thr = s->band[1].thr * FX_DB_PER_LOG2;
+                e = lev[l] > thr ? thr + (lev[l] - thr) / R : lev[l];
                 got = 20 * log10(pk);
                 printf("    in %5.1f dB, ratio %5.2f: out %7.2f dB, expected %7.2f\n", lev[l], R, got, e);
                 if (fabs(got - e) > sworst) sworst = fabs(got - e);
@@ -268,32 +325,28 @@ static void test_times(void)
            "  one-pole followed by the attack one-pole (stock), expected from a double-precision model of the laws\n");
     for (i = 0; i < 5; i++) {
         MbBand bd;
-        double ta = (0.1 + 99.9 * pow(k[i] / 127.0, 2)) * 48.0, tr = (10 + 1990 * pow(k[i] / 127.0, 2.5)) * 48.0;
-        double ca = exp(-1.0 / ta), cr = exp(-1.0 / tr), gc = (1.0 / 20.0 - 1.0) * 30.0, y1, y2;
+        double ta = (0.1 + 99.9 * pow(k[i] / 127.0, 2)) * 48.0, tr;
+        double ca, cr, gc = (1.0 / 20.0 - 1.0) * 30.0, y1, y2;
         long n, m;
-        mbcomp_init(s);
+        mbcomp_init(s, NULL);
         mbcomp_set(s, MB_P(0, MB_THR), 63.5f);  /* -30 dB */
         mbcomp_set(s, MB_P(0, MB_RAT), 8);
         mbcomp_set(s, MB_P(0, MB_ATK), k[i]);
         mbcomp_set(s, MB_P(0, MB_REL), 127 - k[i]);
         mbcomp_snap(s);
         bd = s->band[0];
-        bd.mk = 0; bd.mk_i = 0; bd.y1 = bd.y2 = 0;
-        /* the model runs on the coefficients as the C holds them (float): near 1 a float
-           coefficient is only good to about 0.6 %% of the time constant at 2 s, as in the
-           stock tables (the REL 127 entry is 2009 ms); the laws are checked above */
+        bd.mk = 0; bd.mk_step = 0; bd.y1 = bd.y2 = 0;
         ca = bd.ca;
         cr = bd.cr;
         tr = (10 + 1990 * pow((127 - k[i]) / 127.0, 2.5)) * 48.0;
         for (n = 1; n < 2000000; n++) {
             mb_gain(&bd, 1.0f);
-            if (bd.y2 <= (1.0 - exp(-1.0)) * gc) break;
+            if (bd.y2 * FX_DB_PER_LOG2 <= (1.0 - exp(-1.0)) * gc) break;
         }
         printf("  ATK %3.0f: %8ld samples, expected %10.1f (%.2f ms)\n", k[i], n, ta, ta / 48.0);
         CHECK(fabs(n - ta) <= 1.0 + 0.003 * ta, "attack %ld vs %.1f", n, ta);
         for (n = 0; n < 4000000; n++) mb_gain(&bd, 1.0f);   /* settle */
-        /* the model: y1 = cr y1 (no new reduction), y2 follows with ca */
-        y1 = y2 = bd.y2;
+        y1 = y2 = bd.y2 * FX_DB_PER_LOG2;
         for (m = 1; m < 8000000; m++) {
             y1 = cr * y1;
             y2 = ca * y2 + (1 - ca) * y1;
@@ -301,7 +354,7 @@ static void test_times(void)
         }
         for (n = 1; n < 8000000; n++) {
             mb_gain(&bd, 1e-4f);
-            if (bd.y2 >= exp(-1.0) * gc) break;
+            if (bd.y2 * FX_DB_PER_LOG2 >= exp(-1.0) * gc) break;
         }
         printf("  REL %3.0f (with ATK %3.0f): %8ld samples, expected %8ld (%.1f ms; the law's tau %.1f ms, the float coefficient's %.1f ms)\n",
                127 - k[i], k[i], n, m, m / 48.0, tr / 48.0, -1.0 / log((double)bd.cr) / 48.0);
@@ -325,7 +378,7 @@ static void test_sidechain(void)
         x[i] = (float)(0.1 * sin(2 * M_PI * 80.0 * i / 48000.0) + 0.1 * sin(2 * M_PI * 1000.0 * i / 48000.0));
         k[i] = (i >= 48000 && i < 72000) ? (float)(0.8 * sin(2 * M_PI * 60.0 * i / 48000.0)) : 0.0f;
     }
-    mbcomp_init(s);
+    mbcomp_init(s, NULL);
     mbcomp_set(s, MB_P(0, MB_THR), 85);   /* -20 dB */
     mbcomp_set(s, MB_P(0, MB_RAT), 8);
     mbcomp_set(s, MB_P(1, MB_RAT), 0);
@@ -339,7 +392,208 @@ static void test_sidechain(void)
     }
     printf("  low-band gain reduction: %.1f dB before the key, %.1f dB during it; mid %.1f dB\n", grq, grk, grm);
     CHECK(grq > -0.5 && grk < -10.0 && grm == 0.0, "ducking: %.1f / %.1f dB, mid %.1f", grq, grk, grm);
+    /* SCS 1 without a key, and SCS 0 with one: each band detects itself */
+    {
+        MBComp *t = malloc(sizeof *t);
+        float *zl = fbuf(N), *zr = fbuf(N);
+        mbcomp_init(s, NULL);
+        mbcomp_set(s, MB_P(0, MB_THR), 85); mbcomp_set(s, MB_P(0, MB_RAT), 8);
+        mbcomp_set(s, MB_P(1, MB_RAT), 0); mbcomp_set(s, MB_P(2, MB_RAT), 0); mbcomp_set(s, MB_SCS, 0);
+        mbcomp_snap(s);
+        memcpy(t, s, sizeof *t);
+        mbcomp_set(t, MB_SCS, 1);
+        for (i = 0; i < N; i += 32) {
+            mbcomp_process(s, x + i, x + i, k + i, k + i, yl + i, yr + i, 32);
+            mbcomp_process(t, x + i, x + i, NULL, NULL, zl + i, zr + i, 32);
+        }
+        CHECK(!memcmp(yl, zl, sizeof(float) * (size_t)N), "SCS 0 with a key != SCS 1 without one (both self)");
+        free(t); free(zl); free(zr);
+    }
     free(x); free(k); free(yl); free(yr); free(s);
+}
+
+/* ---------- MIX: the stock one-poles; MIX 0 is the raw input exactly ---------- */
+
+static void test_mix(void)
+{
+    const long N = 48000;
+    float *x = fbuf(N), *xr = fbuf(N), *yl = fbuf(N), *yr = fbuf(N);
+    MBComp *s = malloc(sizeof *s);
+    long i, bad = 0;
+    uint32_t r = 3u;
+    float md, td;
+    printf("compressor MIX: index 0 = the raw input (bit for bit, heavy settings), the stock dry/wet one-poles\n");
+    for (i = 0; i < N; i++) { x[i] = 0.7f * fx_rands(&r); xr[i] = 0.5f * fx_rands(&r); }
+    mb_neutral(s);
+    for (i = 0; i < 3; i++) {
+        mbcomp_set(s, MB_P(i, MB_THR), 0); mbcomp_set(s, MB_P(i, MB_RAT), 8);
+        mbcomp_set(s, MB_P(i, MB_ATK), 0); mbcomp_set(s, MB_P(i, MB_REL), 0); mbcomp_set(s, MB_P(i, MB_MUP), 127);
+    }
+    mbcomp_set(s, MB_MIX, 0.9f);          /* index 0 */
+    mbcomp_snap(s);
+    mbcomp_process(s, x, xr, NULL, NULL, yl, yr, (int)N);
+    for (i = 0; i < N; i++) if (yl[i] != x[i] || yr[i] != xr[i]) bad++;
+    printf("  MIX 0 (snapped, 20:1 at -60 dB, +24 dB makeup): %ld of %ld samples differ from the input; GR %.1f dB\n",
+           bad, 2 * N, mbcomp_gr_db(s, 1));
+    CHECK(bad == 0, "MIX 0 is not the raw input: %ld samples", bad);
+    CHECK(mbcomp_gr_db(s, 1) < -10.0, "the detector does not run at MIX 0 (meter %.1f dB)", mbcomp_gr_db(s, 1));
+    /* the stock cold start: both gains from 0 (the stock init leaves the ramps at the MIX default 0.0); the dry
+       gain then follows cur = 1 + 0.995 (cur - 1) per sample, each value used before the update */
+    s->md = 0.0f;
+    s->mw = 0.0f;
+    mbcomp_process(s, x, xr, NULL, NULL, yl, yr, (int)N);
+    md = 0.0f;
+    td = 1.0f;
+    bad = 0;
+    for (i = 0; i < N; i++) {
+        if (yl[i] != md * x[i] || yr[i] != md * xr[i]) bad++;
+        md = td + 0.995f * (md - td);
+    }
+    printf("  MIX 0 from a cold start: %ld samples off the stock one-pole model; dry gain settles at %.8f (%08x)\n",
+           bad, s->md, fx_f2i(s->md));
+    CHECK(bad == 0 && fx_f2i(s->md) == 0x3f7fff9cu, "cold-start MIX 0: %ld off, gain %08x (stock 0x3f7fff9c)", bad, fx_f2i(s->md));
+    /* MIX 127 snapped: the wet alone; MIX 64: T[64] x wet + T[63] x dry with the dry the band sum */
+    {
+        float *w = fbuf(N), *wr = fbuf(N);
+        double e = 0, ref = 0;
+        for (i = 0; i < N; i++) { x[i] *= 0.4f; xr[i] *= 0.4f; }
+        mbcomp_set(s, MB_MIX, 64); mbcomp_snap(s);
+        for (i = 0; i < 3; i++) mbcomp_set(s, MB_P(i, MB_RAT), 0);
+        mbcomp_set(s, MB_P(0, MB_MUP), 0); mbcomp_set(s, MB_P(1, MB_MUP), 0); mbcomp_set(s, MB_P(2, MB_MUP), 0);
+        mbcomp_snap(s);
+        mb_clear(s);
+        mbcomp_process(s, x, xr, NULL, NULL, yl, yr, (int)N);
+        /* at 1:1 without makeup the wet is the band sum (clipped at 1) and the dry the same sum: out = (T64 + T63) x sum */
+        mb_neutral(s); mbcomp_snap(s); mb_clear(s);
+        mbcomp_process(s, x, xr, NULL, NULL, w, wr, (int)N);
+        for (i = 0; i < N; i++) {
+            double want = (double)w[i] * (s->tab[MB_TAB_MIX + 64] + s->tab[MB_TAB_MIX + 63]);
+            e += (yl[i] - want) * (yl[i] - want); ref += want * want;
+        }
+        printf("  MIX 64 at 1:1: out = (T[64] + T[63]) x band sum to %.1f dB (T sum %.2f dB, stock -0.26)\n",
+               10 * log10(e / ref + 1e-30), 20 * log10(s->tab[MB_TAB_MIX + 64] + s->tab[MB_TAB_MIX + 63]));
+        CHECK(10 * log10(e / ref + 1e-30) < -100, "MIX 64 sum %.1f dB", 10 * log10(e / ref + 1e-30));
+        free(w); free(wr);
+    }
+    free(x); free(xr); free(yl); free(yr); free(s);
+}
+
+/* ---------- ratio step 0 = 1:1, makeup ramp, wet clip ---------- */
+
+static void test_ratio_off_and_clip(void)
+{
+    const long N = 48000;
+    float *x = fbuf(N), *yl = fbuf(N), *yr = fbuf(N), *w = fbuf(N), *wr = fbuf(N);
+    MBComp *s = malloc(sizeof *s);
+    long i, bad = 0;
+    double pk = 0;
+    printf("compressor: ratio step 0 (1:1) leaves the band exactly as it is; makeup ramps over one block; the wet clips at +-1\n");
+    for (i = 0; i < N; i++) x[i] = (float)(0.9 * sin(2 * M_PI * 440.0 * i / 48000.0) * (i < N / 2 ? 1.0 : 0.05));
+    /* step 0 at any THR/ATK/REL: the gain computer returns exactly 1, so MIX 127 gives the band sum */
+    mb_neutral(s);
+    for (i = 0; i < 3; i++) { mbcomp_set(s, MB_P(i, MB_THR), 0); mbcomp_set(s, MB_P(i, MB_ATK), 0); }
+    mbcomp_snap(s);
+    mbcomp_process(s, x, x, NULL, NULL, yl, yr, (int)N);
+    mb_neutral(s); mbcomp_snap(s); mb_clear(s);
+    mbcomp_process(s, x, x, NULL, NULL, w, wr, (int)N);
+    for (i = 0; i < N; i++) if (yl[i] != w[i]) bad++;
+    for (i = 0; i < 3; i++) if (s->band[i].y1 != 0.0f || s->band[i].y2 != 0.0f) bad++;
+    printf("  step 0 at THR 0: %ld samples / envelopes differ from the plain band sum\n", bad);
+    CHECK(bad == 0, "ratio step 0 is not 1:1: %ld", bad);
+    /* makeup: a jump lands as a linear ramp over the next 32 samples (stock 0xb851e5) */
+    {
+        MbBand *bd = &s->band[1];
+        float tr[32], tl[32], z[32];
+        float mk0;
+        memset(z, 0, sizeof z);
+        mbcomp_process(s, z, z, NULL, NULL, tl, tr, 32);
+        mk0 = bd->mk;
+        mbcomp_set(s, MB_P(1, MB_MUP), 127);
+        mbcomp_process(s, z, z, NULL, NULL, tl, tr, 16);
+        CHECK(fabs(bd->mk - (mk0 + 0.5 * (bd->t_mk - mk0))) < 1e-5, "makeup half way after 16 samples: %g", bd->mk);
+        mbcomp_process(s, z, z, NULL, NULL, tl, tr, 16);
+        CHECK(fabs(bd->mk - bd->t_mk) < 1e-5, "makeup at its target after 32 samples: %g vs %g", bd->mk, bd->t_mk);
+    }
+    /* the wet clip: all bands 1:1 with +24 dB makeup on a 0.9 sine: the wet is clipped at exactly +-1 */
+    mb_neutral(s);
+    for (i = 0; i < 3; i++) mbcomp_set(s, MB_P(i, MB_MUP), 127);
+    mbcomp_snap(s);
+    mbcomp_process(s, x, x, NULL, NULL, yl, yr, (int)N);
+    for (i = 0; i < N; i++) if (fabs(yl[i]) > pk) pk = fabs(yl[i]);
+    {
+        long at1 = 0;
+        for (i = 0; i < N / 2; i++) if (fabs(yl[i]) == 1.0) at1++;
+        printf("  +24 dB on a 0.9 sine at MIX 127: output peak %.6f, %ld samples at exactly 1.0\n", pk, at1);
+        CHECK(pk == 1.0 && at1 > 1000, "wet clip: peak %.6f, %ld at 1.0", pk, at1);
+    }
+    free(x); free(yl); free(yr); free(w); free(wr); free(s);
+}
+
+/* ---------- the guard: NaN/inf in the input or the state -> a silent block and a reset ---------- */
+
+static void test_guard(void)
+{
+    const long N = 4800;
+    float *x = fbuf(N), *yl = fbuf(N), *yr = fbuf(N);
+    MBComp *s = malloc(sizeof *s);
+    uint32_t r = 9u;
+    long i;
+    int k, ok_all = 1;
+    static const char *what[] = { "NaN in the input", "+inf in the input", "1e35 in the input", "NaN in a crossover state",
+                                  "inf in a detector state", "NaN in the release envelope", "inf in the makeup",
+                                  "NaN in the key" };
+    printf("compressor guard: one bad value -> that block silent, every filter and envelope reset, the next block\n"
+           "  normal; loud real material (peaks 64) never trips it\n");
+    for (i = 0; i < N; i++) x[i] = 0.3f * fx_rands(&r);
+    for (k = 0; k < 8; k++) {
+        float nanv = fx_i2f(0x7fc00000u), infv = fx_i2f(0x7f800000u);
+        float kl[32], kr[32], bl[32], br[32];
+        long b, bad = 0, zero_blocks = 0;
+        int key = k == 7;
+        mbcomp_init(s, NULL);
+        for (i = 0; i < 3; i++) { mbcomp_set(s, MB_P(i, MB_THR), 40); mbcomp_set(s, MB_P(i, MB_RAT), 6); }
+        mbcomp_set(s, MB_MIX, 64);
+        if (key) mbcomp_set(s, MB_SCS, 1);
+        mbcomp_snap(s);
+        for (b = 0; b < N / 32; b++) {
+            memcpy(bl, x + 32 * b, sizeof bl);
+            memcpy(br, x + 32 * b, sizeof br);
+            memcpy(kl, x + 32 * b, sizeof kl);
+            memcpy(kr, x + 32 * b, sizeof kr);
+            if (b == 50) {
+                if (k == 0) bl[7] = nanv;
+                if (k == 1) br[31] = infv;
+                if (k == 2) bl[3] = 1e35f;
+                if (k == 3) s->s2[1].ic1 = nanv;
+                if (k == 4) s->band[2].hy[0] = infv;
+                if (k == 5) s->band[0].y1 = nanv;
+                if (k == 6) s->band[1].mk = infv;
+                if (k == 7) kl[5] = nanv;
+            }
+            mbcomp_process(s, bl, br, key ? kl : NULL, key ? kr : NULL, yl + 32 * b, yr + 32 * b, 32);
+            for (i = 32 * b; i < 32 * b + 32; i++) if (!isfinite(yl[i]) || !isfinite(yr[i]) || fabs(yl[i]) > 2) bad++;
+            if (b >= 50 && b <= 51) {
+                int z = 1;
+                for (i = 32 * b; i < 32 * b + 32; i++) if (yl[i] != 0.0f || yr[i] != 0.0f) z = 0;
+                zero_blocks += z;
+            }
+        }
+        printf("  %-28s: trips %u, silent blocks %ld (block 50 %s), bad output samples %ld, GR after %.2f dB\n", what[k],
+               s->trips, zero_blocks, zero_blocks ? "silent" : "NOT silent", bad, mbcomp_gr_db(s, 1));
+        if (!(s->trips == 1 && zero_blocks == 1 && bad == 0)) ok_all = 0;
+        CHECK(s->trips == 1 && zero_blocks == 1 && bad == 0, "guard on %s: trips %u, silent %ld, bad %ld", what[k], s->trips, zero_blocks, bad);
+    }
+    /* loud material: no trip */
+    mbcomp_init(s, NULL);
+    mbcomp_set(s, MB_MIX, 0);
+    mbcomp_snap(s);
+    for (i = 0; i < N; i++) x[i] = 64.0f * fx_rands(&r);
+    mbcomp_process(s, x, x, NULL, NULL, yl, yr, (int)N);
+    printf("  loud noise, peaks 64, MIX 0: trips %u; output == input %s\n", s->trips,
+           memcmp(x, yl, sizeof(float) * (size_t)N) ? "NO" : "yes");
+    CHECK(s->trips == 0 && !memcmp(x, yl, sizeof(float) * (size_t)N), "loud material tripped the guard (%u)", s->trips);
+    (void)ok_all;
+    free(x); free(yl); free(yr); free(s);
 }
 
 /* ============================== tape delay ============================== */
@@ -775,7 +1029,7 @@ static void test_extremes(void)
     double peak = 0, fpeak = 0;
     printf("extremes: 120 s, random knob jumps every 7 blocks, loud bursts (+-4.0), then 300 s of silence\n");
     tapedelay_init(td, 3u);
-    mbcomp_init(mb);
+    mbcomp_init(mb, NULL);
     flanger_init(fl);
     for (blk = 0; blk < 120L * 1500; blk++) {
         int j, p;
@@ -814,6 +1068,8 @@ static void test_extremes(void)
     printf("  tapedelay (FDBK 127 held): peak output %.2f; flanger peak %.2f (input peaks 4.0, alternating at Nyquist on R:\n"
            "  the input itself plus at most 1.0 of feedback, and the Hermite read's overshoot)\n", peak, fpeak);
     CHECK(peak < 6.0 && fpeak < 8.0, "outputs not bounded: %.2f, %.2f", peak, fpeak);
+    printf("  mbcomp guard trips over the 120 s: %u\n", mb->trips);
+    CHECK(mb->trips == 0, "mbcomp's guard tripped on real material: %u", mb->trips);
     CHECK(bad == 0, "%ld NaN/Inf/denormal output samples", bad);
     tapedelay_set(td, TD_FDBK, 120.0f);
     tapedelay_set(td, TD_AGE, 0.0f);
@@ -845,18 +1101,16 @@ static void test_extremes(void)
             CKF(td->hp[b].ic1); CKF(td->hp[b].ic2); CKF(td->lp[b].ic1); CKF(td->lp[b].ic2);
             CKF(td->ck[b].ic1); CKF(td->ck[b].ic2); CKF(td->hz[b]);
             CKF(mb->s1[b].ic1); CKF(mb->s1[b].ic2); CKF(mb->s1lp[b].ic1); CKF(mb->s1lp[b].ic2);
-            CKF(mb->s1hp[b].ic1); CKF(mb->s1hp[b].ic2); CKF(mb->s2[b].ic1); CKF(mb->s2[b].ic2);
-            CKF(mb->s2lp[b].ic1); CKF(mb->s2lp[b].ic2); CKF(mb->s2hp[b].ic1); CKF(mb->s2hp[b].ic2);
-            CKF(mb->apl[b].ic1); CKF(mb->apl[b].ic2); CKF(mb->apd1[b].ic1); CKF(mb->apd1[b].ic2);
-            CKF(mb->apd2[b].ic1); CKF(mb->apd2[b].ic2); CKF(mb->sc[b].ic1); CKF(mb->sc[b].ic2);
+            CKF(mb->s2[b].ic1); CKF(mb->s2[b].ic2); CKF(mb->s2lp[b].ic1); CKF(mb->s2lp[b].ic2);
+            CKF(mb->apl[b].ic1); CKF(mb->apl[b].ic2); CKF(mb->kx[b]); CKF(mb->ky[b]);
             CKF(fl->dly[b]); CKF(fl->dv[b]); CKF(fl->dacc[b]); CKF(fl->dend[b]); CKF(fl->hp_s[b]); CKF(fl->fbl_s[b]);
             CKF(fl->ls[b]); CKF(fl->rnd[b]);
         }
         for (b = 0; b < 3; b++) {
-            CKF(mb->band[b].y1); CKF(mb->band[b].y2); CKF(mb->band[b].mk); CKF(mb->band[b].mk_i);
-            CKF(mb->band[b].w); CKF(mb->band[b].w_i);
+            CKF(mb->band[b].y1); CKF(mb->band[b].y2); CKF(mb->band[b].mk); CKF(mb->band[b].mk_step);
+            CKF(mb->band[b].hx[0]); CKF(mb->band[b].hx[1]); CKF(mb->band[b].hy[0]); CKF(mb->band[b].hy[1]);
         }
-        CKF(mb->mw); CKF(mb->mw_i); CKF(mb->md); CKF(mb->md_i); CKF(mb->lf_lo); CKF(mb->lf_hi);
+        CKF(mb->mw); CKF(mb->md); CKF(mb->xw); CKF(mb->lf_lo); CKF(mb->lf_hi);
         CKF(fl->lc); CKF(fl->dep); CKF(fl->off); CKF(fl->ofs); CKF(fl->lh); CKF(fl->da); CKF(fl->fb); CKF(fl->fb_i);
         CKF(fl->pg); CKF(fl->pg_i); CKF(fl->hpG); CKF(fl->sl_h);
 #undef CKF
@@ -905,7 +1159,7 @@ static void test_determinism_blocks(void)
     MBComp *mb = malloc(sizeof *mb);
     Flanger *fl = malloc(sizeof *fl);
     Change tch[] = { { 48000, TD_TIME, 15 }, { 96000, TD_WID, 120 }, { 150016, TD_LPF, 40 }, { 200000, TD_RES, 127 } };
-    Change mch[] = { { 48000, MB_XLO, 80 }, { 96000, MB_P(1, MB_MUP), 127 }, { 150016, MB_LSTN, 2 }, { 200000, MB_MIX, 30 } };
+    Change mch[] = { { 48000, MB_XLO, 80 }, { 96000, MB_P(1, MB_MUP), 127 }, { 150016, MB_MIX, 0 }, { 200000, MB_MIX, 30 } };
     Change fch[] = { { 48000, FL_MAN, 90 }, { 96000, FL_SHP, 5 }, { 150016, FL_FDBK, 0 }, { 200000, FL_SYNC, 9 } };
     uint32_t r = 77u;
     const char *names[3] = { "tapedelay", "mbcomp", "flanger" };
@@ -926,9 +1180,9 @@ static void test_determinism_blocks(void)
                 tapedelay_snap(td);
                 cut_loop(N, m == 3 ? 0 : m, tch, 4, td_proc, td_setp, td);
             } else if (e == 1) {
-                mbcomp_init(mb);
+                mbcomp_init(mb, NULL);
                 mbcomp_set(mb, MB_P(0, MB_THR), 60); mbcomp_set(mb, MB_P(0, MB_RAT), 7);
-                mbcomp_set(mb, MB_SCS, 1); mbcomp_set(mb, MB_SCF, 100); mbcomp_set(mb, MB_MIX, 90);
+                mbcomp_set(mb, MB_SCS, 1); mbcomp_set(mb, MB_MIX, 90);
                 mbcomp_snap(mb);
                 cut_loop(N, m == 3 ? 0 : m, mch, 4, mb_proc, mb_setp, mb);
             } else {
@@ -968,26 +1222,41 @@ static void test_smoothing(void)
         x[i] = (float)(0.3 * fade * sin(2 * M_PI * 220.0 * i / 48000.0));
     }
     {
-        static const struct { int p; float v0, v1; const char *what; } c[] = {
-            { MB_P(1, MB_MUP), 0, 127, "M.MUP 0 -> 127" }, { MB_LSTN, 0, 3, "LSTN all -> high" },
-            { MB_XLO, 10, 100, "XLO 10 -> 100" }, { MB_MIX, 127, 0, "MIX 127 -> 0" }, { MB_MIX, 0, 64, "MIX 0 -> 64" },
-            { MB_P(1, MB_RAT), 0, 8, "M.RAT 1:1 -> 20:1" },
+        /* * stock moves the makeup to a new target within one block (0.67 ms) and MIX with a 4 ms one-pole;
+             a knob turn reaches them through the ColdFire's smoothing of the frame word (T3.3), modelled here as
+             32 steps over 21 ms */
+        static const struct { int p; float v0, v1; double lim; int glide; const char *what; } c[] = {
+            { MB_P(1, MB_MUP), 0, 127, 2.0, 1, "M.MUP 0 -> 127 *" }, { MB_XHI, 100, 20, 2.0, 0, "XHI 100 -> 20" },
+            { MB_XHI, 127, 0, 3.0, 0, "XHI 127 -> 0 (4 oct.)" }, { MB_XLO, 10, 100, 2.0, 0, "XLO 10 -> 100" },
+            { MB_MIX, 127, 0, 2.0, 1, "MIX 127 -> 0 *" }, { MB_MIX, 0, 64, 2.0, 1, "MIX 0 -> 64 *" },
+            { MB_MIX, 64, 0, 2.0, 1, "MIX 64 -> 0 *" }, { MB_MIX, 64, 120, 2.0, 1, "MIX 64 -> 120 *" }, { MB_MIX, 0, 1, 2.0, 0, "MIX 0 -> 1 (jump)" },
+            { MB_MIX, 1, 0, 2.0, 0, "MIX 1 -> 0 (jump)" }, { MB_P(1, MB_RAT), 0, 8, 2.0, 0, "M.RAT 1:1 -> 20:1" },
         };
         size_t k;
         for (k = 0; k < sizeof c / sizeof c[0]; k++) {
             mb_neutral(mb);
-            mbcomp_set(mb, MB_XHI, 90);
+            mbcomp_set(mb, MB_XHI, 30);
             mbcomp_set(mb, MB_P(1, MB_THR), 100);
             mbcomp_set(mb, MB_P(1, MB_ATK), 20);
             mbcomp_set(mb, c[k].p, c[k].v0);
             mbcomp_snap(mb);
             mbcomp_process(mb, x, x, NULL, NULL, yl, yr, 48000);
-            mbcomp_set(mb, c[k].p, c[k].v1);
-            mbcomp_process(mb, x + 48000, x + 48000, NULL, NULL, yl + 48000, yr + 48000, 48000);
+            if (c[k].glide) {
+                long j;
+                for (j = 0; j < 32; j++) {
+                    mbcomp_set(mb, c[k].p, c[k].v0 + (c[k].v1 - c[k].v0) * (float)(j + 1) / 32.0f);
+                    mbcomp_process(mb, x + 48000 + 32 * j, x + 48000 + 32 * j, NULL, NULL, yl + 48000 + 32 * j,
+                                   yr + 48000 + 32 * j, 32);
+                }
+                mbcomp_process(mb, x + 49024, x + 49024, NULL, NULL, yl + 49024, yr + 49024, 48000 - 1024);
+            } else {
+                mbcomp_set(mb, c[k].p, c[k].v1);
+                mbcomp_process(mb, x + 48000, x + 48000, NULL, NULL, yl + 48000, yr + 48000, 48000);
+            }
             r = click_ratio(yl, 48000, 52800, 40000, 48000);
             { double r2 = click_ratio(yl, 48000, 52800, 88000, 96000); if (r2 < r) r = r2; }
-            printf("  mbcomp    %-20s %.2f\n", c[k].what, r);
-            CHECK(r < 2.0, "click on %s: %.2f", c[k].what, r);
+            printf("  mbcomp    %-22s %.2f (limit %.2f)\n", c[k].what, r, c[k].lim);
+            CHECK(r < c[k].lim, "click on %s: %.2f", c[k].what, r);
         }
     }
     {
@@ -1067,13 +1336,13 @@ static void bench(void)
     for (i = 0; i < N; i += 32) tapedelay_process(td, x + i, x + i, yl + i, yr + i, 32);
     t = (double)(clock() - t0) / CLOCKS_PER_SEC;
     printf("tapedelay (AGE, WID, RES): %.1f ns/sample, %.0fx real time\n", t / N * 1e9, 20.0 / t);
-    mbcomp_init(mb);
-    mbcomp_set(mb, MB_SCS, 1); mbcomp_set(mb, MB_SCF, 100); mbcomp_set(mb, MB_MIX, 100);
+    mbcomp_init(mb, NULL);
+    mbcomp_set(mb, MB_SCS, 1); mbcomp_set(mb, MB_MIX, 100);
     mbcomp_snap(mb);
     t0 = clock();
     for (i = 0; i < N; i += 32) mbcomp_process(mb, x + i, x + i, x + i, x + i, yl + i, yr + i, 32);
     t = (double)(clock() - t0) / CLOCKS_PER_SEC;
-    printf("mbcomp (key + dry path on): %.1f ns/sample, %.0fx real time\n", t / N * 1e9, 20.0 / t);
+    printf("mbcomp (key + dry and wet on): %.1f ns/sample, %.0fx real time\n", t / N * 1e9, 20.0 / t);
     flanger_init(fl);
     t0 = clock();
     for (i = 0; i < N; i += 32) flanger_process(fl, x + i, x + i, yl + i, yr + i, 32);
@@ -1104,6 +1373,9 @@ int main(int argc, char **argv)
     test_static_curve();
     test_times();
     test_sidechain();
+    test_mix();
+    test_ratio_off_and_clip();
+    test_guard();
     test_delay_time();
     test_width();
     test_resonance();

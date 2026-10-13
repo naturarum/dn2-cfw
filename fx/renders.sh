@@ -180,13 +180,8 @@ r duck mb_duck_low "Keyed, low band only" "SCS 1; low band THR 70 (-26.9 dB), 6:
 r duck mb_duck_all "Keyed, all bands" "The same settings on every band: the classic full-mix pump." \
   $MB -i $D/bassline.wav -key $D/kick4.wav -p SCS=1 $(ALL THR=70) $(ALL RAT=6) $(ALL ATK=0) $(ALL REL=50)
 
-g setup mix.wav "Setup only: hearing the bands (LSTN)" "Not compressor demos: LSTN solos a band so the crossovers can be set by ear. All ratios 1:1 here."
+g setup mix.wav "Setup only: the crossover alone" "Not a compressor demo. All ratios 1:1: only the crossover, whose bands sum to a flat allpass. (The band solos, LSTN, were dropped with T6.3 CMP0: no knob for them on the unit.)"
 r setup mb_neutral "Setup: all bands, 1:1" "Only the crossover: the bands sum to a flat allpass, so it should sound the same as dry (the waveform changes, the spectrum does not)." $MB -i $D/mix.wav $OFF
-r setup mb_lsn_low "Setup: band solo, LOW" "LSTN 1: only the low band (below 196 Hz)." $MB -i $D/mix.wav $OFF -p LSTN=1
-r setup mb_lsn_mid "Setup: band solo, MID" "LSTN 2: 196 Hz to 2.6 kHz." $MB -i $D/mix.wav $OFF -p LSTN=2
-r setup mb_lsn_high "Setup: band solo, HIGH" "LSTN 3: above 2.6 kHz." $MB -i $D/mix.wav $OFF -p LSTN=3
-r setup mb_xsweep "Setup: crossover sweep, MID soloed" "LSTN 2. Over 16 s XLO sweeps 10 -> 80 (49 Hz -> 1.6 kHz) while XHI sweeps 127 -> 90 (16 kHz -> 2.6 kHz): the mid band narrows. No zipper noise." \
-  $MB -i $D/mix.wav $OFF -p LSTN=2 -ramp 0 16 XLO 10 80 -ramp 0 16 XHI 127 90
 
 echo "flanger"
 FL="-fx flanger -tail 3 -bpm 120 -vol 127 -gain -12"

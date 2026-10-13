@@ -39,7 +39,7 @@ TD_DEFAULTS = dict(TIME=31, FDBK=50, HPF=22, LPF=102, RES=0, WID=64, WOW=20, FLU
 MB_DEFAULTS = {}
 for _b in "LMH":
     MB_DEFAULTS.update({f"{_b}.THR": 85, f"{_b}.ATK": 40, f"{_b}.REL": 44, f"{_b}.MUP": 0, f"{_b}.RAT": 2})
-MB_DEFAULTS.update(XLO=38, XHI=90, LSTN=0, SCS=0, SCF=64, MIX=127)
+MB_DEFAULTS.update(XLO=68, XHI=44, SCS=0, MIX=127)   # T6.3 CMP0: LSTN and SCF dropped; crossover laws of T6.4 2.2
 FL_DEFAULTS = dict(DPTH=96, SPD=30, HPF=32, WDTH=48, FDBK=107, MAN=50, SHP=0, SLEW=0, DAMP=12, SYNC=0, OFS=0, POL=0)
 # the Space Echo (T5.2, fx/spaceecho.c: spaceecho_init); fxrender's long names are aliases
 SE_DEFAULTS = dict(TIME=31, MODE=3, INT=50, AGE=40, CTR=64, BW=127, WID=96, PAN=1)
@@ -212,8 +212,6 @@ def map_mbcomp(k):
     """New 3-band settings -> one stock band. Since 2026-10-06 each band uses the stock compressor's own
     laws (notes/T3.11 12.2-12.3), so THR, ATK, REL and the ratio map one to one; MUP is set at render
     time for equal loudness. Returns (stock knobs or None, notes, uses_key)."""
-    if int(k["LSTN"] + 0.5) != 0:
-        return None, ["band solo (LSTN) has no stock equivalent"], False
     bands = [b for b in "LMH" if int(k[f"{b}.RAT"] + 0.5) > 0]
     notes = []
     if not bands:
@@ -229,12 +227,12 @@ def map_mbcomp(k):
     if len(bands) == 1 and not key:
         # one band compresses: aim the stock side-chain filter at that band
         if b == "L":
-            hz = 30.0 * 2 ** (k["XLO"] / 127.0 * 9.0588936)
+            hz = 30.0 * (1000.0 / 30.0) ** (k["XLO"] / 127.0)
             s["SCF"] = SM.scf_for("LP", hz)
             notes.append(f"side-chain low-pass at ~{SM.SCF_CORNERS[s['SCF']][1]} Hz (the low band's edge), "
                          "but the stock gain still acts on the whole signal")
         elif b == "H":
-            hz = 30.0 * 2 ** (k["XHI"] / 127.0 * 9.0588936)
+            hz = 1000.0 * 16.0 ** (k["XHI"] / 127.0)
             s["SCF"] = SM.scf_for("HP", hz)
             notes.append(f"side-chain high-pass at ~{SM.SCF_CORNERS[s['SCF']][1]} Hz (the high band's edge), "
                          "but the stock gain still acts on the whole signal")

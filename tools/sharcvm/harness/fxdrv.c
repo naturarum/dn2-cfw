@@ -54,7 +54,7 @@ void fxdrv(FxCtx *c)
     } else {
         MBComp *s = (MBComp *)c->state;
         switch (c->cmd) {
-        case 0: mbcomp_init(s); break;
+        case 0: mbcomp_init(s, 0); break;     /* the law tables (fxcheck builds mbcomp.c with -DMB_LAW_TABLES) */
         case 1: mbcomp_set(s, c->param, c->value); break;
         case 2: mbcomp_snap(s); break;
         case 3: mbcomp_process(s, c->inL, c->inR, 0, 0, c->outL, c->outR, c->n); break;

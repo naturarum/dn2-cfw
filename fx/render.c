@@ -10,7 +10,7 @@
  *   fxrender -fx mbcomp -i loop.wav -o comp.wav -p L.THR=60 -p L.RAT=4 ...
  *   fxrender -fx flanger -i pad.wav -o fl.wav -p SPD=30 -p FDBK=110 -vol 127
  *   fxrender -fx spaceecho -i pluck.wav -o se.wav -p TIME=23 -p MODE=6 -p INT=60 -p PAN=1
- *   fxrender -bands -i any.wav [-p XLO=38 -p XHI=90]   (RMS of the three bands, dB)
+ *   fxrender -bands -i any.wav [-p XLO=68 -p XHI=44]   (RMS of the three bands, dB)
  *   fxrender -fx tapedelay -list
  *
  * Options:
@@ -56,8 +56,7 @@ static const PName MB_NAMES[] = {
     { "M.MUP", MB_P(1, MB_MUP) }, { "M.RAT", MB_P(1, MB_RAT) },
     { "H.THR", MB_P(2, MB_THR) }, { "H.ATK", MB_P(2, MB_ATK) }, { "H.REL", MB_P(2, MB_REL) },
     { "H.MUP", MB_P(2, MB_MUP) }, { "H.RAT", MB_P(2, MB_RAT) },
-    { "XLO", MB_XLO }, { "XHI", MB_XHI }, { "LSTN", MB_LSTN }, { "SCS", MB_SCS },
-    { "SCF", MB_SCF }, { "MIX", MB_MIX }, { 0, 0 }
+    { "XLO", MB_XLO }, { "XHI", MB_XHI }, { "SCS", MB_SCS }, { "MIX", MB_MIX }, { 0, 0 }
 };
 static const PName FL_NAMES[] = {
     { "DPTH", FL_DPTH }, { "SPD", FL_SPD }, { "HPF", FL_HPF }, { "WDTH", FL_WDTH },
@@ -203,7 +202,7 @@ int main(int argc, char **argv)
         int b, c, j;
         mb = malloc(sizeof *mb);
         if (!mb) return 1;
-        mbcomp_init(mb);
+        mbcomp_init(mb, NULL);
         for (b = 0; b < 3; b++) mbcomp_set(mb, MB_P(b, MB_RAT), 0.0f);
         for (i = 0; i < nev; i++) if (ev[i].t0 <= 0.0) mbcomp_set(mb, ev[i].id, (float)ev[i].v0);
         mbcomp_snap(mb);
@@ -241,7 +240,7 @@ int main(int argc, char **argv)
     } else if (fx == FX_MB) {
         mb = malloc(sizeof *mb);
         if (!mb) return 1;
-        mbcomp_init(mb);
+        mbcomp_init(mb, NULL);
     } else if (fx == FX_FL) {
         fl = malloc(sizeof *fl);
         if (!fl) return 1;

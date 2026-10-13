@@ -1345,3 +1345,25 @@ then fixed:
 - Minor, open: AGE label doesn't show its value while turning; WID's centre step changes an existing tail by 6 dB;
   TIME capped below 68 BPM (head 3 must fit); selcc accepts the negative-size typedef slot guards (add a size check
   to build.py).
+
+# 2026-10-13: T6.3a, CMP0 built (workflows)
+
+Full note: `notes/T6.3-cmp0.md`. **CMP0** (`out/T6.3/CMP0.syx`, `03598e3f...`) = GT01's main OS (relinked by
+`scripts/t63_combine.py` with version CMP0) + section 7 `dd78e1d8...` (905,988 B) = FTD1 + the 3-band compressor at
+`0x1c215c` (code `0x308400`, state `0x2e1c40`), on the stock Compressor knobs (all bands from struct `0x257964`; SCF
+dropped, detectors at 64; crossovers 196 Hz / 2.61 kHz). Brickcheck ACCEPT 12/12. The first build run was cut off by a
+usage limit after the DSP work; a second run confirmed it, combined, reviewed and fixed.
+- `verify_cmp.py` PASS: (a) one band vs stock 0xb8541d within 0.0011 dB static, p99 0.0014 dB on program; (b) SHARC vs Mac
+  -115..-124 dB, bit-identical at MIX 0; (c) MIX 0 output bit-identical to FTD1 over 2,000 blocks (reply differs only
+  at word 0 = cycle count and half-words 8-11 = band meters); (e) 18/18 NaN/inf injections: one silent block, then
+  finite, master never latched; (f) SCS 0-20, DUAL on/off; (g) image diff, encoding audit, depacker. Stack 1,700 B.
+- `tools/dspsplice/build.py` now runs a real layout/overlap check for every recipe (SE01's review: selcc accepts the
+  negative-size typedef guards); four bad layouts refused; CG01, FLG1, FTD1, SE01 rebuild byte-identical.
+- Cost (calibrated estimate): typical 71.6 % (MIX 0) to 73.3 % (MIX 39); worst 75.8 % (W5: self-detection, MIX 0<->64,
+  RAT moving, noise, FX fuzz). Over the owner's targets; hand-written crossover/gain loops are worth ~5 points.
+- Reviews: proof (d) had measured the worst case only on the cheap key path (fixed: 12 configurations); loudness
+  claims were too low: at the same knobs CMP0 is up to +5.2 dB RMS / +8.0 dB peak louder than stock on sustained sounds
+  (three bands each with full makeup), -3 to +2 dB on mix and drums; guide and listening page corrected (chords and pad
+  groups added). Open, minor: the guard doesn't reset derived control state; a trip at heavy settings gives a loud
+  50-80 ms burst (envelopes restart at no gain reduction with full makeup); no SHARC-vs-Mac check of the dry-crossfade
+  branch taken on kit changes.

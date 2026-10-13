@@ -4,6 +4,7 @@
 
     python3 tools/dspsplice/build.py CG01      # milestone 1: stock chorus, wet output -6.02 dB
     python3 tools/dspsplice/build.py FLG1      # milestone 2: the flanger in the chorus slot
+    python3 tools/dspsplice/build.py CMP0      # T6.3: FTD1 + the 3-band master compressor
 
 Pipeline (notes/T3.8-dsp-splice.md section 1):
   1. compile the recipe's C with selcc -O1 (as tools/sharcvm/tests/fxcheck.py does), generate the
@@ -56,6 +57,12 @@ L1B1_LIMIT = 0x2e7000           # all our block-1 bytes inside dnfw's silicon-pr
                                 # below a 32 KB DM cache (0x2e8000) as well as the 16 KB one (0x2ec000)
 STATE = (0x300000, 0x310000)    # L1 block 2: effect state (below the PM cache 0x31c000/0x318000)
 CODE2 = (0x310000, 0x318000)    # L1 block 2: more code when block 1's tail is full (FTD1's tape delay)
+# T6.3: ranges no block of ours may touch (layout_check), the caches at their larger (32 KB) size and L2
+FORBIDDEN = [(0x2e8000, 0x2f0000, "L1 block 1 DM cache (32 KB at its largest; brickcheck: 16 KB from 0x2ec000)"),
+             (0x318000, 0x320000, "L1 block 2 PM cache (32 KB at its largest; brickcheck: 16 KB from 0x31c000)"),
+             (0x398000, 0x3a0000, "L1 block 3 I-cache (32 KB at its largest)"),
+             (0x200918c0, 0x200c2000, "L2 range dnfw found holding live pointers (keep data out)"),
+             (0x200fa000, 0x20100000, "L2 reserved / non-cacheable window and boot-ROM top")]
 
 CHORUS_CALL = 0x1c1be1          # FX bus 0x1c1738: CJUMP 0xb84d5c (stock chorus), T3.4
 CHORUS = 0xb84d5c
@@ -63,6 +70,8 @@ CHORUS_INIT_CALL = 0x1c1695     # effect init 0x1c1445: CJUMP 0xb84f51 (stock ch
 CHORUS_INIT = 0xb84f51
 DELAY_CALL, DELAY = 0x1c1c58, 0xb8482c
 DELAY_INIT_CALL, DELAY_INIT = 0x1c166c, 0xb848cb
+COMP_CALL, COMP = 0x1c215c, 0xb8541d             # master 0x1c1f1e: CJUMP to the stock compressor (T6.4 1.2)
+COMP_INIT_CALL, COMP_INIT = 0x1c16bb, 0xb85501   # effect init 0x1c1445: CJUMP to its init
 
 RECIPES = {
     "CG01": dict(
@@ -107,6 +116,31 @@ RECIPES = {
         fills=[(0x300000, 0x8400, "flanger state (FlgSlot: Flanger + glue), zeroed at boot")],
         state=(0x300000, 0x308400), code2=(0x308400, 0x318000),
         outdir="out/T5.3/SE01-dsp", syx="SE01-dsp.syx", version="SE1D"),
+    # T6.3 CMP0 (notes/T6.4 4.1-4.3, 5): FTD1 (the build on the owner's unit) with the 3-band master compressor
+    # (fx/mbcomp.c + src/cmp_glue.c) in place of the stock compressor 0xb8541d, on the stock knobs. FTD1's
+    # objects are linked first and in FTD1's order, so blocks 1 and 2 keep FTD1's code byte for byte; the
+    # compressor and its two stubs go to a third code region 0x308400-0x310000 (free on FTD1: between the
+    # flanger state and the tape code), its state (CmpSlot, size from cmp_slot_bytes in the linked image) to
+    # 0x2e1c40 in L1 block 1, so block 1's code ends below it (code=).
+    "CMP0": dict(
+        what="T6.3: FTD1 (flanger, tape delay) with the 3-band master compressor (fx/mbcomp.c) in place of the "
+             "stock compressor, on the stock knobs, crossovers fixed at 196 Hz / 2.61 kHz",
+        c=["fx/flanger.c", "tools/dspsplice/src/flg_glue.c"],
+        c2=["fx/tapedelay.c", "tools/dspsplice/src/td_glue.c"],
+        c3=["fx/mbcomp.c", "tools/dspsplice/src/cmp_glue.c"], inc=["fx", "tools/dspsplice/src"],
+        stubs=[("fxh_chorus", [("c", "flg_process", ["R8", "R12"])]),
+               ("fxh_chorus_init", [("c", "flg_init", []), ("tail", CHORUS_INIT)]),
+               ("fxh_delay", [("c", "td_process", ["R8", "R12"])]),
+               ("fxh_delay_init", [("c", "td_init", [])])],
+        stubs3=[("fxh_comp", [("c", "cmp_process", ["R8", "R12"])]),
+                ("fxh_comp_init", [("c", "cmp_init", []), ("tail", COMP_INIT)])],
+        hooks=[(CHORUS_CALL, CHORUS, "fxh_chorus"), (CHORUS_INIT_CALL, CHORUS_INIT, "fxh_chorus_init"),
+               (DELAY_CALL, DELAY, "fxh_delay"), (DELAY_INIT_CALL, DELAY_INIT, "fxh_delay_init"),
+               (COMP_CALL, COMP, "fxh_comp"), (COMP_INIT_CALL, COMP_INIT, "fxh_comp_init")],
+        fills=[(0x300000, 0x8400, "flanger state (FlgSlot: Flanger + glue), zeroed at boot")],
+        fills_sym=[((0x2e1c40, 0x2e6000), "cmp_slot_bytes", "3-band compressor state (CmpSlot), zeroed at boot")],
+        state=(0x300000, 0x308400), code=(0x2dd600, 0x2e1c40), code3=(0x308400, 0x310000),
+        outdir="out/T6.3/CMP0-dsp", syx="CMP0-dsp.syx", version="CM0D"),
 }
 
 LDF = """ARCHITECTURE(ADSP-21569)
@@ -154,6 +188,14 @@ def sha(b):
     return hashlib.sha256(b).hexdigest()
 
 
+def rel(p):
+    """a path relative to the repository when it is inside it (build.json), else as it is (--outdir)"""
+    try:
+        return str(Path(p).relative_to(ROOT))
+    except ValueError:
+        return str(p)
+
+
 def run(cmd, log):
     log.append(" ".join(str(c) for c in cmd))
     r = subprocess.run([str(c) for c in cmd], capture_output=True, text=True)
@@ -173,28 +215,54 @@ def cjump_bytes(target_sw):
     return b"".join(struct.pack("<H", p) for p in parcels)
 
 
+LDF_MEM3 = """   mem_t38_code3 {{ TYPE(BW RAM) START(0x{g0:08x}) END(0x{g1:08x}) WIDTH(8) }}
+"""
+LDF_SEC3 = """      t38_code3 SW
+      {{
+         INPUT_SECTION_ALIGN(2)
+         FILL(0x1)
+         INPUT_SECTIONS( $OBJECTS(seg_t38c3) )
+      }} > mem_t38_code3
+"""
+
+
 def compile_link(name, rec, bdir, log):
     bdir.mkdir(parents=True, exist_ok=True)
     flags = ["-proc", "ADSP-21569", "-char-size-8", "-O1"] + [f"-I{ROOT / i}" for i in rec["inc"]]
     objs = []
-    for src in rec["c"] + rec.get("c2", []):
+    for src in rec["c"] + rec.get("c2", []) + rec.get("c3", []):
         stem = Path(src).stem
         run([SEL / "selcc", *flags, "-S", "-o", bdir / f"{stem}.s", ROOT / src], log)
-        if src in rec.get("c2", []):
-            # the same code, only its section renamed so the LDF puts it in the second code region
+        seg = "seg_t38c2" if src in rec.get("c2", []) else ("seg_t38c3" if src in rec.get("c3", []) else None)
+        if seg:
+            # the same code, only its section renamed so the LDF puts it in the second (third) code region
             s = (bdir / f"{stem}.s").read_text()
             if s.count(".SECTION/SW seg_swco;") < 1 or ".SECTION/" in s.replace(".SECTION/SW seg_swco;", "").replace(
                     ".SECTION/DOUBLE32 seg_dmda;", ""):
                 raise SystemExit(f"{stem}.s: unexpected sections")
-            (bdir / f"{stem}.s").write_text(s.replace(".SECTION/SW seg_swco;", ".SECTION/SW seg_t38c2;"))
+            (bdir / f"{stem}.s").write_text(s.replace(".SECTION/SW seg_swco;", f".SECTION/SW {seg};"))
         run([SEL / "selas", "-proc", "ADSP-21569", "-o", bdir / f"{stem}.doj", bdir / f"{stem}.s"], log)
         objs.append(bdir / f"{stem}.doj")
     (bdir / "stubs.s").write_text(stub.module(rec["stubs"], SAVE))
     run([SEL / "selas", "-proc", "ADSP-21569", "-o", bdir / "stubs.doj", bdir / "stubs.s"], log)
     objs.insert(0, bdir / "stubs.doj")
-    (bdir / "t38.ldf").write_text(LDF.format(c0=CODE[0], c1=CODE[1] - 1, d0=DATA[0], d1=DATA[1] - 1,
-                                             e0=rec.get("code2", CODE2)[0], e1=rec.get("code2", CODE2)[1] - 1,
-                                             entry=rec["stubs"][0][0]))
+    if rec.get("stubs3"):
+        (bdir / "stubs3.s").write_text(stub.module(rec["stubs3"], SAVE, section="seg_t38c3"))
+        run([SEL / "selas", "-proc", "ADSP-21569", "-o", bdir / "stubs3.doj", bdir / "stubs3.s"], log)
+        objs.append(bdir / "stubs3.doj")
+    code = rec.get("code", CODE)
+    ldf = LDF.format(c0=code[0], c1=code[1] - 1, d0=DATA[0], d1=DATA[1] - 1,
+                     e0=rec.get("code2", CODE2)[0], e1=rec.get("code2", CODE2)[1] - 1, entry=rec["stubs"][0][0])
+    if "code3" in rec:
+        g0, g1 = rec["code3"]
+        anchor = "   mem_t38_code2 {"
+        i = ldf.index(anchor)
+        i = ldf.index("\n", i) + 1
+        ldf = ldf[:i] + LDF_MEM3.format(g0=g0, g1=g1 - 1) + ldf[i:]
+        anchor = "      }} > mem_t38_code2\n".replace("}}", "}")
+        i = ldf.index(anchor) + len(anchor)
+        ldf = ldf[:i] + LDF_SEC3.format() + ldf[i:]
+    (bdir / "t38.ldf").write_text(ldf)
     run([SEL / "seld", "-proc", "ADSP-21569", "-T", bdir / "t38.ldf", "-o", bdir / f"{name}.dxe", *objs], log)
     return E.read_elf(bdir / f"{name}.dxe")
 
@@ -262,7 +330,8 @@ def selcc_shift_imm_count(bdir, rec):
     """immediate-count shifts in our assembly (selas mis-encodes negative ones; selcc emits none)"""
     import re
     n = 0
-    for p in [bdir / f"{Path(s).stem}.s" for s in rec["c"] + rec.get("c2", [])] + [bdir / "stubs.s"]:
+    for p in ([bdir / f"{Path(s).stem}.s" for s in rec["c"] + rec.get("c2", []) + rec.get("c3", [])] + [bdir / "stubs.s"]
+              + ([bdir / "stubs3.s"] if rec.get("stubs3") else [])):
         n += len(re.findall(r"(LSHIFT|ASHIFT|ROT)\s+R\d+\s+BY\s+-?(0x)?[0-9A-Fa-f]+\s*;", p.read_text()))
     return n
 
@@ -333,9 +402,53 @@ def diff_images(stock, cand):
     return sorted(out)
 
 
-def build(name, out_root=ROOT / "out/T3.8"):
+def symbol_word(e, sym, name):
+    """the 32-bit little-endian value of a data symbol in the linked image"""
+    a = sym[name]
+    for s in e.sections:
+        if s.kind == "data" and s.addr <= a and a + 4 <= s.addr + len(s.data):
+            return struct.unpack_from("<I", s.data, a - s.addr)[0]
+    raise SystemExit(f"data symbol {name} is not in a loaded data section")
+
+
+def layout_check(rec, e, fills):
+    """The layout as built (T6.3, after SE01's review: selcc accepts a negative-size typedef, so the C 'slot
+    fits' guards are no-ops in the SHARC build). Every block the recipe adds - each code, data and bss section
+    as linked, the stubs' save area, every FILL (state) - must lie inside its own slot, must not overlap any
+    other (so neither FTD1's blocks nor ours), and must stay out of the cache and L2 ranges in FORBIDDEN.
+    fills: [(addr, bytes, why, slot)]. Returns (rows, problems)."""
+    code, code2, code3 = rec.get("code", CODE), rec.get("code2", CODE2), rec.get("code3")
+    slot_of = {"t38_code": code, "t38_code2": code2, "t38_code3": code3}
+    rows = []
+    for addr, n, s in ranges_of(e):
+        rows.append(dict(what=f"{s.name} ({s.kind})", lo=addr, hi=addr + n, slot=slot_of.get(s.name, DATA)))
+    rows.append(dict(what="hook register save area", lo=SAVE, hi=SAVE + (stub.SAVE_BYTES + 3) // 4 * 4,
+                     slot=(SAVE, L1B1_LIMIT)))
+    for addr, n, why, slot in fills:
+        rows.append(dict(what=f"FILL: {why}", lo=addr, hi=addr + n, slot=slot))
+    rows = [r for r in rows if r["hi"] > r["lo"]]
+    problems = []
+    for r in rows:
+        if r["slot"] is None or not (r["slot"][0] <= r["lo"] and r["hi"] <= r["slot"][1]):
+            slot = "%#x-%#x" % tuple(r["slot"]) if r["slot"] else "(none)"
+            problems.append(f"{r['what']} {r['lo']:#x}-{r['hi']:#x} is outside its slot {slot}")
+        for lo, hi, name in FORBIDDEN:
+            if r["lo"] < hi and lo < r["hi"]:
+                problems.append(f"{r['what']} {r['lo']:#x}-{r['hi']:#x} overlaps {name}")
+    for i, a in enumerate(rows):
+        for b in rows[i + 1:]:
+            if a["lo"] < b["hi"] and b["lo"] < a["hi"]:
+                problems.append(f"{a['what']} {a['lo']:#x}-{a['hi']:#x} overlaps {b['what']} {b['lo']:#x}-{b['hi']:#x}")
+    out = [dict(what=r["what"], core="%#x-%#x" % (r["lo"], r["hi"]), bytes=r["hi"] - r["lo"],
+                slot="%#x-%#x" % tuple(r["slot"]) if r["slot"] else None,
+                slot_left=(r["slot"][1] - r["hi"]) if r["slot"] else None) for r in sorted(rows, key=lambda r: r["lo"])]
+    return out, problems
+
+
+def build(name, out_root=ROOT / "out/T3.8", odir=None):
     rec = RECIPES[name]
-    odir = ROOT / rec["outdir"] if "outdir" in rec else out_root / name
+    if odir is None:
+        odir = ROOT / rec["outdir"] if "outdir" in rec else out_root / name
     state, code2 = rec.get("state", STATE), rec.get("code2", CODE2)
     if state[1] > code2[0] and code2[1] > state[0] and "state" in rec:
         raise SystemExit("the recipe's state and code2 ranges overlap")
@@ -352,7 +465,7 @@ def build(name, out_root=ROOT / "out/T3.8"):
 
     e = compile_link(name, rec, bdir, log)
     census = collections.Counter()
-    for src in rec["c"] + rec.get("c2", []):
+    for src in rec["c"] + rec.get("c2", []) + rec.get("c3", []):
         census += register_census((bdir / f"{Path(src).stem}.s").read_text())
     extra = sorted(set(census) - CENSUS_ALLOWED)
     if extra:
@@ -362,7 +475,8 @@ def build(name, out_root=ROOT / "out/T3.8"):
     # where everything landed
     placed = []
     for addr, n, s in ranges_of(e):
-        lo, hi = {"t38_code": CODE, "t38_code2": code2}.get(s.name, DATA)
+        lo, hi = {"t38_code": rec.get("code", CODE), "t38_code2": code2,
+                  "t38_code3": rec.get("code3", (0, 0))}.get(s.name, DATA)
         if not (lo <= addr and addr + n <= hi):
             raise SystemExit(f"section {s.name} at {addr:#x}+{n} is outside {lo:#x}-{hi:#x}")
         placed.append({"section": s.name, "kind": s.kind, "core": "%#x" % addr, "bytes": n,
@@ -380,10 +494,22 @@ def build(name, out_root=ROOT / "out/T3.8"):
         else:
             st.add_payload(addr, s.data, why=f"{s.name} ({s.kind})")
     st.add_fill(SAVE, (stub.SAVE_BYTES + 3) // 4 * 4, why="hook register save area")
+    fills = []
     for addr, n, why in rec["fills"]:
         if not (state[0] <= addr and addr + n <= state[1]):
             raise SystemExit("state fill outside the planned L1 block 2 range")
         st.add_fill(addr, n, why=why)
+        fills.append((addr, n, why, state))
+    slot_sizes = {}
+    for (lo, hi), symname, why in rec.get("fills_sym", []):
+        n = symbol_word(e, sym, symname)          # sizeof as the SHARC build computed it
+        slot_sizes[symname] = n
+        n = (n + 3) // 4 * 4
+        st.add_fill(lo, n, why=f"{why} ({symname} = {slot_sizes[symname]})")
+        fills.append((lo, n, why, (lo, hi)))
+    layout, problems = layout_check(rec, e, fills)
+    if problems:
+        raise SystemExit("layout check failed:\n  " + "\n  ".join(problems))
     stream = st.to_bytes()
 
     # ---- checks on the stream ----
@@ -400,6 +526,8 @@ def build(name, out_root=ROOT / "out/T3.8"):
     allowed += [(ldr.loader_addr(CODE[0]), ldr.loader_addr(L1B1_LIMIT)),
                 (ldr.loader_addr(state[0]), ldr.loader_addr(state[1])),
                 (ldr.loader_addr(code2[0]), ldr.loader_addr(code2[1]))]
+    if "code3" in rec:
+        allowed.append((ldr.loader_addr(rec["code3"][0]), ldr.loader_addr(rec["code3"][1])))
     merged = []                          # touching ranges as one (SE01's code2 starts where its state ends)
     for lo, hi in sorted(allowed):
         if merged and lo <= merged[-1][1]:
@@ -426,11 +554,17 @@ def build(name, out_root=ROOT / "out/T3.8"):
     info = {
         "name": name, "what": rec["what"],
         "stock_section7_sha256": STOCK7_SHA,
-        "section7": {"path": str((odir / "section7.bin").relative_to(ROOT)), "bytes": len(stream),
+        "section7": {"path": rel(odir / "section7.bin"), "bytes": len(stream),
                      "sha256": sha(stream), "stock_bytes": len(stock7), "added_bytes": len(stream) - len(stock7),
                      "blocks": len(blocks)},
-        "syx": {"path": str(syx.relative_to(ROOT)), "bytes": syx.stat().st_size, "sha256": sha(syx.read_bytes())},
+        "syx": {"path": rel(syx), "bytes": syx.stat().st_size, "sha256": sha(syx.read_bytes())},
         "placed": placed, "symbols": {k: "%#x" % v for k, v in sorted(sym.items(), key=lambda kv: kv[1])},
+        "sources": {src: sha((ROOT / src).read_bytes()) for src in
+                    rec["c"] + rec.get("c2", []) + rec.get("c3", []) + [f"tools/dspsplice/src/{h}" for h in ("fxio.h",)]
+                    + ["fx/fxmath.h"] + [str(Path(src).with_suffix(".h")) for src in rec["c"] + rec.get("c2", []) + rec.get("c3", [])
+                                         if (ROOT / Path(src).with_suffix(".h")).exists()]},
+        "layout_check": {"rows": layout, "problems": problems, "forbidden": [("%#x" % a, "%#x" % b, w) for a, b, w in FORBIDDEN],
+                         "slot_sizes_from_image": slot_sizes},
         "patches": st.patches, "added_blocks": st.added,
         "image_diff_ranges": [("%#x" % a, "%#x" % b) for a, b in diffs],
         "shift_immediates_in_our_asm": selcc_shift_imm_count(bdir, rec),
@@ -445,8 +579,9 @@ def build(name, out_root=ROOT / "out/T3.8"):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("name", choices=sorted(RECIPES))
+    ap.add_argument("--outdir", help="write here instead of the recipe's own directory (rebuild checks)")
     a = ap.parse_args()
-    info = build(a.name)
+    info = build(a.name, odir=Path(a.outdir).resolve() if a.outdir else None)
     print(f"{a.name}: {info['what']}")
     print(f"  section 7: {info['section7']['bytes']} bytes (+{info['section7']['added_bytes']}), "
           f"{info['section7']['blocks']} blocks, sha256 {info['section7']['sha256']}")
@@ -456,6 +591,11 @@ def main():
     for b in info["added_blocks"]:
         print(f"  block {b['kind']:7s} {b['core']:>10s} {b['bytes']:6d} B  {b['why']}")
     print(f"  shift immediates in our assembly: {info['shift_immediates_in_our_asm']}")
+    print(f"  layout check: {len(info['layout_check']['rows'])} blocks, problems: {info['layout_check']['problems'] or 'none'}")
+    for r in info["layout_check"]["rows"]:
+        print(f"    {r['core']:>19s} {r['bytes']:6d} B  slot {r['slot']}, {r['slot_left']} B left  {r['what']}")
+    if info["layout_check"]["slot_sizes_from_image"]:
+        print(f"  slot sizes read from the linked image: {info['layout_check']['slot_sizes_from_image']}")
 
 
 if __name__ == "__main__":
