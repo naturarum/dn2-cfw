@@ -1305,3 +1305,16 @@ in `0xa18` and the compressor's values in the tail are safe. Two words to avoid:
 one block late, no clamp: mods must keep owner words in 0..15); their runner's stops are owners whose row lands in
 core MMR space `0x30068..0x3ff68` (mechanism verified, 227 stops in 2,000 variants; that their three frames are these
 is [inferred]). Notes to update later: T6.0 1.2, T6.1 4.3 (listed in the note's section 7).
+
+# 2026-10-13: T6.4, the compressor mapped and planned (workflow)
+
+Full note: `notes/T6.4-compressor-map-and-plan.md` (five lenses, each checked by a skeptic; section 7 lists what
+they changed). The stock master compressor (`0xb8541d`, called at `0x1c215c`) is mapped end to end: k 60-67 with
+their laws (THR 60v-60 dB; ATK/REL tables; MUP 0..24 dB; RAT 1.5..20; SCS 0..18; SCF table; MIX tables; VOL after the
+overdrive), rows `0x96`-`0x9f` (group 0x14, never lockable), sidechain sources, and MIX 0 = pass-through at gain
+0.99999404 [verified]. The plan: three band pages (ids 40-42) replace the Compressor page in the MIXER list; band rows
+are GT01's k 70-86; SCS, MIX and VOL shared; SCF to the FX Mixer page's empty knob D; one gain-reduction meter per band
+from DSP reply half-words 8-10 (11 = deepest band, for Overbridge); a page-record collection in core-dn2 0.2 so all
+new page ids have one owner. Stages CMP0-CMP3, each flashable. Risks: a NaN latching the master silent (guard and
+reset mandatory), the Space Echo competing for the same DSP memory block, no load meter on the unit yet (G6).
+Owner questions in the note's 6.3 (vault: `Compressor questions.md`).
