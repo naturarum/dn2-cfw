@@ -1273,3 +1273,8 @@ The user flashed GT00 (FTN1 + param-grow: the 321-row table copied at boot to 0x
 149 sites patched): "all good. saved and loaded fine. looks good". So the relocation works on the unit, including a
 +Drive save and load (the emulator could not test that). Not yet reported: Overbridge, a cold power cycle. Next: GT01.
 - 2026-10-13, later: GT00 also passes a cold start (unit off for a while, then on). The user is flashing GT01.
+
+# 2026-10-13: GT01 on the unit
+
+The user flashed GT01 (GT00 + param-rows: 17 inert rows, 0x141 -> 0x152 in use, room for 0x180): "all good". The
+grown table runs on the unit. Next: the 3-band compressor (map and plan running: notes/T6.4-compressor-map-and-plan.md).

@@ -8,12 +8,13 @@ The goals: swap the send effects for new ones (a tape delay, a flanger, a better
 
 ## Where things stand (2026-10-12)
 
-**On the unit.** Six builds have run on real hardware:
+**On the unit.** Seven builds have run on real hardware:
 - **EF01**, stock 1.12 with only its name changed and the seal redone. That proved our rebuild, seal and flash path.
 - **FLG1**, our flanger in place of the stock chorus. The first new code running on the Digitone II's DSP: the C in [`fx/flanger.c`](fx/flanger.c), compiled with selcc and spliced into the DSP section by [`tools/dspsplice`](tools/dspsplice). It plays on the stock chorus page's knobs (depth, speed, high-pass, width).
 - **DH01**, our core (the hook bus every screen and MIDI mod runs through) with a small MIDI test mod.
 - **FTN1**, FTD1 with the screens renamed to match: Flanger and Tape on the effect pages, the sends and the mixer.
 - **GT00**, FTN1 with Elektron's parameter table moved at start-up into free memory, with room for 63 more knobs. Saving and loading projects works as before. This is the base for the 3-band compressor's pages.
+- **GT01**, GT00 with the table grown by 17 rows (still hidden) for the compressor. As far as we know, the first time anyone has grown this table.
 - **FTD1**, FLG1 plus our one-head tape delay in place of the stock delay (resonant loop filters, wow and flutter, wear, and tape-style pitch bends when TIME changes).
 
 **In the ColdFire emulator** (digikit, with our changes on [a branch of our fork](https://github.com/naturarum/digikit/tree/dn2-1.12)):
@@ -34,7 +35,7 @@ The goals: swap the send effects for new ones (a tape delay, a flanger, a better
 - The STARTUP-menu recovery over DIN MIDI was tested on the unit.
 - An audit of the code that writes flash, and a proof that the STARTUP menu doesn't depend on the main OS (`notes/T1.4*`, `notes/T1.5*`).
 
-**Next:** the grown table on the unit (GT01), the 3-band compressor, a Space Echo style delay ([`fx/spaceecho.c`](fx/spaceecho.c), on the A/B page), and growing the parameter table for more knobs (studied in `notes/T6.1-table-growth-study.md`: feasible, with conditions).
+**Next:** the 3-band compressor on the grown table, a Space Echo style delay ([`fx/spaceecho.c`](fx/spaceecho.c), on the A/B page), and growing the parameter table for more knobs (studied in `notes/T6.1-table-growth-study.md`: feasible, with conditions).
 
 ## What's where
 
