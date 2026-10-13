@@ -1266,3 +1266,9 @@ now says to watch MIDI OUT, not the screen. Next: FTN1, whose page titles come f
 The user flashed FTN1 (FTD1's DSP + core-dn2 + fx-rename): "tape and flanger + test all looking good. no bugs. all
 text display good". The page titles come from the core's RAM image, so the core's boot copy works on the unit, and
 data-only mods through the core are proven. Next: GT00 (table moved), then GT01.
+
+# 2026-10-13: GT00 on the unit
+
+The user flashed GT00 (FTN1 + param-grow: the 321-row table copied at boot to 0x47D00000 with room for 0x180 rows,
+149 sites patched): "all good. saved and loaded fine. looks good". So the relocation works on the unit, including a
++Drive save and load (the emulator could not test that). Not yet reported: Overbridge, a cold power cycle. Next: GT01.
