@@ -1272,3 +1272,4 @@ data-only mods through the core are proven. Next: GT00 (table moved), then GT01.
 The user flashed GT00 (FTN1 + param-grow: the 321-row table copied at boot to 0x47D00000 with room for 0x180 rows,
 149 sites patched): "all good. saved and loaded fine. looks good". So the relocation works on the unit, including a
 +Drive save and load (the emulator could not test that). Not yet reported: Overbridge, a cold power cycle. Next: GT01.
+- 2026-10-13, later: GT00 also passes a cold start (unit off for a while, then on). The user is flashing GT01.
