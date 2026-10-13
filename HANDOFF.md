@@ -1318,3 +1318,7 @@ from DSP reply half-words 8-10 (11 = deepest band, for Overbridge); a page-recor
 new page ids have one owner. Stages CMP0-CMP3, each flashable. Risks: a NaN latching the master silent (guard and
 reset mandatory), the Space Echo competing for the same DSP memory block, no load meter on the unit yet (G6).
 Owner questions in the note's 6.3 (vault: `Compressor questions.md`).
+- 2026-10-13, owner answers to T6.4's questions: SCF dropped (each band's detector sees its own band; detectors at
+  neutral SCF 64; FX Mixer page stays stock; old full-band kits let slightly more bass into the detector than stock's
+  default SCF 80); crossover ranges OK; ratio 1.00 per band added; old projects open full-band. Reply to dnfw #49
+  (census answers + table news + apology for our README's "first") posted with the owner's go.
