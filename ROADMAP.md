@@ -35,6 +35,18 @@ The user wants to hear new effects A/B against stock; offline rendering is fine.
   - Send effects need no p-locks (no FX track on the DN2). Any new synth or filter parameter must be p-lockable.
 - **How to listen (T3.11):** write each effect in portable C, render it on the Mac at full quality from audio files, A/B against recordings of the stock unit (T3.5). The SHARC emulator then checks that the SHARC build matches the Mac build and fits the cycle budget; it is not the listening tool.
 
+## Resource budget and stability (owner, 2026-10-13)
+- **DSP load:** stay a few points above Elektron's own load, never near 90 %. Stock measures 63-65 % on the unit
+  (dnfw's idle-time method). Working targets until the owner adjusts them: typical (everything on, default
+  settings) about 70 %, worst case under about 75 %, measured on the unit, not estimated.
+- **Today's estimates** (instruction counts, T6.4 4.4): GT01 68 %; + 3-band ~73 % typical, ~77 % worst; with the
+  Space Echo ~76 % typical, ~84 % worst. Over target: hand-assembled inner loops (selcc's code is several times
+  larger than hand-written SHARC code) and per-slot hot swap (only the active effect runs) are the main levers.
+- **The load meter (T4.1/T4.2) comes before anything that pushes the budget,** so numbers come from the unit.
+- **Stability:** Elektron aims for live-performance stability. The owner accepts rare edge-case crashes from our
+  firmware, to be fixed later, but not a heavy-load design. Brick safety (the brick checker, the untouched
+  bootstrap) is never part of that trade.
+
 ## Feature scratchpad: requests from other users (not planned yet)
 Collected by the owner; each one is an idea until the owner promotes it to a goal. Newest last.
 - **2026-10-12: an MPC60-style bitcrusher** (bit depth, downsampling and drive with the MPC60's character), as a
