@@ -1260,3 +1260,9 @@ the hooktest never changes that, only the bytes leaving the MIDI port, so the te
 until MIDI OUT is watched). A background investigation was started on the wrong premise and stopped. FLASH-DH01.md
 now says to watch MIDI OUT, not the screen. Next: FTN1, whose page titles come from the core's RAM image, so
 "Flanger (3/3)" on screen also proves the boot copy on the unit.
+
+# 2026-10-13: FTN1 on the unit
+
+The user flashed FTN1 (FTD1's DSP + core-dn2 + fx-rename): "tape and flanger + test all looking good. no bugs. all
+text display good". The page titles come from the core's RAM image, so the core's boot copy works on the unit, and
+data-only mods through the core are proven. Next: GT00 (table moved), then GT01.
