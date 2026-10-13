@@ -6,16 +6,20 @@ The goals: swap the send effects for new ones (a tape delay, a flanger, a better
 
 **No Elektron firmware is stored here.** You download the OS file from Elektron yourself, and the tools check its sha256 before using it. Every build happens on your own machine.
 
-## Where things stand (2026-10-12)
+## Latest: the parameter table grows on 1.12 (2026-10-13)
+
+Every knob on the Digitone II is a row in one table inside the OS: 321 rows on 1.12, with no room after them. GT00 copies the table at start-up into free memory with room for 384 rows, and GT01 adds 17 hidden rows for the 3-band compressor. On my unit, GT00 starts from cold and saves and loads projects as before, and GT01 has run without problems. Projects store values by slot, never by row, so moving the table doesn't change how they are saved. New rows are safe for projects only if they follow a few rules, listed in the write-up. dn2_firmware_explore did this first, on 1.11, for their LFO4 mod; ours is for 1.12, as an elekloader mod other mods add rows to. How it works, what ran where, and the rules: [`docs/parameter-table-growth.md`](docs/parameter-table-growth.md).
+
+## Where things stand (2026-10-13)
 
 **On the unit.** Seven builds have run on real hardware:
 - **EF01**, stock 1.12 with only its name changed and the seal redone. That proved our rebuild, seal and flash path.
-- **FLG1**, our flanger in place of the stock chorus. The first new code running on the Digitone II's DSP: the C in [`fx/flanger.c`](fx/flanger.c), compiled with selcc and spliced into the DSP section by [`tools/dspsplice`](tools/dspsplice). It plays on the stock chorus page's knobs (depth, speed, high-pass, width).
+- **FLG1**, our flanger in place of the stock chorus. Our first new code on the Digitone II's DSP: the C in [`fx/flanger.c`](fx/flanger.c), compiled with selcc and spliced into the DSP section by [`tools/dspsplice`](tools/dspsplice). It plays on the stock chorus page's knobs (depth, speed, high-pass, width).
+- **FTD1**, FLG1 plus our one-head tape delay in place of the stock delay (resonant loop filters, wow and flutter, wear, and tape-style pitch bends when TIME changes).
 - **DH01**, our core (the hook bus every screen and MIDI mod runs through) with a small MIDI test mod.
 - **FTN1**, FTD1 with the screens renamed to match: Flanger and Tape on the effect pages, the sends and the mixer.
-- **GT00**, FTN1 with Elektron's parameter table moved at start-up into free memory, with room for 63 more knobs. Saving and loading projects works as before. This is the base for the 3-band compressor's pages.
-- **GT01**, GT00 with the table grown by 17 rows (still hidden) for the compressor. As far as we know, the first time anyone has grown this table.
-- **FTD1**, FLG1 plus our one-head tape delay in place of the stock delay (resonant loop filters, wow and flutter, wear, and tape-style pitch bends when TIME changes).
+- **GT00**, FTN1 with Elektron's parameter table moved at start-up into free memory, with room for 63 more knobs. Saving and loading projects works as before.
+- **GT01**, GT00 with the table grown by 17 rows (still hidden) for the compressor. dn2_firmware_explore grew it first, on 1.11, for their LFO4.
 
 **In the ColdFire emulator** (digikit, with our changes on [a branch of our fork](https://github.com/naturarum/digikit/tree/dn2-1.12)):
 - 1.12 boots to the main screen.
@@ -35,7 +39,7 @@ The goals: swap the send effects for new ones (a tape delay, a flanger, a better
 - The STARTUP-menu recovery over DIN MIDI was tested on the unit.
 - An audit of the code that writes flash, and a proof that the STARTUP menu doesn't depend on the main OS (`notes/T1.4*`, `notes/T1.5*`).
 
-**Next:** the 3-band compressor on the grown table, a Space Echo style delay ([`fx/spaceecho.c`](fx/spaceecho.c), on the A/B page), and growing the parameter table for more knobs (studied in `notes/T6.1-table-growth-study.md`: feasible, with conditions).
+**Next:** the 3-band compressor on the grown table, and a Space Echo style delay ([`fx/spaceecho.c`](fx/spaceecho.c), on the A/B page; its unit build is under way).
 
 ## What's where
 

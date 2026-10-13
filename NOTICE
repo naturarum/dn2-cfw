@@ -93,6 +93,11 @@ We use their published findings, credited; none of their code is included.
   - T5.0, the FX page UI: the page records, the page-id lists and their
     36 bound, relabelling by repointing descriptor strings, and the dead
     ERR rows of the parameter table.
+  - T6.1 and T6.5, the parameter table: they grew it first, on 1.11, for
+    their lfo4 mod (moved table, ten added rows, a display reader divert,
+    the map builder's bound kept at 321 while slots pass 100). Their row
+    layout, the 56 base references, the bound counts, the slot tables and
+    the lock id map were our starting facts.
   - T2.x: the arpeggiator patch points on MIDI tracks match their midiarp
     (we reached them independently, and use their design notes).
 

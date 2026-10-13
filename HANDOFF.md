@@ -1278,3 +1278,16 @@ The user flashed GT00 (FTN1 + param-grow: the 321-row table copied at boot to 0x
 
 The user flashed GT01 (GT00 + param-rows: 17 inert rows, 0x141 -> 0x152 in use, room for 0x180): "all good". The
 grown table runs on the unit. Next: the 3-band compressor (map and plan running: notes/T6.4-compressor-map-and-plan.md).
+
+# 2026-10-13: correction, dnfw grew the parameter table first
+
+Wrong since 2026-10-06 (main session): the claim that dn2_firmware_explore never grew the descriptor table. Their
+lfo4 mod moves it and adds ten rows on 1.11 (`docs/lfo4-build-plan.md` 2026-09-21, `src/dnfw/patch/paramtable.py`;
+on their unit that day; `lfo4` "confirmed on hardware" in their README). Our own survey had recorded it
+(notes/prior-art-2026-10.md: "a relocated parameter table `0x46900000`"); the 2026-10-06 "correction" in T5.0, the
+2026-10-12 inline fix, T6.1's and T6.5's overlap sections and our README ("as far as we know, the first time anyone
+has grown this table", pushed in bdf85c9) carried the error. Caught by the fact-check of the public write-up.
+Fixed in README, NOTICE, T5.0, T6.1, T6.5. Rule from their work, kept by ours: we raise the map builder's bound,
+which is safe only while every new row keeps k <= 100.
+- New: `docs/parameter-table-growth.md`, the public write-up (drafted, fact-checked and reader-checked by a workflow),
+  and a "Latest" section in the README.
