@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 """T6.5: build GT00, GT01 and GT1T, the grown parameter table on top of FTN1.
 
-    venv/bin/python scripts/t65_build.py [GT00 GT01 GT1T]
+    venv/bin/python scripts/t65_build.py [GT00 GT01 GT1T] [--out DIR (default out/T6.5)]
 
   GT00 = FTN1 (FTD1's DSP + core-dn2 0.1 + fx-rename-dn2 0.1) + param-grow-dn2 0.1:
          room for 0x180 rows, no new row
@@ -12,7 +12,8 @@
 
 Steps (nothing here talks to hardware), as scripts/t50b_build.py does for FTN1:
   1. scripts/t65_make_mod.py writes param-grow-dn2's mod.json from the stock image;
-  2. elekloader's SDK builds every mod (ELEKLOADER_CROSS=m68k-elf-), lint passes for the set,
+  2. elekloader's SDK builds every mod (ELEKLOADER_CROSS=m68k-elf-; core-dn2 0.1 and param-rows-dn2
+     0.1 from the pinned elekloader commit, scripts/elk_pin.py), lint passes for the set,
      the patcher links them into stock 1.12's main OS with the build's version name;
   3. elektron-firmware-tool puts FTD1's DSP (out/T3.8/FTD1/section7.bin) in section 7;
   4. checks (all must hold, or nothing is written as final):
@@ -489,8 +490,21 @@ def build(name, built):
     return info, img
 
 
+# Built from the pinned elekloader commit that holds their 0.1 sources (scripts/elk_pin.py): the
+# working tree moved them on for CMP1 (core-dn2 0.2, param-rows-dn2 0.2), and these builds must
+# keep rebuilding byte for byte.
+PINNED = ('core', 'param-rows')
+
+
 def main():
-    names = sys.argv[1:] or ['GT00', 'GT01', 'GT1T']
+    global OUT, MODS, BUILD
+    argv = sys.argv[1:]
+    if '--out' in argv:                 # write somewhere else (a reproducibility check)
+        i = argv.index('--out')
+        OUT = os.path.abspath(argv[i + 1])
+        MODS, BUILD = os.path.join(OUT, 'mods'), os.path.join(OUT, 'build')
+        del argv[i:i + 2]
+    names = argv or ['GT00', 'GT01', 'GT1T']
     for p, want in ((STOCK, STOCK_SHA), (FTD1, FTD1_SHA), (SEC7, SEC7_SHA), (FTN1_MAIN, FTN1_MAIN_SHA)):
         if sha(open(p, 'rb').read()) != want:
             raise SystemExit('%s: sha256 is not the expected one' % p)
@@ -498,10 +512,13 @@ def main():
     os.makedirs(BUILD, exist_ok=True)
     env = dict(os.environ, ELEKLOADER_CROSS='m68k-elf-')
     run([sys.executable, os.path.join(ROOT, 'scripts', 't65_make_mod.py')])
+    import elk_pin
+    pin = elk_pin.tree(elk_pin.REV_0_1)
+    dirs = dict(MODDIRS, **{m: os.path.join(pin, MODDIRS[m]) for m in PINNED})
     need = sorted({m for n in names for m in BUILDS[n]}, key=list(MODDIRS).index)
     built = {}
     for m in need:
-        out = run([ELPY, '-m', 'elekloader.sdk.build', MODDIRS[m], '--stock', STOCK, '--out', MODS], cwd=EL, env=env)
+        out = run([ELPY, '-m', 'elekloader.sdk.build', dirs[m], '--stock', STOCK, '--out', MODS], cwd=EL, env=env)
         f = re.search(r'BUILT (\S+\.elemod)', out).group(1)
         built[m] = os.path.normpath(os.path.join(EL, f))
     infos, imgs = {}, {}

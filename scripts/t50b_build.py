@@ -2,11 +2,12 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 """T5.0b: build FTN1 = FTD1's DSP (section 7) + core-dn2 + fx-rename-dn2 in the main OS (section 3).
 
-    venv/bin/python scripts/t50b_build.py
+    venv/bin/python scripts/t50b_build.py [--out DIR (default out/T5.0b)]
 
 Steps (nothing here talks to hardware):
   1. scripts/t50b_make_mod.py writes fx-rename-dn2's mod.json from the stock image;
-  2. elekloader's SDK builds core-dn2 and fx-rename-dn2 (ELEKLOADER_CROSS=m68k-elf-), lints them
+  2. elekloader's SDK builds core-dn2 0.1 (from the pinned elekloader commit, scripts/elk_pin.py)
+     and fx-rename-dn2 (ELEKLOADER_CROSS=m68k-elf-), lints them
      together, and its patcher links them into stock 1.12's main OS with version FTN1
      (out/T5.0b/build/FTN1-main.syx: the main OS changed, section 7 still stock);
   3. elektron-firmware-tool replaces section 7 with FTD1's depacked DSP stream
@@ -114,6 +115,10 @@ def diff_ranges(a, b):
 
 
 def main():
+    global OUT, MODS, BUILD
+    if '--out' in sys.argv[1:]:          # write somewhere else (a reproducibility check)
+        OUT = os.path.abspath(sys.argv[sys.argv.index('--out') + 1])
+        MODS, BUILD = os.path.join(OUT, 'mods'), os.path.join(OUT, 'build')
     for p, want in ((STOCK, STOCK_SHA), (FTD1, FTD1_SHA), (SEC7, SEC7_SHA)):
         if sha(open(p, 'rb').read()) != want:
             raise SystemExit('%s: sha256 is not the expected one' % p)
@@ -123,7 +128,12 @@ def main():
 
     # 1-2: the mod, the main OS
     run([sys.executable, os.path.join(ROOT, 'scripts', 't50b_make_mod.py')])
-    for d in ('mods/core-dn2', 'examples/fx-rename-dn2'):
+    # core-dn2 0.1 from the pinned elekloader commit (scripts/elk_pin.py): the working tree moved it
+    # on for CMP1 (0.2), and FTN1 must keep rebuilding byte for byte
+    sys.path.insert(0, os.path.join(ROOT, 'scripts'))
+    import elk_pin
+    pin = elk_pin.tree(elk_pin.REV_0_1)
+    for d in (os.path.join(pin, 'mods', 'core-dn2'), 'examples/fx-rename-dn2'):
         run([ELPY, '-m', 'elekloader.sdk.build', d, '--stock', STOCK, '--out', MODS], cwd=EL, env=env)
     core, ren = os.path.join(MODS, 'core-0.1.elemod'), os.path.join(MODS, 'fx-rename-0.1.elemod')
     run([ELPY, '-m', 'elekloader.lint', core, ren, '--stock', STOCK], cwd=EL, env=env)

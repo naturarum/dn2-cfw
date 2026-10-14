@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# T6.3 CMP1 (scripts/t63b_mkscripts.py): each MIXER page once (with --fake-gr)
+wait-emu 0.5
+down space
+wait-emu 0.1
+tap semicolon      # FUNC+MOD: MIXER
+wait-emu 0.1
+up space
+wait-emu 0.6
+wait-emu 0.4
+png m1
+tap Down
+wait-emu 0.6
+wait-emu 0.4
+png m2
+tap Down
+wait-emu 0.6
+wait-emu 0.4
+png m3
+tap Down
+wait-emu 0.6
+wait-emu 0.4
+png m4
+tap Down
+wait-emu 0.6
+wait-emu 0.4
+png m5
+tap Down
+wait-emu 0.6
+wait-emu 0.4
+png m6
+tap Down
+wait-emu 0.6
+wait-emu 0.4
+png m7
+tap Down
+wait-emu 0.6

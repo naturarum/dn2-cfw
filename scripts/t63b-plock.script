@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# T6.3 CMP1 (scripts/t63b_mkscripts.py): band knobs turned with a trig held (no lock may result)
+wait-emu 0.5
+tap 0                # RECORD: grid recording on
+wait-emu 0.3
+tap q                # a trig on step 1
+wait-emu 0.3
+png l00-grid
+down space
+wait-emu 0.1
+tap semicolon      # FUNC+MOD: MIXER
+wait-emu 0.1
+up space
+wait-emu 0.6
+png l01-low
+down q
+wait-emu 0.3
+tap 1
+wait-emu 0.3
+png l02-low-A
+tap 2
+wait-emu 0.3
+png l02-low-B
+tap 3
+wait-emu 0.3
+png l02-low-C
+tap 4
+wait-emu 0.3
+png l02-low-D
+tap 5
+wait-emu 0.3
+png l02-low-E
+tap 6
+wait-emu 0.3
+png l02-low-F
+up q
+wait-emu 0.4
+tap Down
+wait-emu 0.6
+down q
+wait-emu 0.3
+tap 5
+wait-emu 0.3
+png l03-mid-E
+tap 6
+wait-emu 0.3
+png l03-mid-F
+up q
+wait-emu 0.4
+tap Down
+wait-emu 0.6
+down q
+wait-emu 0.3
+tap 1
+wait-emu 0.3
+png l04-high-A
+up q
+wait-emu 0.4
+tap 0                # RECORD: grid recording off
+wait-emu 0.5
+png l05-end

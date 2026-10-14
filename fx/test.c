@@ -15,6 +15,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <stddef.h>
 #define FX_TEST 1
 #include "tapedelay.c"
 #include "mbcomp.c"
@@ -541,14 +542,29 @@ static void test_guard(void)
     int k, ok_all = 1;
     static const char *what[] = { "NaN in the input", "+inf in the input", "1e35 in the input", "NaN in a crossover state",
                                   "inf in a detector state", "NaN in the release envelope", "inf in the makeup",
-                                  "NaN in the key" };
-    printf("compressor guard: one bad value -> that block silent, every filter and envelope reset, the next block\n"
-           "  normal; loud real material (peaks 64) never trips it\n");
+                                  "NaN in the key", "-48 in the release envelope", "1e5 in a crossover state" };
+    /* CMP1: a smoother outside its range (the envelopes, the makeup) is found by the control block before the
+       samples run (mb_implausible): the state restarts there and the block fades in from 0 (its first sample
+       exactly 0) instead of being silent; everything else trips at the end of the block (a silent block).
+       CMP1b: an envelope below -32 log2 units is out of range too, the guard trips at 2^12, and a crossover state
+       over it is found before the block (CMP1 review: an envelope at -48, inside CMP1's -64, and a crossover state
+       at 1e5, under CMP1's 2^20 guard, held the gain down for seconds at REL 127) */
+    static const int at_control[] = { 0, 0, 0, 1, 0, 1, 1, 0, 1, 1 };
+    const int ncase = (int)(sizeof at_control / sizeof at_control[0]);
+    printf("compressor guard: one bad value -> that block silent (or, for a smoother out of range, the state restarted\n"
+           "  before it and the block fading in from 0), the whole state restarted, the next block normal; loud real\n"
+           "  material (peaks 64) never trips it\n");
+    /* CMP1b: mb_implausible walks the 20 crossover states as consecutive floats from s1[0].ic1 */
+    CHECK(offsetof(MBComp, s2lp[1].ic2) - offsetof(MBComp, s1[0].ic1) == 19 * sizeof(float)
+          && offsetof(MBComp, s1lp[0].ic1) - offsetof(MBComp, s1[0].ic1) == 4 * sizeof(float)
+          && offsetof(MBComp, apl[0].ic1) - offsetof(MBComp, s1[0].ic1) == 8 * sizeof(float)
+          && offsetof(MBComp, s2[0].ic1) - offsetof(MBComp, s1[0].ic1) == 12 * sizeof(float),
+          "the crossover states are not 20 consecutive floats");
     for (i = 0; i < N; i++) x[i] = 0.3f * fx_rands(&r);
-    for (k = 0; k < 8; k++) {
+    for (k = 0; k < ncase; k++) {
         float nanv = fx_i2f(0x7fc00000u), infv = fx_i2f(0x7f800000u);
         float kl[32], kr[32], bl[32], br[32];
-        long b, bad = 0, zero_blocks = 0;
+        long b, bad = 0, zero_blocks = 0, first0 = 0;
         int key = k == 7;
         mbcomp_init(s, NULL);
         for (i = 0; i < 3; i++) { mbcomp_set(s, MB_P(i, MB_THR), 40); mbcomp_set(s, MB_P(i, MB_RAT), 6); }
@@ -569,6 +585,8 @@ static void test_guard(void)
                 if (k == 5) s->band[0].y1 = nanv;
                 if (k == 6) s->band[1].mk = infv;
                 if (k == 7) kl[5] = nanv;
+                if (k == 8) s->band[0].y1 = -48.0f;
+                if (k == 9) s->s1[0].ic1 = 1e5f;
             }
             mbcomp_process(s, bl, br, key ? kl : NULL, key ? kr : NULL, yl + 32 * b, yr + 32 * b, 32);
             for (i = 32 * b; i < 32 * b + 32; i++) if (!isfinite(yl[i]) || !isfinite(yr[i]) || fabs(yl[i]) > 2) bad++;
@@ -577,11 +595,19 @@ static void test_guard(void)
                 for (i = 32 * b; i < 32 * b + 32; i++) if (yl[i] != 0.0f || yr[i] != 0.0f) z = 0;
                 zero_blocks += z;
             }
+            if (b == 50 && yl[32 * b] == 0.0f && yr[32 * b] == 0.0f) first0 = 1;
         }
         printf("  %-28s: trips %u, silent blocks %ld (block 50 %s), bad output samples %ld, GR after %.2f dB\n", what[k],
-               s->trips, zero_blocks, zero_blocks ? "silent" : "NOT silent", bad, mbcomp_gr_db(s, 1));
-        if (!(s->trips == 1 && zero_blocks == 1 && bad == 0)) ok_all = 0;
-        CHECK(s->trips == 1 && zero_blocks == 1 && bad == 0, "guard on %s: trips %u, silent %ld, bad %ld", what[k], s->trips, zero_blocks, bad);
+               s->trips, zero_blocks, zero_blocks ? "silent" : (first0 ? "fading in from 0" : "NOT silent"), bad,
+               mbcomp_gr_db(s, 1));
+        if (at_control[k]) {
+            if (!(s->trips == 1 && zero_blocks == 0 && first0 && bad == 0)) ok_all = 0;
+            CHECK(s->trips == 1 && zero_blocks == 0 && first0 && bad == 0, "guard on %s: trips %u, silent %ld, first 0 %ld, bad %ld",
+                  what[k], s->trips, zero_blocks, first0, bad);
+        } else {
+            if (!(s->trips == 1 && zero_blocks == 1 && bad == 0)) ok_all = 0;
+            CHECK(s->trips == 1 && zero_blocks == 1 && bad == 0, "guard on %s: trips %u, silent %ld, bad %ld", what[k], s->trips, zero_blocks, bad);
+        }
     }
     /* loud material: no trip */
     mbcomp_init(s, NULL);
@@ -594,6 +620,271 @@ static void test_guard(void)
     CHECK(s->trips == 0 && !memcmp(x, yl, sizeof(float) * (size_t)N), "loud material tripped the guard (%u)", s->trips);
     (void)ok_all;
     free(x); free(yl); free(yr); free(s);
+}
+
+/* ---------- CMP1: the scrub is a no-op, the restart is complete, the return after a trip is quiet ---------- */
+
+/* the knob values a test compressor runs at, and the glue's part of the repair (tools/dspsplice/src/cmp_glue.c):
+   before each call every knob that differs from the truth is set again, and the table pointer too */
+static void mb_glue_like(MBComp *s, const float *truth, const float *tab)
+{
+    int p;
+    for (p = 0; p < MB_NPARAMS; p++)
+        if (s->knob[p] != truth[p]) mbcomp_set(s, p, truth[p]);
+    s->tab = tab;
+}
+
+static void mb_apply(MBComp *s, const float *truth)
+{
+    int p;
+    for (p = 0; p < MB_NPARAMS; p++) mbcomp_set(s, p, truth[p]);
+}
+
+/* program-like test material: noise bursts, a decaying chord, a sustained low note */
+static void mb_material(float *x, float *xr, long N, uint32_t seed)
+{
+    long i;
+    uint32_t r = seed;
+    for (i = 0; i < N; i++) {
+        double t = i / 48000.0;
+        double env = exp(-6.0 * fmod(t, 0.5));
+        double v = 0.25 * env * fx_rands(&r) + 0.2 * (0.6 + 0.4 * sin(2 * M_PI * 0.7 * t)) *
+                   (sin(2 * M_PI * 110.0 * t) + 0.5 * sin(2 * M_PI * 277.2 * t) + 0.3 * sin(2 * M_PI * 3520.0 * t));
+        x[i] = (float)v;
+        xr[i] = (float)(0.9 * v + 0.05 * fx_rands(&r));
+    }
+}
+
+static void test_scrub_noop(void)
+{
+    const long N = 48000 * 4;
+    float *x = fbuf(N), *xr = fbuf(N), *a = fbuf(N), *ar = fbuf(N), *b = fbuf(N), *br = fbuf(N);
+    MBComp *A = malloc(sizeof *A), *B = malloc(sizeof *B);
+    float truth[MB_NPARAMS];
+    uint32_t r = 77u;
+    long i, diff = 0, calls = 0;
+    int p, key;
+    printf("compressor scrub (CMP1): re-deriving every knob-derived value before every call changes nothing (bit for\n"
+           "  bit), with knobs jumping, random call lengths, self-detection and a key; no restart on real material\n"
+           "  (CMP1b: nor does the range test of the derived values)\n");
+    mb_material(x, xr, N, 5u);
+    for (key = 0; key < 2; key++) {
+        mbcomp_init(A, NULL);
+        for (p = 0; p < MB_NPARAMS; p++) truth[p] = A->knob[p];
+        truth[MB_SCS] = (float)key;
+        mb_apply(A, truth);
+        mbcomp_snap(A);
+        memcpy(B, A, sizeof *A);
+        for (i = 0; i < N;) {
+            int n = 1 + (int)(fx_randu(&r) * 99.0f);
+            if (n > N - i) n = (int)(N - i);
+            if (calls % 23 == 0) {             /* a knob jumps, any of them (RAT 0..8, MIX through 0) */
+                int q = (int)(fx_randu(&r) * (MB_NPARAMS - 0.01f));
+                float hi = (q % MB_BAND_NP == MB_RAT && q < MB_XLO) ? 8.0f : (q == MB_SCS ? 1.0f : 127.0f);
+                float v = (float)(int)(fx_randu(&r) * (hi + 0.99f));
+                if (q == MB_SCS) v = (float)key;
+                if (calls % 230 == 0) v = q == MB_MIX ? 0.0f : v;
+                truth[q] = v;
+                mbcomp_set(A, q, v);
+                mbcomp_set(B, q, v);
+            }
+            /* B: everything derived again before the call (more than the scrub's one group per block), except
+               while a knob change waits for the next control block (applying it early would be a change of timing,
+               not of value) */
+            if (B->dirty == 0) {
+                mb_targets(B, 127);
+                mb_detector_coefs(B);
+                mb_xover_coefs(B);
+            }
+            mbcomp_process(A, x + i, xr + i, key ? xr + i : NULL, key ? x + i : NULL, a + i, ar + i, n);
+            mbcomp_process(B, x + i, xr + i, key ? xr + i : NULL, key ? x + i : NULL, b + i, br + i, n);
+            i += n;
+            calls++;
+        }
+        for (i = 0; i < N; i++) if (a[i] != b[i] || ar[i] != br[i]) diff++;
+        printf("  %s: %ld calls, %ld of %ld samples differ, restarts %u / %u\n", key ? "key" : "self", calls, diff, 2 * N,
+               A->trips, B->trips);
+        CHECK(diff == 0 && A->trips == 0 && B->trips == 0, "scrub not a no-op (%s): %ld samples, trips %u %u",
+              key ? "key" : "self", diff, A->trips, B->trips);
+    }
+    free(x); free(xr); free(a); free(ar); free(b); free(br); free(A); free(B);
+}
+
+/* every 32-bit word of the state before the work buffers (and a few buffer words), each of 21 values (NaN, +-inf,
+   +-1e30, +-1e9, +-denormal, -0, 0, garbage 0x7fffffff / 0xffffffff / 0x40000000 / 7, 100, -100, 0.5, 5; CMP1b: -48
+   and 1e5, inside CMP1's envelope bound and guard), at block 100
+   of a running compressor, two settings (self-detection MIX 64, a key MIX 127); the glue's part emulated. Pass: every
+   output finite, at most one silent block, trips at most 1, the last 100 blocks within 0.5 dB RMS of the run without
+   the injection, and every knob-derived value (thresholds, ratios, times, makeup targets, the crossover, detector
+   and MIX coefficients and targets, the flags) bit-equal to that run's at the end */
+static void test_restart_any_field(void)
+{
+    static const uint32_t vals[] = { 0x7fc00000u, 0x7f800000u, 0xff800000u, 0x7149f2cau, 0xf149f2cau, 0x4e6e6b28u,
+                                     0xce6e6b28u, 0x00000001u, 0x80000001u, 0x80000000u, 0x00000000u, 0x7fffffffu,
+                                     0xffffffffu, 0x40000000u, 0x00000007u, 0x42c80000u, 0xc2c80000u, 0x3f000000u,
+                                     0x40a00000u, 0xc2400000u /* -48 (CMP1b) */, 0x47c35000u /* 1e5 (CMP1b) */ };
+    const int NV = (int)(sizeof vals / sizeof vals[0]);
+    const long NB = 700, AT = 100;
+    const long N = NB * 32;
+    float *x = fbuf(N), *xr = fbuf(N), *ra = fbuf(N), *rar = fbuf(N), *ya = fbuf(N), *yar = fbuf(N);
+    MBComp *R = malloc(sizeof *R), *S = malloc(sizeof *S), *S0 = malloc(sizeof *S0);
+    float truth[MB_NPARAMS];
+    const float *tab;
+    long nwords = (long)(offsetof(MBComp, buf_lo) / 4), w, cases = 0, failed = 0, trips_total = 0, max_trips = 0;
+    long silent_max = 0;
+    double worst_db = 0.0;
+    int set, v, p, b;
+    printf("compressor restart (CMP1): any value in any state word -> finite output, at most one silent block, and\n"
+           "  back to the undisturbed run (RMS, and every knob-derived value bit for bit)\n");
+    mb_material(x, xr, N, 11u);
+    for (set = 0; set < 2; set++) {
+        int key = set == 1;
+        mbcomp_init(S0, NULL);
+        tab = S0->tab;
+        for (p = 0; p < MB_NPARAMS; p++) truth[p] = S0->knob[p];
+        for (b = 0; b < 3; b++) {
+            truth[MB_P(b, MB_THR)] = key ? 30.0f : 40.0f;
+            truth[MB_P(b, MB_RAT)] = key ? 8.0f : 6.0f;
+            truth[MB_P(b, MB_ATK)] = key ? 64.0f : 10.0f;
+            truth[MB_P(b, MB_REL)] = 30.0f;
+            truth[MB_P(b, MB_MUP)] = 64.0f;
+        }
+        truth[MB_MIX] = key ? 127.0f : 64.0f;
+        truth[MB_SCS] = (float)key;
+        mb_apply(S0, truth);
+        mbcomp_snap(S0);
+        memcpy(R, S0, sizeof *R);
+        for (long blk = 0; blk < NB; blk++)
+            mbcomp_process(R, x + 32 * blk, xr + 32 * blk, key ? xr + 32 * blk : NULL, key ? x + 32 * blk : NULL,
+                           ra + 32 * blk, rar + 32 * blk, 32);
+        for (w = 0; w < nwords + 6; w++) {
+            long off = w < nwords ? 4 * w : (long)offsetof(MBComp, buf_lo) + 4 * 97 * (w - nwords);
+            for (v = 0; v < NV; v++) {
+                long blk, i, bad = 0, silent = 0, mism = 0;
+                uint32_t tr0 = 0, trips;
+                double e = 0, er = 0, db;
+                memcpy(S, S0, sizeof *S);
+                for (blk = 0; blk < NB; blk++) {
+                    int z = 1;
+                    if (blk == AT) {
+                        memcpy((char *)S + off, &vals[v], 4);
+                        tr0 = S->trips;
+                    }
+                    mb_glue_like(S, truth, tab);
+                    mbcomp_process(S, x + 32 * blk, xr + 32 * blk, key ? xr + 32 * blk : NULL, key ? x + 32 * blk : NULL,
+                                   ya + 32 * blk, yar + 32 * blk, 32);
+                    for (i = 32 * blk; i < 32 * blk + 32; i++) {
+                        if (!isfinite(ya[i]) || !isfinite(yar[i])) bad++;
+                        if (ya[i] != 0.0f || yar[i] != 0.0f) z = 0;
+                    }
+                    if (blk >= AT) silent += z;
+                }
+                for (i = N - 3200; i < N; i++) { e += (double)ya[i] * ya[i] + (double)yar[i] * yar[i];
+                                                  er += (double)ra[i] * ra[i] + (double)rar[i] * rar[i]; }
+                db = 10 * log10((e + 1e-30) / (er + 1e-30));
+                for (b = 0; b < 3; b++) {
+                    const MbBand *p1 = &S->band[b], *p2 = &R->band[b];
+                    if (p1->thr != p2->thr || p1->thr_lin != p2->thr_lin || p1->rinv != p2->rinv || p1->on != p2->on ||
+                        p1->ca != p2->ca || p1->ca1 != p2->ca1 || p1->cr != p2->cr || p1->cr1 != p2->cr1 ||
+                        p1->t_mk != p2->t_mk) mism++;
+                }
+                /* the crossover glide is a smoother (40 ms, and it lands on its target below 1e-5 octave): within
+                   0.001 octave of the undisturbed run's at the end */
+                if (S->sb0 != R->sb0 || S->sp != R->sp || S->t_lf_lo != R->t_lf_lo || S->t_lf_hi != R->t_lf_hi ||
+                    fabs(S->lf_lo - R->lf_lo) > 1e-3 || fabs(S->lf_hi - R->lf_hi) > 1e-3 || S->t_mw != R->t_mw ||
+                    S->t_md != R->t_md || S->mix0 != R->mix0 || S->sc_ext != R->sc_ext || S->rec_left != 0 ||
+                    S->tab != R->tab) mism++;
+                if (S->lf_lo == R->lf_lo && S->lf_hi == R->lf_hi &&
+                    (memcmp(&S->c_lo, &R->c_lo, sizeof S->c_lo) || memcmp(&S->c_hi, &R->c_hi, sizeof S->c_hi))) mism++;
+                for (p = 0; p < MB_NPARAMS; p++) if (S->knob[p] != R->knob[p]) mism++;    /* -0 == +0 */
+                trips = S->trips - tr0;
+                cases++;
+                trips_total += trips;
+                if ((long)trips > max_trips) max_trips = (long)trips;
+                if (silent > silent_max) silent_max = silent;
+                if (fabs(db) > worst_db) worst_db = fabs(db);
+                if (bad || silent > 1 || trips > 1 || fabs(db) > 0.5 || mism) {
+                    failed++;
+                    if (failed <= 40)
+                        printf("  FAIL case: set %d, byte offset %ld, value %08x: bad %ld, silent %ld, trips %u, %.2f dB, derived mismatches %ld\n",
+                               set, off, vals[v], bad, silent, trips, db, mism);
+                }
+            }
+        }
+    }
+    printf("  %ld cases (%ld state words + 6 buffer words, %d values, 2 settings): %ld failed; trips per case at most %ld\n"
+           "  (%ld in all), silent blocks at most %ld, last 100 blocks within %.3f dB of the undisturbed run\n",
+           cases, nwords, NV, failed, max_trips, trips_total, silent_max, worst_db);
+    CHECK(failed == 0, "restart from a corrupted state: %ld of %ld cases fail", failed, cases);
+    free(x); free(xr); free(ra); free(rar); free(ya); free(yar); free(R); free(S); free(S0);
+}
+
+/* a guard trip at heavy settings on sustained material: CMP1's return (MIX gains from 0, instant attack for
+   MB_REC_BLOCKS) against the same trip with CMP0's return emulated (envelopes from 0 with the full makeup, the
+   MIX gains kept, the table attack), and against no trip; peak and RMS over the 100 ms after the trip block */
+static void test_quiet_return(void)
+{
+    const long NB = 600, AT = 300;
+    const long N = NB * 32;
+    float *x = fbuf(N), *xr = fbuf(N);
+    float *y[3], *yr[3];
+    MBComp *s = malloc(sizeof *s);
+    static const float sets[3][6] = { { 0, 8, 127, 127, 127, 127 },     /* THR RAT ATK REL MUP MIX */
+                                      { 32, 8, 64, 100, 100, 127 },
+                                      { 32, 4, 24, 32, 64, 127 } };
+    long i;
+    int k, m, b;
+    printf("compressor trip at heavy settings (CMP1): the 100 ms after the trip, peak and RMS, against no trip and\n"
+           "  against CMP0's return (emulated)\n");
+    for (i = 0; i < N; i++) {
+        double t = i / 48000.0;
+        double v = 0.3 * (sin(2 * M_PI * 98.0 * t) + 0.7 * sin(2 * M_PI * 196.0 * t + 0.3) + 0.5 * sin(2 * M_PI * 247.0 * t)
+                          + 0.4 * sin(2 * M_PI * 392.0 * t) + 0.2 * sin(2 * M_PI * 1568.0 * t) + 0.1 * sin(2 * M_PI * 4186.0 * t));
+        x[i] = (float)v;
+        xr[i] = (float)(0.95 * v);
+    }
+    for (m = 0; m < 3; m++) { y[m] = fbuf(N); yr[m] = fbuf(N); }
+    for (k = 0; k < 3; k++) {
+        double pk[3], rm[3];
+        for (m = 0; m < 3; m++) {               /* 0 no trip, 1 CMP1, 2 CMP0's return */
+            mbcomp_init(s, NULL);
+            for (b = 0; b < 3; b++) {
+                mbcomp_set(s, MB_P(b, MB_THR), sets[k][0]); mbcomp_set(s, MB_P(b, MB_RAT), sets[k][1]);
+                mbcomp_set(s, MB_P(b, MB_ATK), sets[k][2]); mbcomp_set(s, MB_P(b, MB_REL), sets[k][3]);
+                mbcomp_set(s, MB_P(b, MB_MUP), sets[k][4]);
+            }
+            mbcomp_set(s, MB_MIX, sets[k][5]);
+            mbcomp_snap(s);
+            for (long blk = 0; blk < NB; blk++) {
+                float bl[32], br2[32];
+                float mw = s->mw, md = s->md;
+                memcpy(bl, x + 32 * blk, sizeof bl);
+                memcpy(br2, xr + 32 * blk, sizeof br2);
+                if (m > 0 && blk == AT) bl[5] = fx_i2f(0x7fc00000u);
+                mbcomp_process(s, bl, br2, NULL, NULL, y[m] + 32 * blk, yr[m] + 32 * blk, 32);
+                if (m == 2 && blk == AT) {      /* CMP0's reset: no instant attack, MIX gains as they were */
+                    s->rec_left = 0;
+                    mb_targets(s, 7);
+                    s->mw = mw;
+                    s->md = md;
+                }
+            }
+            pk[m] = 0; rm[m] = 0;
+            for (i = 32 * (AT + 1); i < 32 * (AT + 1) + 4800; i++) {
+                if (fabs(y[m][i]) > pk[m]) pk[m] = fabs(y[m][i]);
+                if (fabs(yr[m][i]) > pk[m]) pk[m] = fabs(yr[m][i]);
+                rm[m] += (double)y[m][i] * y[m][i] + (double)yr[m][i] * yr[m][i];
+            }
+            rm[m] = sqrt(rm[m] / 9600.0);
+        }
+        printf("  THR %3.0f RAT %.0f ATK %3.0f REL %3.0f MUP %3.0f: peak / RMS dBFS: no trip %6.2f / %6.2f, CMP1 %6.2f / %6.2f, "
+               "CMP0's return %6.2f / %6.2f\n", sets[k][0], sets[k][1], sets[k][2], sets[k][3], sets[k][4],
+               20 * log10(pk[0]), 20 * log10(rm[0]), 20 * log10(pk[1]), 20 * log10(rm[1]), 20 * log10(pk[2]), 20 * log10(rm[2]));
+        CHECK(pk[1] <= pk[0] * 1.122 && rm[1] <= rm[0] * 1.122, "trip return louder than no trip by more than 1 dB: peak %.2f / %.2f dB, RMS %.2f / %.2f dB",
+              20 * log10(pk[1]), 20 * log10(pk[0]), 20 * log10(rm[1]), 20 * log10(rm[0]));
+    }
+    for (m = 0; m < 3; m++) { free(y[m]); free(yr[m]); }
+    free(x); free(xr); free(s);
 }
 
 /* ============================== tape delay ============================== */
@@ -1376,6 +1667,9 @@ int main(int argc, char **argv)
     test_mix();
     test_ratio_off_and_clip();
     test_guard();
+    test_scrub_noop();
+    test_restart_any_field();
+    test_quiet_return();
     test_delay_time();
     test_width();
     test_resonance();

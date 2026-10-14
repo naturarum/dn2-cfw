@@ -25,9 +25,45 @@
  *   #8  everything per sample;
  *   #10 the NaN/inf guard (integer exponent tests on the output and the state);
  *   #11 LSTN dropped.
+ * CMP1 (2026-10-13, the CMP0 review's open points; out/T6.3/review-safety3):
+ *   #12 the guard's reset is complete (mb_restart): CMP0 reset the filters and envelopes only, so a NaN or
+ *       absurd value in a derived control value (crossover or detector coefficients, a band's times, ratio,
+ *       threshold or makeup target, the MIX targets, the dry crossfade) survived the trip and tripped the
+ *       guard again every block: the master silent until power-off (review: inject.py, stuck.py). Now every
+ *       derived value is derived again from the knobs, read through NaN-safe clamps (mb_clampn);
+ *   #13 a quiet return after a trip: both MIX gains from 0 (the stock one-poles fade the output in) and
+ *       instant attack for MB_REC_BLOCKS (CMP0: the envelopes restarted at no gain reduction with the full
+ *       makeup, a loud 50-80 ms burst at heavy settings: review burst.py); the DSP glue then seeds each band's
+ *       envelopes with the gain reduction it had in the block before (tools/dspsplice/src/cmp_glue.c);
+ *   #14 the scrub: one group of derived values derived again per control block (all every 8 blocks), and a
+ *       smoother outside its possible range (or NaN) restarts the state as a trip does. In normal operation
+ *       the scrub writes the values already there and the range test never fires: CMP0's output bit for bit.
+ * CMP1b (2026-10-14, the CMP1 review; out/T6.3/review-dsp-cmp1):
+ *   #15 the range test before the block also tests the knob-derived values the scrub reaches only every 8
+ *       blocks: each band's time coefficients in [0, 1] with each complement exactly 1 - it (mb_targets stores c
+ *       and 1.0f - c, so one corrupted word breaks the pair), 1/ratio, makeup target and threshold in range; the
+ *       MIX targets; the crossover targets and coefficients. A value outside is a restart (the quiet return)
+ *       before the block. CMP1 let such a value act for up to 8 blocks, at the clip ceiling for a MIX or makeup
+ *       target or an attack coefficient (review p4_detect_latency.json). The detector coefficients are derived
+ *       every block (two products). Deriving everything every block instead was measured at +3,500 instructions
+ *       per block (out/T6.3/CMP1-dsp/probes/cmp1b-variants); these tests cost about +450;
+ *   #16 an envelope below -32 log2 units (-193 dB) restarts the state (CMP1: -64; real material cannot get below
+ *       -21 while every signal state is under the guard), and the signal guard is 2^12 (+72 dBFS; CMP1 2^20).
+ *       Review p2_plausible_corruption.json: an envelope at -48 or a crossover state at 1e5 held the gain down
+ *       for seconds at REL 127; now the first restarts before the block, the second trips the guard at the end
+ *       of its block (a guard of 2^16 was tried first: in most crossover states and in the inputs 1e5 had decayed
+ *       under it by the end of the block, out/T6.3/CMP1-dsp/probes/cmp1b-variants). A wrong value inside a range (a filter state at 100, an envelope at -20, a makeup target
+ *       of 4 where the knob says 0) cannot be told from a real one: it acts as one, a knob-derived one until the
+ *       scrub's group comes round (at most 8 blocks, 5 ms).
  * Cheap paths (T6.4 4.4): while the wet gain is exactly 0 and its target 0 (MIX 0), no exp2, no wet sum
  * (0 x wet = 0 for a finite wet, so the output is bit-identical); the detector and the curve still run
  * for the meter. A band at 1:1 with its envelopes at 0 and its makeup settled skips detection.
+ *
+ * NaN in comparisons (CMP1, measured in selcc's output): selcc compiles `if (a > b) X` as COMP(a, b) then
+ * `IF LE` skip X, and the SHARC's COMP clears both AN and AZ when an operand is NaN, so on the DSP a NaN
+ * compares as greater than everything (a > b and a >= b true, a < b and a <= b false), unlike C. The
+ * control-path tests here are written to give the same answer on both: an exponent-field test for NaN/inf
+ * (mb_clampn), or a range test of two ifs, (x > hi) and !(x >= lo), which a NaN fails on either machine.
  *
  * Written for selcc (notes/T3.11 11.3, 12.7; T5.2 6.2; T5.3 3.4): no calls in the sample loops (fxmath.h
  * statement macros), state in locals, flags set with if statements, one declaration per variable, every
@@ -45,25 +81,51 @@
 #define XHI_OCT 4.0f         /* log2(16) */
 #define OFF_LIN 3.0e38f      /* thr_lin of a band at 1:1: no finite level is above it */
 /* guard (#10): the master recovers from any finite block up to 1e30 but latches on 3e38, inf and NaN
-   (out/T6.3/CMP0-dsp/probes/master_bound.json); no real level comes near 2^30 */
-#define GUARD_SIG 0x4e800000u     /* exponent field of 2^30: outputs and filter states */
+   (out/T6.3/CMP0-dsp/probes/master_bound.json). CMP0 tripped at 2^30, CMP1 at 2^20, CMP1b at 2^12 (+72 dBFS: the
+   real bus level is not measured, but 16 tracks at full scale sum to +24 dBFS, the filter and detector states stay
+   within about twice their input, and the Mac tests feed peaks of 64, +36 dBFS, without a trip): a finite absurd
+   value in an input or a filter state then restarts the state rather than being taken for a peak of that size,
+   which held the gain down for the release time (seconds at REL 127). A finite value below the guard still acts as
+   a real peak of its size. */
+#define GUARD_SIG 0x45800000u     /* exponent field of 2^12: outputs and filter states */
 #define GUARD_ENV 0x42800000u     /* exponent field of 2^6: envelopes and makeup, log2 units */
+/* #15: the deepest envelope the range test before the block accepts, log2 units. The deepest real one: threshold
+   -60 dB (-9.97), 20:1 (1/r = 0.05), a level just under the 2^12 guard (12): (12 + 9.97) x (0.05 - 1) = -20.9 */
+#define ENV_MIN -32.0f
+
+/* x clamped to [lo, hi]; NaN and +-inf -> lo, by the exponent field, so that the answer is the same on the SHARC
+   (where a NaN compares as greater than everything) and on the Mac: a corrupted knob never indexes a table
+   outside it. For any other x the same value as fx_clampf. Control rate only. */
+static float mb_clampn(float x, float lo, float hi)
+{
+    float v = x;
+    uint32_t u;
+    u = *(uint32_t *)&v;
+    u = u & 0x7f800000u;
+    if (u == 0x7f800000u)
+        v = lo;
+    if (v < lo)
+        v = lo;
+    if (v > hi)
+        v = hi;
+    return v;
+}
 
 float mbcomp_xlo_hz(float knob)
 {
-    return 30.0f * fx_exp2(fx_knob01(knob) * XLO_OCT);
+    return 30.0f * fx_exp2(fx_knob01(mb_clampn(knob, 0.0f, 127.0f)) * XLO_OCT);
 }
 
 float mbcomp_xhi_hz(float knob)
 {
-    return 1000.0f * fx_exp2(fx_knob01(knob) * XHI_OCT);
+    return 1000.0f * fx_exp2(fx_knob01(mb_clampn(knob, 0.0f, 127.0f)) * XHI_OCT);
 }
 
 float mbcomp_ratio(const MBComp *s, float step)
 {
     int32_t i;
     float r;
-    i = (int32_t)(fx_clampf(step, 0.0f, 8.0f) + 0.5f);
+    i = (int32_t)(mb_clampn(step, 0.0f, 8.0f) + 0.5f);
     if (i < 1)
         return 1.0f;
     r = s->tab[MB_TAB_RINV + i - 1];
@@ -128,12 +190,14 @@ static int mb_law_ready = 0;
 
 /* ---------------- control ---------------- */
 
-/* dirty bits: 1, 2, 4 = band 0, 1, 2; 8 crossovers; 32 SCS; 64 MIX */
-static void mb_targets(MBComp *s)
+/* the values derived from the knobs, for the groups in dm. Bits: 1, 2, 4 = band 0, 1, 2; 8 crossovers; 32 SCS;
+   64 MIX. Every knob is read through mb_clampn (CMP1), so a corrupted knob gives an in-range table index; for any
+   knob value mbcomp_set can store, the results are CMP0's bit for bit. While rec_left > 0 (after a restart) a
+   band's attack coefficient is 0: instant attack (#13). The caller clears s->dirty. */
+static void mb_targets(MBComp *s, int32_t dm)
 {
     int32_t b;
     int32_t i;
-    int32_t dm = s->dirty;
     const float *tab = s->tab;
     float v;
     float c;
@@ -142,9 +206,9 @@ static void mb_targets(MBComp *s)
         MbBand *bd = &s->band[b];
         const float *k = &s->knob[MB_P(b, 0)];
         if ((dm & (1 << b)) != 0) {
-            v = -60.0f + 60.0f * fx_knob01(k[MB_THR]);           /* dB, the stock law */
+            v = -60.0f + 60.0f * fx_knob01(mb_clampn(k[MB_THR], 0.0f, 127.0f));   /* dB, the stock law */
             bd->thr = v * LOG2_PER_DB;
-            i = (int32_t)(fx_clampf(k[MB_RAT], 0.0f, 8.0f) + 0.5f);
+            i = (int32_t)(mb_clampn(k[MB_RAT], 0.0f, 8.0f) + 0.5f);
             bd->on = 0;
             bd->rinv = 1.0f;
             bd->thr_lin = OFF_LIN;
@@ -154,15 +218,17 @@ static void mb_targets(MBComp *s)
                 bd->on = 1;
                 bd->thr_lin = fx_exp2(bd->thr);
             }
-            i = (int32_t)fx_clampf(k[MB_ATK], 0.0f, 127.0f);
+            i = (int32_t)mb_clampn(k[MB_ATK], 0.0f, 127.0f);
             c = tab[MB_TAB_ATK + i];
+            if (s->rec_left > 0)
+                c = 0.0f;
             bd->ca = c;
             bd->ca1 = 1.0f - c;
-            i = (int32_t)fx_clampf(k[MB_REL], 0.0f, 127.0f);
+            i = (int32_t)mb_clampn(k[MB_REL], 0.0f, 127.0f);
             c = tab[MB_TAB_REL + i];
             bd->cr = c;
             bd->cr1 = 1.0f - c;
-            bd->t_mk = MUP_LOG2 * fx_knob01(k[MB_MUP]);
+            bd->t_mk = MUP_LOG2 * fx_knob01(mb_clampn(k[MB_MUP], 0.0f, 127.0f));
         }
     }
     if ((dm & 8) != 0) {
@@ -171,11 +237,11 @@ static void mb_targets(MBComp *s)
     }
     if ((dm & 32) != 0) {
         s->sc_ext = 0;
-        if (s->knob[MB_SCS] >= 0.5f)
+        if (mb_clampn(s->knob[MB_SCS], 0.0f, 1.0f) >= 0.5f)
             s->sc_ext = 1;
     }
     if ((dm & 64) != 0) {
-        i = (int32_t)fx_clampf(s->knob[MB_MIX], 0.0f, 127.0f);
+        i = (int32_t)mb_clampn(s->knob[MB_MIX], 0.0f, 127.0f);
         c = tab[MB_TAB_MIX + i];
         s->t_mw = c;
         c = tab[MB_TAB_MIX + 127 - i];
@@ -184,7 +250,15 @@ static void mb_targets(MBComp *s)
         if (i == 0)
             s->mix0 = 1;
     }
-    s->dirty = 0;
+}
+
+/* the detector filter's coefficients: the stock HP form {b0, b1, a1} = {(1 - T)/2, -(1 - T)/2, T} at SCF 64 */
+static void mb_detector_coefs(MBComp *s)
+{
+    float t;
+    t = s->tab[MB_TAB_SCF + MB_SCF_NEUTRAL];
+    s->sb0 = 0.5f - 0.5f * t;
+    s->sp = -t;
 }
 
 /* no division or remainder: selcc divides by a constant through MRF, which the DSP hook stubs do not save
@@ -210,7 +284,7 @@ void mbcomp_set(MBComp *s, int param, float value)
     } else if (param == MB_SCS) {
         hi = 1.0f;
     }
-    s->knob[param] = fx_clampf(value, 0.0f, hi);
+    s->knob[param] = mb_clampn(value, 0.0f, hi);
     s->dirty |= bit;
 }
 
@@ -236,7 +310,10 @@ static void mb_xover_coefs(MBComp *s)
 void mbcomp_snap(MBComp *s)
 {
     int32_t b;
-    if (s->dirty) mb_targets(s);
+    if (s->dirty) {
+        mb_targets(s, s->dirty);
+        s->dirty = 0;
+    }
     s->lf_lo = s->t_lf_lo;
     s->lf_hi = s->t_lf_hi;
     mb_xover_coefs(s);
@@ -274,10 +351,39 @@ static void mb_clear(MBComp *s)
     }
 }
 
+/* #12, #13: the whole state from the knobs again (the guard, and a smoother found outside its range): every
+   filter and envelope at rest, every derived value derived again, the crossovers and the makeup on their
+   targets, the dry crossfade at its end; both MIX gains at 0, so the stock one-poles fade the output in
+   (cur = T + 0.995 (cur - T) per sample: -0.9 dB after 10 ms), and instant attack for MB_REC_BLOCKS control
+   blocks, so the bands take the gain reduction the signal needs at once instead of starting from none with
+   the full makeup. The knobs themselves are not changed (the glue sets the true values again at its next
+   call; tools/dspsplice/src/cmp_glue.c). */
+static void mb_restart(MBComp *s)
+{
+    int32_t b;
+    s->rec_left = MB_REC_BLOCKS;
+    mb_detector_coefs(s);
+    mb_targets(s, 127);
+    s->dirty = 0;
+    mb_clear(s);
+    s->lf_lo = s->t_lf_lo;
+    s->lf_hi = s->t_lf_hi;
+    mb_xover_coefs(s);
+    for (b = 0; b < 3; b++) {
+        s->band[b].mk = s->band[b].t_mk;
+        s->band[b].mk_step = 0.0f;
+    }
+    s->mw = 0.0f;
+    s->md = 0.0f;
+    s->xw = 0.0f;
+    if (s->mix0) s->xw = 1.0f;
+    s->xs = 0.0f;
+    s->scrub = 0;
+}
+
 void mbcomp_init(MBComp *s, const float *tab)
 {
     int32_t b;
-    float t;
 #if !defined(__ADSP21000__) || defined(MB_LAW_TABLES)
     if (!tab) {
         if (!mb_law_ready) {
@@ -302,14 +408,123 @@ void mbcomp_init(MBComp *s, const float *tab)
     s->knob[MB_XHI] = 44.0f;
     s->knob[MB_SCS] = 0.0f;
     s->knob[MB_MIX] = 127.0f;
-    /* the detector filter: the stock HP form {b0, b1, a1} = {(1 - T)/2, -(1 - T)/2, T} at SCF 64 */
-    t = tab[MB_TAB_SCF + MB_SCF_NEUTRAL];
-    s->sb0 = 0.5f - 0.5f * t;
-    s->sp = -t;
+    mb_detector_coefs(s);
     s->dirty = 127;
     s->ctl_left = 0;
     s->trips = 0;
+    s->scrub = 0;
+    s->rec_left = 0;
     mbcomp_snap(s);
+}
+
+/* #14, #15, #16: is a smoother outside the range it can reach in normal operation (or NaN)? The crossover glide in
+   log2 Hz (the knobs give 4.9..13.97; fx_svf_g clamps 10 Hz..21.6 kHz), the MIX gains and the dry crossfade (convex
+   combinations of values in [0, 1]), the envelopes (<= 0, >= ENV_MIN), the makeup (0..4, a linear ramp between
+   targets); and (#15) a knob-derived value outside what mb_targets and mb_xover_coefs can store. Each range test
+   is two ifs, (x > hi) and !(x >= lo): a NaN fails one of them on the SHARC (the first) and on the Mac (the
+   second); a NaN also fails the complement test (x != y is true for a NaN on both). In normal operation none of
+   these fires (verify_cmp.py CMP1 (h): the output is CMP0's bit for bit). */
+static int32_t mb_implausible(const MBComp *s)
+{
+    int32_t bad = 0;
+    int32_t b;
+    int32_t i;
+    float x;
+    uint32_t u;
+    const float *xp;
+    x = s->lf_lo;
+    if (x > 15.0f) bad = 1;
+    if (!(x >= 2.0f)) bad = 1;
+    x = s->lf_hi;
+    if (x > 15.0f) bad = 1;
+    if (!(x >= 2.0f)) bad = 1;
+    x = s->mw;
+    if (x > 1.0f) bad = 1;
+    if (!(x >= 0.0f)) bad = 1;
+    x = s->md;
+    if (x > 1.0f) bad = 1;
+    if (!(x >= 0.0f)) bad = 1;
+    x = s->xw;
+    if (x > 1.0f) bad = 1;
+    if (!(x >= 0.0f)) bad = 1;
+    for (b = 0; b < 3; b++) {
+        const MbBand *bd = &s->band[b];
+        x = bd->y1;
+        if (x > 0.0f) bad = 1;
+        if (!(x >= ENV_MIN)) bad = 1;
+        x = bd->y2;
+        if (x > 0.0f) bad = 1;
+        if (!(x >= ENV_MIN)) bad = 1;
+        x = bd->mk;
+        if (x > 5.0f) bad = 1;
+        if (!(x >= -1.0f)) bad = 1;
+        /* CMP1b: the band's derived values, between two scrubs of its group: the time coefficients in [0, 1]
+           and each one's complement exactly 1 - it (mb_targets stores c and 1.0f - c), 1/ratio, the makeup
+           target, the threshold in their ranges */
+        x = bd->ca;
+        if (x > 1.0f) bad = 1;
+        if (!(x >= 0.0f)) bad = 1;
+        if (bd->ca1 != 1.0f - x) bad = 1;
+        x = bd->cr;
+        if (x > 1.0f) bad = 1;
+        if (!(x >= 0.0f)) bad = 1;
+        if (bd->cr1 != 1.0f - x) bad = 1;
+        x = bd->rinv;
+        if (x > 1.0f) bad = 1;
+        if (!(x >= 0.04f)) bad = 1;
+        x = bd->t_mk;
+        if (x > 4.0001f) bad = 1;
+        if (!(x >= 0.0f)) bad = 1;
+        x = bd->thr;
+        if (x > 0.001f) bad = 1;
+        if (!(x >= -10.0f)) bad = 1;
+    }
+    /* CMP1b: the MIX targets (the stock table, [0, 1]), the crossover targets (30 Hz..1 kHz, 1..16 kHz in log2
+       Hz) and coefficients ([0, 1] each) */
+    x = s->t_mw;
+    if (x > 1.0f) bad = 1;
+    if (!(x >= 0.0f)) bad = 1;
+    x = s->t_md;
+    if (x > 1.0f) bad = 1;
+    if (!(x >= 0.0f)) bad = 1;
+    x = s->t_lf_lo;
+    if (x > 10.0f) bad = 1;
+    if (!(x >= 4.8f)) bad = 1;
+    x = s->t_lf_hi;
+    if (x > 14.0f) bad = 1;
+    if (!(x >= 9.9f)) bad = 1;
+    x = s->c_lo.a1;
+    if (x > 1.0f) bad = 1;
+    if (!(x >= 0.0f)) bad = 1;
+    x = s->c_lo.a2;
+    if (x > 1.0f) bad = 1;
+    if (!(x >= 0.0f)) bad = 1;
+    x = s->c_lo.a3;
+    if (x > 1.0f) bad = 1;
+    if (!(x >= 0.0f)) bad = 1;
+    x = s->c_hi.a1;
+    if (x > 1.0f) bad = 1;
+    if (!(x >= 0.0f)) bad = 1;
+    x = s->c_hi.a2;
+    if (x > 1.0f) bad = 1;
+    if (!(x >= 0.0f)) bad = 1;
+    x = s->c_hi.a3;
+    if (x > 1.0f) bad = 1;
+    if (!(x >= 0.0f)) bad = 1;
+    /* CMP1b #16: the 20 crossover states against the guard before the block (the exponent field; a NaN or inf is
+       the largest). A wrong value in one rings out within a few samples at the upper crossover (2.6 kHz: about 4
+       samples' time constant), under the guard by the end of the block, and leaves its gain reduction to the
+       release (inject_cmp.py: 1e5 in apl/s2/s2lp, REL 127). The detector and key states decay at 20 Hz and are
+       still over the guard at the end of the block. s1[2], s1lp[2], apl[2], s2[2], s2lp[2] are 20 consecutive
+       floats (fx/test.c checks the offsets); a loop, because 20 unrolled tests do not fit the code slot */
+    xp = &s->s1[0].ic1;
+    for (i = 0; i < 20; i++) {
+        x = xp[i];
+        u = *(uint32_t *)&x;
+        u = u & 0x7f800000u;
+        if (u >= GUARD_SIG) bad = 1;
+    }
+    return bad;
 }
 
 static void mb_control(MBComp *s)
@@ -319,14 +534,42 @@ static void mb_control(MBComp *s)
     float d;
     int32_t b;
     int32_t c;
-    if (s->dirty) mb_targets(s);
+    int32_t dm;
+    int32_t ph;
+
+    /* #13: the instant attack after a restart ends after MB_REC_BLOCKS: the bands' attack from the table again
+       (a corrupted count: at most MB_REC_BLOCKS more) */
+    dm = s->dirty;
+    if (s->rec_left > MB_REC_BLOCKS) s->rec_left = MB_REC_BLOCKS;
+    if (s->rec_left < 0) s->rec_left = 0;
+    if (s->rec_left > 0) {
+        s->rec_left = s->rec_left - 1;
+        if (s->rec_left == 0) dm = dm | 7;
+    }
+    /* #14: the scrub. Group ph of 8: 0..2 a band, 3 the crossover targets, SCS and MIX, 4 the crossover
+       coefficients, 5..7 none (the knob changes in dm as before); the detector coefficients every block (CMP1b;
+       CMP1: group 4). The range test (#15) covers the groups between two scrubs */
+    ph = s->scrub & 7;
+    s->scrub = ph + 1;
+    c = 0;
+    if (ph == 0) dm = dm | 1;
+    if (ph == 1) dm = dm | 2;
+    if (ph == 2) dm = dm | 4;
+    if (ph == 3) dm = dm | 104;
+    if (ph == 4) c = 1;
+    if (dm != 0) mb_targets(s, dm);
+    s->dirty = 0;
+    mb_detector_coefs(s);
+    if (mb_implausible(s)) {
+        mb_restart(s);
+        s->trips = s->trips + 1;
+    }
 
     /* crossover glide */
     e = s->lf_lo + (1.0f - XO_A) * (s->t_lf_lo - s->lf_lo);
     d = e - s->t_lf_lo;
     FX_ABS(d);
     if (d < 1e-5f) e = s->t_lf_lo;
-    c = 0;
     if (e != s->lf_lo) c = 1;
     s->lf_lo = e;
     e = s->lf_hi + (1.0f - XO_A) * (s->t_lf_hi - s->lf_hi);
@@ -462,8 +705,14 @@ static int mb_fullband = 0;
 void mbcomp_test_fullband(int on) { mb_fullband = on; }
 #endif
 
-/* the guard's check of the state; returns the largest exponent field per class in *sig, *env */
-static void mb_state_expo(const MBComp *s, uint32_t *sig, uint32_t *env)
+/* the guard's check of the state; returns the largest exponent field per class in *sig, *env.
+   Not static, on purpose (CMP1): selcc inlines a static void function called once (notes/T5.3 3.4), and inlined
+   here it left mb_run without a call; selcc's code for that leaf mb_run was wrong: it kept the arguments in
+   registers and, inside the crossover's hardware loop, stored R1 into the stack slot holding the copy of n, a
+   value R1 held only in the first iteration, so the later loops ran the wrong count (out/T6.3/CMP1-dsp/probes/
+   selcc-leaf-spill-miscompile/). With this call mb_run is compiled as in CMP0 (verify_cmp.py (b), (h)). */
+void mb_state_expo(const MBComp *s, uint32_t *sig, uint32_t *env);
+void mb_state_expo(const MBComp *s, uint32_t *sig, uint32_t *env)
 {
     uint32_t m1 = *sig;
     uint32_t m2 = *env;
@@ -501,10 +750,12 @@ static void mb_state_expo(const MBComp *s, uint32_t *sig, uint32_t *env)
 }
 
 /* One control block (at most 32 samples): the crossover per channel, the detector levels, the gain
-   computer per band, the output mix, the guard. Each stage is a loop with its state in locals. */
-static void mb_run(MBComp *s, const float *inL, const float *inR,
-                   const float *keyL, const float *keyR,
-                   float *outL, float *outR, int n)
+   computer per band, the output mix, the guard. Each stage is a loop with its state in locals. Returns 1 when
+   the guard tripped: the output is then silent and the caller restarts the state (CMP1: outside this
+   function's large frame, so the restart's calls do not add to the deepest stack; verify_cmp.py (d)). */
+static int32_t mb_run(MBComp *s, const float *inL, const float *inR,
+                      const float *keyL, const float *keyR,
+                      float *outL, float *outR, int n)
 {
     const float k2 = 2.0f * K_BW;
     const float sb0 = s->sb0;
@@ -517,6 +768,7 @@ static void mb_run(MBComp *s, const float *inL, const float *inR,
     int32_t raw_only;
     uint32_t esig;
     uint32_t eenv;
+    int32_t tripped;
 
     /* 1. crossover: 5 SVF steps per channel */
 #ifdef MB_FULLBAND
@@ -840,27 +1092,17 @@ static void mb_run(MBComp *s, const float *inL, const float *inR,
     }
 
     /* 5. guard (#10): NaN, inf or an absurd value in the output or the state -> a silent block and a
-          reset of every filter and envelope (the master latches on NaN/inf for good, T6.4 6.1) */
+          restart of the whole state by the caller (#12, #13; the master latches on NaN/inf for good, T6.4 6.1) */
     mb_state_expo(s, &esig, &eenv);
+    tripped = 0;
     if (esig >= GUARD_SIG || eenv >= GUARD_ENV) {
         for (i = 0; i < n; i++) {
             outL[i] = 0.0f;
             outR[i] = 0.0f;
         }
-        mb_clear(s);
-        for (b = 0; b < 3; b++) {
-            s->band[b].mk = s->band[b].t_mk;
-            s->band[b].mk_step = 0.0f;
-        }
-        eenv = 0;
-        esig = 0;
-        mb_state_expo(s, &esig, &eenv);
-        if (esig >= GUARD_SIG) {           /* the MIX gains themselves (only through bad tables) */
-            s->mw = 0.0f;
-            s->md = 0.0f;
-        }
-        s->trips = s->trips + 1;
+        tripped = 1;
     }
+    return tripped;
 }
 
 void mbcomp_process(MBComp *s, const float *inL, const float *inR,
@@ -870,14 +1112,17 @@ void mbcomp_process(MBComp *s, const float *inL, const float *inR,
     int i = 0;
     while (i < n) {
         int m;
-        if (s->ctl_left <= 0) {
+        /* CMP1: a count outside 1..32 (only a corrupted one) runs the control block now */
+        if (s->ctl_left <= 0 || s->ctl_left > FX_BLOCK) {
             mb_control(s);
             s->ctl_left = FX_BLOCK;
         }
         m = n - i;
         if (m > s->ctl_left) m = s->ctl_left;
-        mb_run(s, inL + i, inR + i, keyL ? keyL + i : 0, keyR ? keyR + i : 0,
-               outL + i, outR + i, m);
+        if (mb_run(s, inL + i, inR + i, keyL ? keyL + i : 0, keyR ? keyR + i : 0, outL + i, outR + i, m)) {
+            mb_restart(s);
+            s->trips = s->trips + 1;
+        }
         i += m;
         s->ctl_left -= m;
     }

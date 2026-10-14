@@ -1,10 +1,11 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
- * mbcomp.h - 3-band master compressor for the Digitone II (T3.11, G9; T6.4/T6.3 CMP0).
+ * mbcomp.h - 3-band master compressor for the Digitone II (T3.11, G9; T6.4/T6.3 CMP0, CMP1, CMP1b).
  *
- * Portable C99, float only, no libc, no malloc. State 1,760 bytes on the SHARC (1,768 on the Mac): filter
+ * Portable C99, float only, no libc, no malloc. State 1,768 bytes on the SHARC (1,776 on the Mac): filter
  * and smoothing state plus 1,280 bytes of work buffers for one 32-sample block. Built on the Mac (clang) and
- * for the SHARC+ with selache's selcc (tools/dspsplice recipe CMP0, glue tools/dspsplice/src/cmp_glue.c).
+ * for the SHARC+ with selache's selcc (tools/dspsplice recipe CMP1, glue tools/dspsplice/src/cmp_glue.c;
+ * CMP0's sources as built are frozen in tools/dspsplice/src/cmp0/).
  *
  * Signal flow (stereo, linked), notes/T6.4-compressor-map-and-plan.md 4.3:
  *   in -> Linkwitz-Riley 4th-order split at XLO -> low | rest
@@ -25,8 +26,26 @@
  *   dry = the raw input while the MIX index is 0 (stock MIX 0 is the raw input x 0.99999404, so a
  *   kit at MIX 0 is bit-identical to stock), else the sum of the bands (the allpassed input, in phase
  *   with the wet); a change of the dry source crossfades over 32 blocks (21 ms, smoothstep).
- *   Guard: a block whose output or state holds NaN, inf or an absurd value (integer exponent test) is
- *   output as silence and every filter and envelope is reset.
+ *   Guard: a block whose output or state holds NaN, inf or an absurd value (integer exponent test: over
+ *   2^12, +72 dBFS, since CMP1b) is output as silence and the whole state is restarted (CMP1): every
+ *   filter and envelope at rest, every value derived from the knobs derived again (the knobs read
+ *   through NaN-safe clamps), the smoothers on
+ *   their targets, the dry crossfade at its end; then a quiet return: both MIX gains start from 0 (the stock
+ *   one-poles fade the output in, 4.2 ms time constant) and for MB_REC_BLOCKS control blocks every band
+ *   attacks instantly (no burst at no gain reduction with the full makeup); on the DSP the glue also seeds
+ *   each band's envelopes with the gain reduction of the block before the restart (cmp_glue.c cmp_seed).
+ *   Scrub (CMP1): each control block re-derives one group of the knob-derived values (a band's curve,
+ *   times and makeup target; the crossover targets, SCS and MIX; the crossover coefficients), all of them
+ *   every 8 blocks, and the detector coefficients every block (CMP1b). Range test before the samples (CMP1,
+ *   CMP1b): a smoother outside the range it can reach (crossover glide, MIX gains, dry crossfade, envelopes
+ *   outside [-32, 0] log2 units, makeup) or a knob-derived value outside what the code can store (time
+ *   coefficients outside [0, 1] or not paired with their exact complement, 1/ratio, makeup target,
+ *   threshold, MIX targets, crossover targets and coefficients) restarts the state. In normal operation the
+ *   scrub writes the values already there and the test never fires, so the output is CMP0's bit for bit
+ *   (tools/dspsplice/verify_cmp.py CMP1, (h)). A wrong value inside its range cannot be told from a real
+ *   one and acts as one: a knob-derived one until its scrub group comes round (at most 8 blocks, 5 ms); an
+ *   envelope at its release speed (seconds at REL 127); a filter state below the guard as a transient of
+ *   that size, whose gain reduction comes back at the release speed.
  *
  * Tables: the stock layout of the DN2 1.12 DSP image from 0x2cfde0 (MB_TAB_*): 1/ratio[8], ATK[128],
  * REL[128], MIX[128], SCF[128]. On the SHARC the glue passes the image's own tables (read in place);
@@ -50,6 +69,8 @@
 #define MB_TAB_SCF 392      /* 0x2d0400: side-chain filter T per SCF index (64 = neutral, HP 20 Hz) */
 #define MB_TAB_FLOATS 520
 #define MB_SCF_NEUTRAL 64
+/* CMP1 #13: control blocks of instant attack after a restart (48 = 32 ms; out/T6.3/CMP1-dsp/trip_loudness.json) */
+#define MB_REC_BLOCKS 48
 
 /* per-band parameters: index = band * MB_BAND_NP + p, band 0 = low, 1 = mid, 2 = high */
 enum {
@@ -109,6 +130,8 @@ typedef struct {
 
     int32_t ctl_left;
     uint32_t trips;                  /* guard trips since init */
+    int32_t scrub;                   /* CMP1: the scrub's next group (& 7) */
+    int32_t rec_left;                /* CMP1: control blocks of instant attack left after a guard trip */
 
     /* work buffers of one control block */
     float buf_lo[2][FX_BLOCK], buf_md[2][FX_BLOCK], buf_hi[2][FX_BLOCK];

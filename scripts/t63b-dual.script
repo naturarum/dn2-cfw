@@ -1,0 +1,90 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# T6.3 CMP1 (scripts/t63b_mkscripts.py): DUAL on through the UI, then the pages from EXT MIX 1
+wait-emu 0.5
+down space
+wait-emu 0.1
+tap semicolon      # FUNC+MOD: MIXER
+wait-emu 0.1
+up space
+wait-emu 0.6
+png d00-low
+tap Down
+wait-emu 0.5
+tap Down
+wait-emu 0.5
+tap Down
+wait-emu 0.5
+tap Down
+wait-emu 0.5
+tap Down
+wait-emu 0.5
+tap Down
+wait-emu 0.5
+png d01-extmix1
+tap 2
+wait-emu 0.4
+png d02-dual-on
+wait-emu 2.0
+png d03-dual-on-later
+tap Down
+wait-emu 0.6
+png d10-down
+tap Down
+wait-emu 0.6
+png d11-down
+down space
+wait-emu 0.1
+tap semicolon      # FUNC+MOD: MIXER
+wait-emu 0.1
+up space
+wait-emu 0.6
+png d12-pagekey
+down space
+wait-emu 0.1
+tap semicolon      # FUNC+MOD: MIXER
+wait-emu 0.1
+up space
+wait-emu 0.6
+png d13-pagekey
+down space
+wait-emu 0.1
+tap semicolon      # FUNC+MOD: MIXER
+wait-emu 0.1
+up space
+wait-emu 0.6
+png d14-pagekey
+down space
+wait-emu 0.1
+tap semicolon      # FUNC+MOD: MIXER
+wait-emu 0.1
+up space
+wait-emu 0.6
+png d15-pagekey
+down space
+wait-emu 0.1
+tap semicolon      # FUNC+MOD: MIXER
+wait-emu 0.1
+up space
+wait-emu 0.6
+png d16-pagekey
+down space
+wait-emu 0.1
+tap semicolon      # FUNC+MOD: MIXER
+wait-emu 0.1
+up space
+wait-emu 0.6
+png d17-pagekey
+down space
+wait-emu 0.1
+tap semicolon      # FUNC+MOD: MIXER
+wait-emu 0.1
+up space
+wait-emu 0.6
+png d20-pagekey
+down space
+wait-emu 0.1
+tap semicolon      # FUNC+MOD: MIXER
+wait-emu 0.1
+up space
+wait-emu 0.6
+png d21-pagekey

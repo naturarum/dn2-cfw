@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-/* cmp_glue.c - T6.3 CMP0: the 3-band compressor (fx/mbcomp.c) in place of the stock master compressor
- * 0xb8541d, on the stock knobs (notes/T6.4-compressor-map-and-plan.md 4.1, 4.3, 5; the proof is
- * tools/dspsplice/verify_cmp.py).
+/* cmp_glue.c - T6.3 CMP1 (the DSP of CMP0 with the review's fixes; CMP1b: and the CMP1 review's): the 3-band
+ * compressor (fx/mbcomp.c) in place of the stock master compressor 0xb8541d, on the stock knobs
+ * (notes/T6.4-compressor-map-and-plan.md 4.1, 4.3, 5; the proof is tools/dspsplice/verify_cmp.py CMP1). CMP0's
+ * glue as built: src/cmp0/cmp_glue.c.
  *
  * The hook stubs (tools/dspsplice/stub.py, recipe CMP0 in build.py) call:
  *   cmp_init()               from the effect init 0x1c1445 at 0x1c16bb, where the stock compressor init
@@ -32,8 +33,29 @@
  * the stock 16-bit store at 0x1c3117 then rewrites in the page of this block.
  *
  * State: one CmpSlot at 0x2e1c40 (L1 block 1, after the flanger's code), zero-filled by a FILL block at
- * boot; cmp_process runs cmp_init itself if it finds no magic, so a zero state is valid. build.py checks the
- * slot's size from cmp_slot_bytes in the linked image against the FILL and the other blocks.
+ * boot; the effect init (cmp_init, from the init hook) sets the magic before the first block (sharcvm: the slot
+ * holds it right after the effect init; on the unit the init hook at 0x1c16bb runs before the block handler
+ * [inferred]). cmp_process re-initialises quietly on any other magic, a zero one included (CMP1b), so a zero
+ * state is still valid. build.py checks the slot's size from cmp_slot_bytes in the linked image against the
+ * FILL and the other blocks.
+ *
+ * CMP1, the glue's part of the complete restart (fx/mbcomp.c #12-#14): every call compares each stock knob with
+ * the value the compressor holds (all three bands; SCS; the fixed crossovers) and sets it again when they differ,
+ * so a corrupted knob word lasts one call (CMP0 compared with its own copy, last_*, and never saw it); the table
+ * pointer is set every call. After a restart (mbcomp's trip count moved in the call) each band's envelopes take the
+ * gain reduction of the block before it, kept in this slot for the meters, when that is deeper than what the
+ * restart left: the return goes on compressing as before instead of rebuilding the gain reduction from none
+ * (out/T6.3/CMP1-dsp/trip_loudness.json).
+ * CMP1b (the CMP1 review, out/T6.3/review-dsp-cmp1/p1_reinit_burst.json): a magic other than CMP1's, 0 included, is
+ * a corrupted slot. CMP1 took a zero magic for a cold start and re-initialised with the normal attack and no seed
+ * (up to +18 dB over the run without it, the burst the quiet return removes), and its re-init of any other magic
+ * set the instant attack but no seed (+3.2 dB). Now every re-init is the quiet return: cmp_init, instant attack for
+ * MB_REC_BLOCKS on every band, both envelopes of each band seeded from the last block's gain reduction (cmp_seed;
+ * cmp_init leaves gr0..gr2 as they are), the MIX gains from 0 (fresh), and the count in reinits (cmp_init does not
+ * clear it; it clears both trip counters). A real cold start loses nothing: the MIX gains start from 0 either way,
+ * and the seed of a zeroed slot is 0. In normal operation the compressor holds exactly the
+ * values the glue set, so at every block it runs on CMP0's knob values (the first block may skip a set that CMP0
+ * made with the value init had already set) and its output is CMP0's (verify_cmp.py CMP1, (h)).
  *
  * selcc (notes/T3.11 11.3, 12.7; T5.2 6.2; T5.3 3.4): flags set with if statements, one declaration per
  * variable, no table indexed by a variable, no array store indexed by a variable after a call (the sixth
@@ -46,7 +68,7 @@
 #include "mbcomp.h"
 #include "fxio.h"
 
-#define CMP_MAGIC 0x434d5030u       /* "CMP0" */
+#define CMP_MAGIC 0x434d5031u       /* "CMP1" */
 #define CMP_XLO 68.0f               /* 196 Hz */
 #define CMP_XHI 44.0f               /* 2.61 kHz */
 
@@ -55,8 +77,9 @@ typedef struct {
     uint32_t fresh;                 /* 1 until the first block has applied the knobs and snapped */
     uint32_t blocks;                /* blocks processed */
     uint32_t sc_ext;                /* 1: the bands detected the key (sc != comp in) in the last block */
-    uint32_t trips;                 /* mbcomp's guard trips, as of the last block */
-    float last_thr;                 /* the knob values last applied (knob scale; RAT as the band step) */
+    uint32_t trips;                 /* mbcomp's guard trips and restarts, as of the last block */
+    float last_thr;                 /* the knob values last applied (knob scale; RAT as the band step; a record:
+                                       CMP1 compares with the compressor's own knob words) */
     float last_atk;
     float last_rel;
     float last_mup;
@@ -68,7 +91,9 @@ typedef struct {
     float grd;
     uint32_t word10;                /* the reply words written at +0x10 and +0x14 */
     uint32_t word14;
-    uint32_t pad;                   /* an even number of words before mb: the same offsets on the Mac */
+    uint32_t reinits;               /* CMP1b: quiet re-inits of a corrupted slot (bad magic); cmp_init keeps it.
+                                       CMP1's pad word: an even number of words before mb, the same offsets on
+                                       the Mac */
     MBComp mb;
 } CmpSlot;
 
@@ -131,6 +156,30 @@ static float cmp_knob(float p)
     return v;
 }
 
+/* after a restart or a re-init: a band's envelope value y (what the restart left, log2 units) and the gain reduction
+   it had in the block before, gdb (dB, this slot's meter copy) -> the deeper of the two, gdb kept inside
+   CMP_SEED_MIN..0 log2 units (a NaN or inf meter copy gives no seed; the exponent test answers the same on the SHARC
+   as on the Mac). CMP1b: CMP_SEED_MIN -16 (-96 dB; CMP1 -60): real material reaches it only above +41 dBFS (threshold
+   -60 dB, 20:1), and it must stay above mbcomp's range test (-32), or a seed would restart the state again. */
+#define CMP_SEED_MIN -16.0f
+static float cmp_seed(float gdb, float y)
+{
+    float g;
+    uint32_t u;
+    g = gdb * 0.16609640f;
+    u = *(uint32_t *)&g;
+    u = u & 0x7f800000u;
+    if (u == 0x7f800000u)
+        g = 0.0f;
+    if (g < CMP_SEED_MIN)
+        g = CMP_SEED_MIN;
+    if (g > 0.0f)
+        g = 0.0f;
+    if (g < y)
+        y = g;
+    return y;
+}
+
 /* a band's gain reduction y2 (log2 units, <= 0) -> Q15 (1 - g), as the stock getter (1 - clamp(g, 0, 1),
    fix by 15) */
 static uint32_t cmp_q15(float y)
@@ -173,35 +222,86 @@ void cmp_process(const float *p, const CmpIo *io)
     uint32_t w10;
     uint32_t w14;
     int32_t ri;
+    int32_t d;
     uint32_t *tx;
-    if (t->magic != CMP_MAGIC)
+    if (t->magic != CMP_MAGIC) {
+        /* CMP1b: a corrupted slot (any magic but CMP1's: the effect init set it before the first block): the
+           quiet re-init. Every band attacks instantly for MB_REC_BLOCKS (all three marked dirty, so the snap below
+           or the first control block derives them with ca = 0 while rec_left > 0; cmp_init derived them before
+           rec_left was set), each band's envelopes start from the last block's gain reduction, the MIX gains from
+           0 (cmp_init sets fresh) */
         cmp_init();
+        t = SLOT;
+        s = &t->mb;
+        s->rec_left = MB_REC_BLOCKS;
+        s->dirty = s->dirty | 7;
+        v = cmp_seed(t->gr0, 0.0f);
+        s->band[0].y1 = v;
+        s->band[0].y2 = v;
+        v = cmp_seed(t->gr1, 0.0f);
+        s->band[1].y1 = v;
+        s->band[1].y2 = v;
+        v = cmp_seed(t->gr2, 0.0f);
+        s->band[2].y1 = v;
+        s->band[2].y2 = v;
+        t->reinits = t->reinits + 1;
+    }
     s = &t->mb;
+    s->tab = TABLES;
 
-    /* the stock knobs, all three bands; each set only when its value changes, with constant indices */
+    /* the stock knobs, all three bands; each set when it differs from what the compressor holds, with constant
+       indices */
     v = cmp_knob(p[1]);
-    if (v != t->last_thr) {
+    d = 0;
+    if (v != s->knob[MB_P(0, MB_THR)])
+        d = 1;
+    if (v != s->knob[MB_P(1, MB_THR)])
+        d = 1;
+    if (v != s->knob[MB_P(2, MB_THR)])
+        d = 1;
+    if (d) {
         mbcomp_set(s, MB_P(0, MB_THR), v);
         mbcomp_set(s, MB_P(1, MB_THR), v);
         mbcomp_set(s, MB_P(2, MB_THR), v);
         t->last_thr = v;
     }
     v = cmp_knob(p[3]);
-    if (v != t->last_atk) {
+    d = 0;
+    if (v != s->knob[MB_P(0, MB_ATK)])
+        d = 1;
+    if (v != s->knob[MB_P(1, MB_ATK)])
+        d = 1;
+    if (v != s->knob[MB_P(2, MB_ATK)])
+        d = 1;
+    if (d) {
         mbcomp_set(s, MB_P(0, MB_ATK), v);
         mbcomp_set(s, MB_P(1, MB_ATK), v);
         mbcomp_set(s, MB_P(2, MB_ATK), v);
         t->last_atk = v;
     }
     v = cmp_knob(p[4]);
-    if (v != t->last_rel) {
+    d = 0;
+    if (v != s->knob[MB_P(0, MB_REL)])
+        d = 1;
+    if (v != s->knob[MB_P(1, MB_REL)])
+        d = 1;
+    if (v != s->knob[MB_P(2, MB_REL)])
+        d = 1;
+    if (d) {
         mbcomp_set(s, MB_P(0, MB_REL), v);
         mbcomp_set(s, MB_P(1, MB_REL), v);
         mbcomp_set(s, MB_P(2, MB_REL), v);
         t->last_rel = v;
     }
     v = cmp_knob(p[5]);
-    if (v != t->last_mup) {
+    d = 0;
+    if (v != s->knob[MB_P(0, MB_MUP)])
+        d = 1;
+    if (v != s->knob[MB_P(1, MB_MUP)])
+        d = 1;
+    if (v != s->knob[MB_P(2, MB_MUP)])
+        d = 1;
+    if (d) {
         mbcomp_set(s, MB_P(0, MB_MUP), v);
         mbcomp_set(s, MB_P(1, MB_MUP), v);
         mbcomp_set(s, MB_P(2, MB_MUP), v);
@@ -215,17 +315,29 @@ void cmp_process(const float *p, const CmpIo *io)
         v = 7.0f;
     ri = (int32_t)v;
     v = (float)(ri + 1);
-    if (v != t->last_rat) {
+    d = 0;
+    if (v != s->knob[MB_P(0, MB_RAT)])
+        d = 1;
+    if (v != s->knob[MB_P(1, MB_RAT)])
+        d = 1;
+    if (v != s->knob[MB_P(2, MB_RAT)])
+        d = 1;
+    if (d) {
         mbcomp_set(s, MB_P(0, MB_RAT), v);
         mbcomp_set(s, MB_P(1, MB_RAT), v);
         mbcomp_set(s, MB_P(2, MB_RAT), v);
         t->last_rat = v;
     }
     v = cmp_knob(p[6]);
-    if (v != t->last_mix) {
+    if (v != s->knob[MB_MIX]) {
         mbcomp_set(s, MB_MIX, v);
         t->last_mix = v;
     }
+    /* the fixed crossovers (set by cmp_init; again only if their words were corrupted) */
+    if (s->knob[MB_XLO] != CMP_XLO)
+        mbcomp_set(s, MB_XLO, CMP_XLO);
+    if (s->knob[MB_XHI] != CMP_XHI)
+        mbcomp_set(s, MB_XHI, CMP_XHI);
 
     /* SCS: the key is another bus than the compressor's own input */
     in = io->in;
@@ -241,10 +353,12 @@ void cmp_process(const float *p, const CmpIo *io)
         kl = in[2];
         kr = in[3];
     }
-    if (ext != t->sc_ext) {
-        mbcomp_set(s, MB_SCS, (float)ext);
-        t->sc_ext = ext;
-    }
+    v = 0.0f;
+    if (ext)
+        v = 1.0f;
+    if (v != s->knob[MB_SCS])
+        mbcomp_set(s, MB_SCS, v);
+    t->sc_ext = ext;
     if (t->fresh) {
         mbcomp_snap(s);
         /* the stock init leaves both MIX one-poles at the default MIX 0.0: start from there, as stock */
@@ -254,6 +368,22 @@ void cmp_process(const float *p, const CmpIo *io)
     }
 
     mbcomp_process(s, in[0], in[1], kl, kr, out[0], out[1], io->n);
+
+    /* CMP1 #13: a restart in this call: seed the envelopes from the last block's gain reduction (gr0..gr2, not
+       yet rewritten below), constant indices */
+    s = &SLOT->mb;
+    t = SLOT;
+    if (s->trips != t->trips) {
+        v = cmp_seed(t->gr0, s->band[0].y1);
+        s->band[0].y1 = v;
+        s->band[0].y2 = v;
+        v = cmp_seed(t->gr1, s->band[1].y1);
+        s->band[1].y1 = v;
+        s->band[1].y2 = v;
+        v = cmp_seed(t->gr2, s->band[2].y1);
+        s->band[2].y1 = v;
+        s->band[2].y2 = v;
+    }
 
     /* meters */
     s = &SLOT->mb;

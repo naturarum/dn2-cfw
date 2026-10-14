@@ -19,7 +19,8 @@ written instead (the DSP side supplies section7.bin); the main OS is the same by
 
 Steps (nothing here talks to hardware), as scripts/t65_build.py does for GT01:
   1. scripts/t53_make_mod.py writes fx-echo-dn2's mod.json from the stock image (its own checks);
-  2. elekloader's SDK builds the four mods (ELEKLOADER_CROSS=m68k-elf-), lint passes for the set,
+  2. elekloader's SDK builds the four mods (ELEKLOADER_CROSS=m68k-elf-; core-dn2 0.1 and param-rows-dn2
+     0.1 from the pinned elekloader commit, scripts/elk_pin.py), lint passes for the set,
      the patcher links them into stock 1.12's main OS; a second link with fx-rename added must be
      refused (conflict);
   3. elektron-firmware-tool puts the DSP section in section 7;
@@ -131,9 +132,14 @@ def main():
     os.makedirs(build_dir, exist_ok=True)
     env = dict(os.environ, ELEKLOADER_CROSS='m68k-elf-')
     run([sys.executable, os.path.join(ROOT, 'scripts', 't53_make_mod.py')])
+    # core-dn2 0.1 and param-rows-dn2 0.1 from the pinned elekloader commit (scripts/elk_pin.py): the
+    # working tree moved them on for CMP1, and SE01 must keep rebuilding byte for byte
+    import elk_pin
+    pin = elk_pin.tree(elk_pin.REV_0_1)
+    dirs = dict(MODDIRS, **{m: os.path.join(pin, MODDIRS[m]) for m in ('core', 'param-rows')})
     built = {}
     for m in SET + ['fx-rename']:
-        _, o = run([ELPY, '-m', 'elekloader.sdk.build', MODDIRS[m], '--stock', STOCK, '--out', mods_dir], cwd=EL, env=env)
+        _, o = run([ELPY, '-m', 'elekloader.sdk.build', dirs[m], '--stock', STOCK, '--out', mods_dir], cwd=EL, env=env)
         built[m] = os.path.normpath(os.path.join(EL, re.search(r'BUILT (\S+\.elemod)', o).group(1)))
     files = [built[m] for m in SET]
     run([ELPY, '-m', 'elekloader.lint'] + files + ['--stock', STOCK], cwd=EL, env=env)
