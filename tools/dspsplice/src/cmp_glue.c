@@ -1,5 +1,13 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-/* cmp_glue.c - T6.3 CMP1 (the DSP of CMP0 with the review's fixes; CMP1b: and the CMP1 review's): the 3-band
+/* cmp_glue.c - T6.3 CMP2: CMP1's glue (frozen in src/cmp1/cmp_glue.c) with the band knobs live: once a valid SPI frame
+ * tail of comp-link-dn2 has arrived (cmp_tail.c), each band's THR, RAT, ATK, REL, MUP and the two crossovers come
+ * from k 70..86 (notes/T6.4-compressor-map-and-plan.md 3.4, 5 "CMP2"; notes/T6.3-cmp2.md). Until then (no tail has
+ * ever been valid: a main OS without comp-link, or the first block before the first tail) the bands run exactly as
+ * on CMP1, all three from the stock k 60..64 with the crossovers at 196 Hz / 2.61 kHz: the fallback, bit for bit
+ * CMP1's output (tools/dspsplice/verify_cmp.py CMP2, (h)). MIX (k 67), SCS (k 65) and VOL stay the stock rows. The
+ * slot's magic is "CMP2"; its layout is CMP1's. The rest of this comment is CMP1's.
+ *
+ * CMP1 (the DSP of CMP0 with the review's fixes; CMP1b: and the CMP1 review's): the 3-band
  * compressor (fx/mbcomp.c) in place of the stock master compressor 0xb8541d, on the stock knobs
  * (notes/T6.4-compressor-map-and-plan.md 4.1, 4.3, 5; the proof is tools/dspsplice/verify_cmp.py CMP1). CMP0's
  * glue as built: src/cmp0/cmp_glue.c.
@@ -67,8 +75,9 @@
 #include <stdint.h>
 #include "mbcomp.h"
 #include "fxio.h"
+#include "cmp_tail.h"
 
-#define CMP_MAGIC 0x434d5031u       /* "CMP1" */
+#define CMP_MAGIC 0x434d5032u       /* "CMP2" */
 #define CMP_XLO 68.0f               /* 196 Hz */
 #define CMP_XHI 44.0f               /* 2.61 kHz */
 
@@ -249,95 +258,105 @@ void cmp_process(const float *p, const CmpIo *io)
     s = &t->mb;
     s->tab = TABLES;
 
-    /* the stock knobs, all three bands; each set when it differs from what the compressor holds, with constant
-       indices */
-    v = cmp_knob(p[1]);
-    d = 0;
-    if (v != s->knob[MB_P(0, MB_THR)])
-        d = 1;
-    if (v != s->knob[MB_P(1, MB_THR)])
-        d = 1;
-    if (v != s->knob[MB_P(2, MB_THR)])
-        d = 1;
-    if (d) {
-        mbcomp_set(s, MB_P(0, MB_THR), v);
-        mbcomp_set(s, MB_P(1, MB_THR), v);
-        mbcomp_set(s, MB_P(2, MB_THR), v);
-        t->last_thr = v;
+    /* CMP2: the band knobs from the frame tail, once one has been valid (cmp_tail.c) */
+    if (cmp_tail_fetch() != 0) {
+        cmp_tail_apply(&SLOT->mb);
+    } else {
+        t = SLOT;
+        s = &SLOT->mb;
+        /* the fallback, CMP1's code: the stock knobs, all three bands; each set when it differs from what the
+           compressor holds, with constant indices */
+        v = cmp_knob(p[1]);
+        d = 0;
+        if (v != s->knob[MB_P(0, MB_THR)])
+            d = 1;
+        if (v != s->knob[MB_P(1, MB_THR)])
+            d = 1;
+        if (v != s->knob[MB_P(2, MB_THR)])
+            d = 1;
+        if (d) {
+            mbcomp_set(s, MB_P(0, MB_THR), v);
+            mbcomp_set(s, MB_P(1, MB_THR), v);
+            mbcomp_set(s, MB_P(2, MB_THR), v);
+            t->last_thr = v;
+        }
+        v = cmp_knob(p[3]);
+        d = 0;
+        if (v != s->knob[MB_P(0, MB_ATK)])
+            d = 1;
+        if (v != s->knob[MB_P(1, MB_ATK)])
+            d = 1;
+        if (v != s->knob[MB_P(2, MB_ATK)])
+            d = 1;
+        if (d) {
+            mbcomp_set(s, MB_P(0, MB_ATK), v);
+            mbcomp_set(s, MB_P(1, MB_ATK), v);
+            mbcomp_set(s, MB_P(2, MB_ATK), v);
+            t->last_atk = v;
+        }
+        v = cmp_knob(p[4]);
+        d = 0;
+        if (v != s->knob[MB_P(0, MB_REL)])
+            d = 1;
+        if (v != s->knob[MB_P(1, MB_REL)])
+            d = 1;
+        if (v != s->knob[MB_P(2, MB_REL)])
+            d = 1;
+        if (d) {
+            mbcomp_set(s, MB_P(0, MB_REL), v);
+            mbcomp_set(s, MB_P(1, MB_REL), v);
+            mbcomp_set(s, MB_P(2, MB_REL), v);
+            t->last_rel = v;
+        }
+        v = cmp_knob(p[5]);
+        d = 0;
+        if (v != s->knob[MB_P(0, MB_MUP)])
+            d = 1;
+        if (v != s->knob[MB_P(1, MB_MUP)])
+            d = 1;
+        if (v != s->knob[MB_P(2, MB_MUP)])
+            d = 1;
+        if (d) {
+            mbcomp_set(s, MB_P(0, MB_MUP), v);
+            mbcomp_set(s, MB_P(1, MB_MUP), v);
+            mbcomp_set(s, MB_P(2, MB_MUP), v);
+            t->last_mup = v;
+        }
+        /* RAT: stock index trunc(fmin(fmax(p x 7, 0), 7)) -> band step index + 1 */
+        v = p[2] * 7.0f;
+        if (!(v >= 0.0f))
+            v = 0.0f;
+        if (v > 7.0f)
+            v = 7.0f;
+        ri = (int32_t)v;
+        v = (float)(ri + 1);
+        d = 0;
+        if (v != s->knob[MB_P(0, MB_RAT)])
+            d = 1;
+        if (v != s->knob[MB_P(1, MB_RAT)])
+            d = 1;
+        if (v != s->knob[MB_P(2, MB_RAT)])
+            d = 1;
+        if (d) {
+            mbcomp_set(s, MB_P(0, MB_RAT), v);
+            mbcomp_set(s, MB_P(1, MB_RAT), v);
+            mbcomp_set(s, MB_P(2, MB_RAT), v);
+            t->last_rat = v;
+        }
+        /* the fixed crossovers (set by cmp_init; again only if their words were corrupted) */
+        if (s->knob[MB_XLO] != CMP_XLO)
+            mbcomp_set(s, MB_XLO, CMP_XLO);
+        if (s->knob[MB_XHI] != CMP_XHI)
+            mbcomp_set(s, MB_XHI, CMP_XHI);
     }
-    v = cmp_knob(p[3]);
-    d = 0;
-    if (v != s->knob[MB_P(0, MB_ATK)])
-        d = 1;
-    if (v != s->knob[MB_P(1, MB_ATK)])
-        d = 1;
-    if (v != s->knob[MB_P(2, MB_ATK)])
-        d = 1;
-    if (d) {
-        mbcomp_set(s, MB_P(0, MB_ATK), v);
-        mbcomp_set(s, MB_P(1, MB_ATK), v);
-        mbcomp_set(s, MB_P(2, MB_ATK), v);
-        t->last_atk = v;
-    }
-    v = cmp_knob(p[4]);
-    d = 0;
-    if (v != s->knob[MB_P(0, MB_REL)])
-        d = 1;
-    if (v != s->knob[MB_P(1, MB_REL)])
-        d = 1;
-    if (v != s->knob[MB_P(2, MB_REL)])
-        d = 1;
-    if (d) {
-        mbcomp_set(s, MB_P(0, MB_REL), v);
-        mbcomp_set(s, MB_P(1, MB_REL), v);
-        mbcomp_set(s, MB_P(2, MB_REL), v);
-        t->last_rel = v;
-    }
-    v = cmp_knob(p[5]);
-    d = 0;
-    if (v != s->knob[MB_P(0, MB_MUP)])
-        d = 1;
-    if (v != s->knob[MB_P(1, MB_MUP)])
-        d = 1;
-    if (v != s->knob[MB_P(2, MB_MUP)])
-        d = 1;
-    if (d) {
-        mbcomp_set(s, MB_P(0, MB_MUP), v);
-        mbcomp_set(s, MB_P(1, MB_MUP), v);
-        mbcomp_set(s, MB_P(2, MB_MUP), v);
-        t->last_mup = v;
-    }
-    /* RAT: stock index trunc(fmin(fmax(p x 7, 0), 7)) -> band step index + 1 */
-    v = p[2] * 7.0f;
-    if (!(v >= 0.0f))
-        v = 0.0f;
-    if (v > 7.0f)
-        v = 7.0f;
-    ri = (int32_t)v;
-    v = (float)(ri + 1);
-    d = 0;
-    if (v != s->knob[MB_P(0, MB_RAT)])
-        d = 1;
-    if (v != s->knob[MB_P(1, MB_RAT)])
-        d = 1;
-    if (v != s->knob[MB_P(2, MB_RAT)])
-        d = 1;
-    if (d) {
-        mbcomp_set(s, MB_P(0, MB_RAT), v);
-        mbcomp_set(s, MB_P(1, MB_RAT), v);
-        mbcomp_set(s, MB_P(2, MB_RAT), v);
-        t->last_rat = v;
-    }
+    t = SLOT;
+    s = &SLOT->mb;
+    /* MIX: the stock row (k 67) in both cases */
     v = cmp_knob(p[6]);
     if (v != s->knob[MB_MIX]) {
         mbcomp_set(s, MB_MIX, v);
         t->last_mix = v;
     }
-    /* the fixed crossovers (set by cmp_init; again only if their words were corrupted) */
-    if (s->knob[MB_XLO] != CMP_XLO)
-        mbcomp_set(s, MB_XLO, CMP_XLO);
-    if (s->knob[MB_XHI] != CMP_XHI)
-        mbcomp_set(s, MB_XHI, CMP_XHI);
 
     /* SCS: the key is another bus than the compressor's own input */
     in = io->in;

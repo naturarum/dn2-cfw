@@ -27,7 +27,7 @@
  *   kit at MIX 0 is bit-identical to stock), else the sum of the bands (the allpassed input, in phase
  *   with the wet); a change of the dry source crossfades over 32 blocks (21 ms, smoothstep).
  *   Guard: a block whose output or state holds NaN, inf or an absurd value (integer exponent test: over
- *   2^12, +72 dBFS, since CMP1b) is output as silence and the whole state is restarted (CMP1): every
+ *   2^12, +72 dBFS, since CMP2; the flashed CMP1b: 2^16) is output as silence and the whole state is restarted (CMP1): every
  *   filter and envelope at rest, every value derived from the knobs derived again (the knobs read
  *   through NaN-safe clamps), the smoothers on
  *   their targets, the dry crossfade at its end; then a quiet return: both MIX gains start from 0 (the stock

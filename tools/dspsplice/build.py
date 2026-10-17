@@ -6,6 +6,7 @@
     python3 tools/dspsplice/build.py FLG1      # milestone 2: the flanger in the chorus slot
     python3 tools/dspsplice/build.py CMP0      # T6.3: FTD1 + the 3-band master compressor (frozen sources, src/cmp0/)
     python3 tools/dspsplice/build.py CMP1      # T6.3 CMP1's DSP: CMP0 + the review's fixes (fx/mbcomp.c #12-#14)
+    python3 tools/dspsplice/build.py CMP2      # T6.3 CMP2's DSP: CMP1 + the band knobs from the frame tail
 
 Pipeline (notes/T3.8-dsp-splice.md section 1):
   1. compile the recipe's C with selcc -O1 (as tools/sharcvm/tests/fxcheck.py does), generate the
@@ -149,14 +150,17 @@ RECIPES = {
     # T6.3 CMP1's DSP (2026-10-13): CMP0's layout, hooks and stubs, with the compressor of the CMP0 review's fixes
     # (fx/mbcomp.c #12-#14: the complete restart, the quiet return after a trip, the scrub; src/cmp_glue.c: the
     # knobs compared with the compressor's own words). On normal material its output and reply are CMP0's bit for
-    # bit (tools/dspsplice/verify_cmp.py CMP1, (h)).
+    # bit (tools/dspsplice/verify_cmp.py CMP1, (h)). The compressor as flashed on the owner's unit (CMP1.syx cbe4eac8,
+    # section 7 ee82aa7c: guard 2^16, no pre-block crossover-state check) is frozen in src/cmp1/ (mbcomp.c, mbcomp.h,
+    # cmp_glue.c), first on the include path; fx/mbcomp.c moved on after the flash (CMP2 review, 2026-10-17).
     "CMP1": dict(
         what="T6.3 CMP1: FTD1 (flanger, tape delay) with the 3-band master compressor (fx/mbcomp.c, CMP0 plus the "
              "review's fixes: complete restart, quiet return after a trip, scrub) in place of the stock compressor, "
              "on the stock knobs, crossovers fixed at 196 Hz / 2.61 kHz",
         c=["fx/flanger.c", "tools/dspsplice/src/flg_glue.c"],
         c2=["fx/tapedelay.c", "tools/dspsplice/src/td_glue.c"],
-        c3=["fx/mbcomp.c", "tools/dspsplice/src/cmp_glue.c"], inc=["fx", "tools/dspsplice/src"],
+        c3=["tools/dspsplice/src/cmp1/mbcomp.c", "tools/dspsplice/src/cmp1/cmp_glue.c"],
+        inc=["tools/dspsplice/src/cmp1", "fx", "tools/dspsplice/src"],
         stubs=[("fxh_chorus", [("c", "flg_process", ["R8", "R12"])]),
                ("fxh_chorus_init", [("c", "flg_init", []), ("tail", CHORUS_INIT)]),
                ("fxh_delay", [("c", "td_process", ["R8", "R12"])]),
@@ -170,6 +174,31 @@ RECIPES = {
         fills_sym=[((0x2e1c40, 0x2e6000), "cmp_slot_bytes", "3-band compressor state (CmpSlot), zeroed at boot")],
         state=(0x300000, 0x308400), code=(0x2dd600, 0x2e1c40), code3=(0x308400, 0x310000),
         outdir="out/T6.3/CMP1-dsp", syx="CMP1-dsp.syx", version="CM1D"),
+    # T6.3 CMP2's DSP (2026-10-17): CMP1 with the band knobs live from the SPI frame tail of comp-link-dn2 0.1
+    # (src/cmp_tail.c; notes/T6.3-cmp2.md). CMP1's compressor and glue are frozen in src/cmp1/ (recipe CMP1
+    # above rebuilds ee82aa7c, the unit's). cmp_tail.c goes after the tape delay in block 2 (FTD1's code2, 8 KB free there; code3 has 406 bytes
+    # left), its state CmpTail in its own FILL after CmpSlot.
+    "CMP2": dict(
+        what="T6.3 CMP2: FTD1 (flanger, tape delay) with the 3-band master compressor (fx/mbcomp.c), the band knobs "
+             "and both crossovers from k 70..86 in the SPI frame tail (comp-link-dn2); until a valid tail has "
+             "arrived, CMP1's bands from the stock knobs",
+        c=["fx/flanger.c", "tools/dspsplice/src/flg_glue.c"],
+        c2=["fx/tapedelay.c", "tools/dspsplice/src/td_glue.c", "tools/dspsplice/src/cmp_tail.c"],
+        c3=["fx/mbcomp.c", "tools/dspsplice/src/cmp_glue.c"], inc=["fx", "tools/dspsplice/src"],
+        stubs=[("fxh_chorus", [("c", "flg_process", ["R8", "R12"])]),
+               ("fxh_chorus_init", [("c", "flg_init", []), ("tail", CHORUS_INIT)]),
+               ("fxh_delay", [("c", "td_process", ["R8", "R12"])]),
+               ("fxh_delay_init", [("c", "td_init", [])])],
+        stubs3=[("fxh_comp", [("c", "cmp_process", ["R8", "R12"])]),
+                ("fxh_comp_init", [("c", "cmp_init", []), ("tail", COMP_INIT)])],
+        hooks=[(CHORUS_CALL, CHORUS, "fxh_chorus"), (CHORUS_INIT_CALL, CHORUS_INIT, "fxh_chorus_init"),
+               (DELAY_CALL, DELAY, "fxh_delay"), (DELAY_INIT_CALL, DELAY_INIT, "fxh_delay_init"),
+               (COMP_CALL, COMP, "fxh_comp"), (COMP_INIT_CALL, COMP_INIT, "fxh_comp_init")],
+        fills=[(0x300000, 0x8400, "flanger state (FlgSlot: Flanger + glue), zeroed at boot")],
+        fills_sym=[((0x2e1c40, 0x2e2400), "cmp_slot_bytes", "3-band compressor state (CmpSlot), zeroed at boot"),
+                   ((0x2e2400, 0x2e2800), "cmp_tail_bytes", "frame-tail reader state (CmpTail), zeroed at boot")],
+        state=(0x300000, 0x308400), code=(0x2dd600, 0x2e1c40), code3=(0x308400, 0x310000),
+        outdir="out/T6.3/CMP2-dsp", syx="CMP2-dsp.syx", version="CM2D"),
 }
 
 LDF = """ARCHITECTURE(ADSP-21569)

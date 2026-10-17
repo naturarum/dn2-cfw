@@ -93,7 +93,7 @@ REL127_FIELDS = (["magic", "fresh", "trips", "gr0", "gr1", "gr2", "grd", "reinit
                                                                     "rinv", "on", "mk", "mk_step", "t_mk", "hx[0]",
                                                                     "hx[1]", "hy[0]", "hy[1]")])
 # plausible values (the module docstring): the words that hold a smoother or a signal state, and their ranges
-GUARD = 4096.0                          # fx/mbcomp.c GUARD_SIG, 2^12 (CMP1b)
+GUARD = 4096.0                          # fx/mbcomp.c GUARD_SIG, 2^12 (since CMP2; the flashed CMP1b: 2^16, src/cmp1/)
 ENV_WORDS = {f"mb.band[{b}].{k}" for b in range(3) for k in ("y1", "y2")}
 MK_WORDS = {f"mb.band[{b}].mk" for b in range(3)}
 UNIT_WORDS = {"mb.mw", "mb.md", "mb.xw"}
@@ -434,7 +434,7 @@ def run_long(a):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("name", nargs="?", default="CMP1", choices=["CMP0", "CMP1"])
+    ap.add_argument("name", nargs="?", default="CMP1", choices=["CMP0", "CMP1", "CMP2"])
     ap.add_argument("--workers", type=int, default=9)
     ap.add_argument("--fields", help="only these state words (comma-separated names)")
     ap.add_argument("--sets", help="only these settings (comma-separated)")

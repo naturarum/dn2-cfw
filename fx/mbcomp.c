@@ -81,7 +81,7 @@
 #define XHI_OCT 4.0f         /* log2(16) */
 #define OFF_LIN 3.0e38f      /* thr_lin of a band at 1:1: no finite level is above it */
 /* guard (#10): the master recovers from any finite block up to 1e30 but latches on 3e38, inf and NaN
-   (out/T6.3/CMP0-dsp/probes/master_bound.json). CMP0 tripped at 2^30, CMP1 at 2^20, CMP1b at 2^12 (+72 dBFS: the
+   (out/T6.3/CMP0-dsp/probes/master_bound.json). CMP0 tripped at 2^30, CMP1 at 2^20, CMP1b as flashed at 2^16, CMP2 at 2^12 (+72 dBFS: the
    real bus level is not measured, but 16 tracks at full scale sum to +24 dBFS, the filter and detector states stay
    within about twice their input, and the Mac tests feed peaks of 64, +36 dBFS, without a trip): a finite absurd
    value in an input or a filter state then restarts the state rather than being taken for a peak of that size,
@@ -511,7 +511,7 @@ static int32_t mb_implausible(const MBComp *s)
     x = s->c_hi.a3;
     if (x > 1.0f) bad = 1;
     if (!(x >= 0.0f)) bad = 1;
-    /* CMP1b #16: the 20 crossover states against the guard before the block (the exponent field; a NaN or inf is
+    /* #16 (after the CMP1 flash, first shipped in CMP2): the 20 crossover states against the guard before the block (the exponent field; a NaN or inf is
        the largest). A wrong value in one rings out within a few samples at the upper crossover (2.6 kHz: about 4
        samples' time constant), under the guard by the end of the block, and leaves its gain reduction to the
        release (inject_cmp.py: 1e5 in apl/s2/s2lp, REL 127). The detector and key states decay at 20 Hz and are

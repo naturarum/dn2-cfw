@@ -13,12 +13,15 @@
 #   scripts/t63b-emu.sh runfrom NAME SNAP SCRIPT SUB [ARGS...]   the same from another snapshot
 #
 # Outputs in out/T6.3/CMP1/emu/NAME/[SCRIPT name]/. Read-only on digikit; never talks to hardware.
+# CMP2 (2026-10-17): T63_STAGE=CMP2 reads out/T6.3/CMP2/NAME.syx (C2EM) and the C2MO map, and writes under
+# out/T6.3/CMP2/emu/; without it the script is CMP1's.
 set -euo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 dk=$root/vendor/digikit
 stock=$root/elektron-firmware/Digitone_II_OS1_12.syx
 cmd=${1:?usage}; name=${2:?usage}
-out=$root/out/T6.3/CMP1/emu/$name
+stage=${T63_STAGE:-CMP1}
+out=$root/out/T6.3/$stage/emu/$name
 mkdir -p "$out"
 abspath() { echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"; }
 
@@ -27,13 +30,14 @@ warm() { if [ "$name" = GT01 ]; then echo "$root/out/T6.5/emu/GT01/warm800M.snap
 syxof() {
   case $name in
     GT01) echo "$root/out/T6.5/GT01.syx" ;;
-    *) echo "$root/out/T6.3/CMP1/$name.syx" ;;
+    *) echo "$root/out/T6.3/$stage/$name.syx" ;;
   esac
 }
 mapof() {
   case $name in
     GT01) echo "$root/out/T6.5/build/GT01-main.syx.map.json" ;;
-    *) echo "$root/out/T6.3/CMP1/C1MO-main.syx.map.json" ;;  # the main-only link (C1MO; CMP1 review), the same map as C1EM's
+    *) if [ "$stage" = CMP2 ]; then echo "$root/out/T6.3/CMP2/C2MO-main.syx.map.json"
+       else echo "$root/out/T6.3/CMP1/C1MO-main.syx.map.json"; fi ;;  # the main-only link (C1MO; CMP1 review), the same map as C1EM's
   esac
 }
 

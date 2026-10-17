@@ -25,6 +25,11 @@ cmp_glue.c: every bad magic, 0 included, re-initialises quietly and seeded). For
       word 0, the handler's cycle count) over 2,000 blocks per setting (MIX 0, 39, 64, 127, self-detection and a
       key, knobs moving, kit changes), the rest of L1 equal outside the planned ranges, no guard trip;
   (i) the summary of tools/dspsplice/inject_cmp.py (every state word, every value) and trip_loudness.py, if run.
+CMP2 (2026-10-17) = CMP1 with the band knobs from the SPI frame tail (src/cmp_tail.c). Every proof here runs with the
+tails zero, as a main OS without comp-link sends them, so CMP2 runs its fallback (CMP1's bands from the stock knobs);
+(h) then compares CMP2 with CMP1 (out/T6.3/CMP1-dsp/section7.bin) and (d) puts CMP1 next to it. The tail-driven
+proofs (reader cases, wire frames, the census of the tail reads, distinct bands, cost with band knobs moving) are
+tools/dspsplice/verify_cmp2.py.
 When imported (out/T6.3/review-* scripts), the module stays configured for CMP0, as before.
 
 Runs the DSP image as the unit loads it in tools/sharcvm (the whole block handler 0x1c9d6b), FTD1's image next
@@ -77,7 +82,12 @@ FTD1 = ROOT / "out/T3.8/FTD1"
 DRY = ROOT / "out/T3.11/dry"
 SLOT, MAGIC = 0x2e1c40, 0x434d5030
 NAME = "CMP0"
-MAGICS = {"CMP0": 0x434d5030, "CMP1": 0x434d5031}
+MAGICS = {"CMP0": 0x434d5030, "CMP1": 0x434d5031, "CMP2": 0x434d5032}
+# the image (h) and (d) compare with: CMP1 against CMP0; CMP2 (zero tails: the fallback) against CMP1
+REFS = {"CMP1": "CMP0", "CMP2": "CMP1"}
+# CMP2: the frame-tail reader's state (CmpTail, recipe CMP2) and its code after the tape delay in block 2
+TAILST = (0x2e2400, 0x2e2800)
+TAILCODE = (0x315f8c, 0x318000)
 
 
 def configure(name):
@@ -101,7 +111,9 @@ def image(name):
 def recipe_sources(name):
     """the compressor's C sources (mbcomp.c, cmp_glue.c) and include directories of a recipe"""
     rec = B.RECIPES[name]
-    return [ROOT / c for c in rec["c3"]], [ROOT / i for i in rec["inc"]]
+    # CMP2: the glue calls the frame-tail reader (src/cmp_tail.c, in the recipe's c2)
+    return ([ROOT / c for c in rec["c3"]] + [ROOT / c for c in rec.get("c2", []) if Path(c).name == "cmp_tail.c"],
+            [ROOT / i for i in rec["inc"]])
 PARAMS, IO = 0x257964, 0x257e6c
 COMP_CALL, COMP_RET = 0x1c215c, 0x1c2163
 TABLES, NTAB = 0x2cfde0, 520
@@ -402,8 +414,9 @@ printf("\\"band_bytes\\": %lu, \\"slot_bytes_mac\\": %lu}\\n", (unsigned long)si
     exe = bdir / "offsets"
     glue = [x for x in srcs if x.name == "cmp_glue.c"][0]
     mb = [x for x in srcs if x.name == "mbcomp.c"][0]
-    subprocess.check_call(["clang", "-O0"] + [f"-I{i}" for i in [glue.parent] + inc] + ["-o", str(exe), str(src), str(mb)],
-                          stderr=subprocess.DEVNULL)
+    more = [str(x) for x in srcs if x.name == "cmp_tail.c"]
+    subprocess.check_call(["clang", "-O0", "-DCMP_NATIVE"] + [f"-I{i}" for i in [glue.parent] + inc]
+                          + ["-o", str(exe), str(src), str(mb)] + more, stderr=subprocess.DEVNULL)
     return json.loads(subprocess.check_output([str(exe)]).decode())
 
 
@@ -641,7 +654,7 @@ def stale_sources(name, info):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("name", nargs="?", default="CMP1", choices=["CMP0", "CMP1"])
+    ap.add_argument("name", nargs="?", default="CMP1", choices=["CMP0", "CMP1", "CMP2"])
     ap.add_argument("--quick", action="store_true", help="shorter runs (development)")
     ap.add_argument("--only", help="comma-separated proofs to run (a,b,c,d,e,f,g,h); the verdict then covers those")
     a = ap.parse_args()
@@ -664,9 +677,11 @@ def main():
     res = {"name": NAME, "section7_sha256": info["section7"]["sha256"], "section7_bytes": info["section7"]["bytes"],
            "ftd1_section7_sha256": finfo["section7"]["sha256"], "proofs_run": "".join(sorted(only))}
     cmp1 = NAME != "CMP0"
+    REF = REFS.get(NAME, "CMP0")
+    tail = NAME == "CMP2"
     if cmp1:
-        s0, i0, c0 = image("CMP0")
-        res["cmp0_section7_sha256"] = i0["section7"]["sha256"]
+        s0, i0, c0 = image(REF)
+        res["%s_section7_sha256" % REF.lower()] = i0["section7"]["sha256"]
 
         def vm_cmp0():
             return V.candidate_vm(s0, cache=c0)
@@ -963,8 +978,10 @@ def main():
                             diffoff.add(i % 0x1000)
             # the rest of memory: everything but the planned ranges
             mem = {}
-            ignore = [(SLOT, SLOT + 0x800), (0x2e6034, 0x2e6040), (0x2e6800, 0x2e7000), (0x308400, 0x310000),
+            ignore = [(SLOT, SLOT + 0x800), (0x2e6034, 0x2e6040 + 4 * tail), (0x2e6800, 0x2e7000), (0x308400, 0x310000),
                       STOCK_STATE, (V.STACK_LO, V.STACK_TOP), (TX[0], TX[0] + 0x1000), (TX[1], TX[1] + 0x1000)]
+            if tail:
+                ignore += [TAILST, TAILCODE]
             for lo, hi in ((0x240000, 0x2c0000), (0x2c0000, 0x2f0000), (0x300000, 0x320000)):
                 a_ = rf.vm.read(lo, hi - lo)
                 b_ = rc.vm.read(lo, hi - lo)
@@ -1030,7 +1047,7 @@ def main():
         }
         dres = {}
         stack = 0
-        imgs = [("FTD1", vm_ftd), (NAME, vm_cmp)] + ([("CMP0", vm_cmp0)] if cmp1 else [])
+        imgs = [("FTD1", vm_ftd), (NAME, vm_cmp)] + ([(REF, vm_cmp0)] if cmp1 else [])
         for name, (words, raw, (L, R), each) in dcfg.items():
             st = {}
             for which, mk in imgs:
@@ -1044,10 +1061,10 @@ def main():
             st["delta_mean"] = st[NAME]["mean"] - st["FTD1"]["mean"]
             st["delta_max"] = st[NAME]["max"] - st["FTD1"]["max"]
             if cmp1:
-                st["vs_CMP0_mean"] = st[NAME]["mean"] - st["CMP0"]["mean"]
-                st["vs_CMP0_max"] = st[NAME]["max"] - st["CMP0"]["max"]
-                st["est_load_CMP0_mean_pct"] = round(100 * LOAD(st["CMP0"]["mean"]), 2)
-                st["est_load_CMP0_max_pct"] = round(100 * LOAD(st["CMP0"]["max"]), 2)
+                st["vs_%s_mean" % REF] = st[NAME]["mean"] - st[REF]["mean"]
+                st["vs_%s_max" % REF] = st[NAME]["max"] - st[REF]["max"]
+                st["est_load_%s_mean_pct" % REF] = round(100 * LOAD(st[REF]["mean"]), 2)
+                st["est_load_%s_max_pct" % REF] = round(100 * LOAD(st[REF]["max"]), 2)
             st["est_load_mean_pct"] = round(100 * LOAD(st[NAME]["mean"]), 2 if cmp1 else 1)
             st["est_load_max_pct"] = round(100 * LOAD(st[NAME]["max"]), 2 if cmp1 else 1)
             st["est_load_FTD1_mean_pct"] = round(100 * LOAD(st["FTD1"]["mean"]), 1)
@@ -1191,7 +1208,9 @@ def main():
         planned = [(B.ldr.loader_addr(2 * s_), B.ldr.loader_addr(2 * s_) + 6) for s_, _, _ in B.RECIPES[NAME]["hooks"][4:]]
         planned += [(B.ldr.loader_addr(0x308400), B.ldr.loader_addr(0x310000)),
                     (B.ldr.loader_addr(SLOT), B.ldr.loader_addr(0x2e6000)),
-                    (B.ldr.loader_addr(0x2e6034), B.ldr.loader_addr(0x2e6040))]
+                    (B.ldr.loader_addr(0x2e6034), B.ldr.loader_addr(0x2e6040 + 4 * tail))]
+        if tail:
+            planned.append((B.ldr.loader_addr(TAILCODE[0]), B.ldr.loader_addr(TAILCODE[1])))
         g["image_diff_vs_FTD1"] = {"ranges": [("%#x" % x, "%#x" % y) for x, y in diffs],
                                    "outside_planned": [("%#x" % x, "%#x" % y) for x, y in diffs
                                                        if not any(lo <= x and y <= hi for lo, hi in planned)]}
@@ -1266,6 +1285,9 @@ def main():
                    (0x2e6800, 0x2e6800 + B.stub.SAVE_BYTES, "stub save area"), (0x25ba68, 0x25ba68 + 0x80, "out L"),
                    (0x25bae8, 0x25bae8 + 0x80, "out R"), (GR_Y2, GR_Y2 + 4, "0x257c1c meter"),
                    (TX[0] + 0x10, TX[0] + 0x18, "reply page 0 +0x10..+0x17"), (TX[1] + 0x10, TX[1] + 0x18, "reply page 1 +0x10..+0x17")]
+        if tail:
+            tb = info["layout_check"]["slot_sizes_from_image"]["cmp_tail_bytes"]
+            allowed.append((TAILST[0], TAILST[0] + tb, "CmpTail"))
         census = {}
         ccases = [("normal (C1)", dict(BASE, **NOFX, **C1), ROUTE_IN, None, False),
                   ("key, MIX 64, knobs moving", dict(BASE, **FXW, **W3), ROUTE_INFX, None, False),
@@ -1341,8 +1363,10 @@ def main():
             "kit changes, MIX 0 <-> >0 (review schedule), key SCS 18, FX on": (
                 dict(BASE, **FXW, **comp(32, 24, 32, 64, 3, 0, scs=18)), ROUTE_INFX, kit_changes, len(prog[0]) // 32),
         }
-        ignore = [(SLOT, SLOT + 0x800), (0x2e6000, 0x2e6040), (0x2e6800, 0x2e7000), (0x308400, 0x310000),
+        ignore = [(SLOT, SLOT + 0x800), (0x2e6000, 0x2e6040 + 4 * tail), (0x2e6800, 0x2e7000), (0x308400, 0x310000),
                   (V.STACK_LO, V.STACK_TOP), (TX[0], TX[0] + 0x1000), (TX[1], TX[1] + 0x1000)]
+        if tail:
+            ignore += [TAILST, TAILCODE]
         total = 0
         for name, (words, raw, each, m) in hcfg.items():
             L, R = prog[0][:32 * m], prog[1][:32 * m]
@@ -1373,14 +1397,14 @@ def main():
             hres[name] = {"blocks": m, "samples": 2 * len(L), "bit_identical_samples": same,
                           "reply_byte_offsets_that_differ (both pages; 0x1000 = page 1)": sorted("%#x" % o for o in txd),
                           "l1_words_that_differ_outside_planned": ["%#x" % x for x in mem[:20]], "l1_count": len(mem),
-                          "trips_CMP0_CMP1": [t0_, t1_],
-                          "insns_mean_CMP0_CMP1": [round(sum(pb0) / len(pb0)), round(sum(pb1) / len(pb1))],
-                          "insns_max_CMP0_CMP1": [max(pb0[1:]), max(pb1[1:])]}
+                          "trips_%s_%s" % (REF, NAME): [t0_, t1_],
+                          "insns_mean_%s_%s" % (REF, NAME): [round(sum(pb0) / len(pb0)), round(sum(pb1) / len(pb1))],
+                          "insns_max_%s_%s" % (REF, NAME): [max(pb0[1:]), max(pb1[1:])]}
             hres[name]["ok"] = (same == 2 * len(L) and txd <= {0x0, 0x2, 0x1000, 0x1002} and not mem
                                 and t0_ == 0 and t1_ == 0)
             total += m
             print("  (h)", name, same, 2 * len(L), sorted(txd), len(mem), t0_, t1_, flush=True)
-        res["h_vs_cmp0"] = {"configs": hres, "blocks_in_all": total,
+        res["h_vs_%s" % REF.lower()] = {"configs": hres, "blocks_in_all": total,
                             "note": "reply bytes 0..3 of each page are word 0, the handler's own cycle count (CMP1 runs "
                                     "more instructions); every other reply byte, every output sample and the rest of "
                                     "L1 outside the slot, code3, the data block, the stub save area and the stack equal"}
@@ -1410,7 +1434,7 @@ def main():
     if "g" in only:
         parts.append(res["g"]["ok"])
     if "h" in only and cmp1:
-        parts.append(all(v["ok"] for v in res["h_vs_cmp0"]["configs"].values()))
+        parts.append(all(v["ok"] for v in res["h_vs_%s" % REF.lower()]["configs"].values()))
     verdict = all(parts)
     res["VERDICT"] = "PASS" if verdict else "FAIL"
     fn = ("verify-quick" if q else "verify") + ("" if only == set("abcdefgh") else "-" + "".join(sorted(only))) + ".json"

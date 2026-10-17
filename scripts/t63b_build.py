@@ -30,6 +30,12 @@ side (its build.json must record section7.bin and its own container, with no lay
 section 7 is stored as in that container) and the main OS (the image the emulator proofs ran,
 out/T6.3/CMP1/main.bin, and section 3 stored as in C1EM.syx).
 
+CMP2 (2026-10-17, --stage CMP2): the same five mods + comp-link-dn2 0.1 (the frame-tail hook at 0x40025e9e: the
+band knobs k 70..86 to the DSP); defaults --name C2EM --out out/T6.3/CMP2, main-only reference C2MO; the final
+mode pins out/T6.3/CMP2/main.bin and C2EM.syx's section 3. Every CMP1 check holds for CMP2 too, with comp-link's
+site added to the allowed differences against GT01 and its bytes checked (jsr compl_tail). Without --stage the
+script is CMP1's, unchanged in what it builds and checks.
+
 Steps (nothing here talks to hardware), as scripts/t53_build.py does for SE01:
   1. scripts/t63b_make_tables.py --check: param-rows' crossover tables are the DSP's laws;
   2. elekloader's SDK builds the five mods from vendor/elekloader (ELEKLOADER_CROSS=m68k-elf-),
@@ -90,11 +96,20 @@ SEC7_GT01, SEC7_GT01_SHA = T.SEC7, T.SEC7_SHA
 CMP1_MAIN_SHA = '3c77d8d513c0a3c3c37da654c25546e380c20ec6b3203146b02b19b9b471287e'
 MODDIRS = {'core': 'mods/core-dn2', 'comp-ui': 'examples/comp-ui-dn2', 'fx-rename': 'examples/fx-rename-dn2',
            'param-grow': 'examples/param-grow-dn2', 'param-rows': 'examples/param-rows-dn2',
-           'fx-page2': 'examples/fx-page2-dn2'}
+           'fx-page2': 'examples/fx-page2-dn2', 'comp-link': 'examples/comp-link-dn2'}
 SET = ['core', 'comp-ui', 'fx-rename', 'param-grow', 'param-rows']
 # the main-only container's own version field: never the deliverable's (CMP1 review)
 MAIN_ONLY = 'C1MO'
 VERSIONS = {'core': '0.2', 'comp-ui': '0.1', 'fx-rename': '0.1', 'param-grow': '0.1', 'param-rows': '0.2'}
+# CMP2 (--stage CMP2): comp-link-dn2 0.1 on top; the main OS its emulator proofs ran (out/T6.3/CMP2/main.bin)
+CMP2_MAIN_SHA = '7888a873c44e81032d4d57f0608335598056056f0a6d04316f0a970e1a05200e'
+STAGES = {
+    'CMP1': dict(set=SET, main_only='C1MO', name='C1EM', out=os.path.join(ROOT, 'out', 'T6.3', 'CMP1'),
+                 main_sha=CMP1_MAIN_SHA, versions=VERSIONS),
+    'CMP2': dict(set=SET + ['comp-link'], main_only='C2MO', name='C2EM', out=os.path.join(ROOT, 'out', 'T6.3', 'CMP2'),
+                 main_sha=CMP2_MAIN_SHA, versions=dict(VERSIONS, **{'comp-link': '0.1'})),
+}
+LINK_SITE, DRIVER = 0x40025e9e, 0x400cf922
 CORE_SITES = (0x40000538, 0x4002e464, 0x4002e4ca, 0x4002f20c, 0x4002f256, 0x4009ff88, 0x400987a2,
               0x400da0b2, 0x400d9230, 0x4012b490)
 PAGEREC = 0x400c25d8
@@ -162,11 +177,18 @@ def refused(files, env, build_dir, *words):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--dsp', help='section7.bin for the final container (default: GT01\'s, for the emulator)')
-    ap.add_argument('--name', default='C1EM', help='the ELE3 version field (4 characters)')
+    ap.add_argument('--stage', default='CMP1', choices=sorted(STAGES), help='CMP1 (default) or CMP2 (+ comp-link)')
+    ap.add_argument('--name', help='the ELE3 version field (4 characters; default C1EM / C2EM)')
     ap.add_argument('--dsp-json', help='with --dsp: the DSP side\'s build.json (default: beside section7.bin); '
                                        'it must record this section 7 and its own container')
-    ap.add_argument('--out', default=os.path.join(ROOT, 'out', 'T6.3', 'CMP1'))
+    ap.add_argument('--out')
     a = ap.parse_args()
+    global SET, MAIN_ONLY, VERSIONS
+    stg = STAGES[a.stage]
+    SET, MAIN_ONLY, VERSIONS = stg['set'], stg['main_only'], stg['versions']
+    a.name = a.name or stg['name']
+    a.out = a.out or stg['out']
+    a.stage_info = stg
     if len(a.name) != 4:
         raise SystemExit('--name: 4 characters')
     if a.name == MAIN_ONLY:
@@ -258,8 +280,9 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
         checks['the DSP side\'s layout check reports no problems'] = not bj['layout_check']['problems']
         ds, _ = T.sections(dsyx)
         checks['section 7 stored byte for byte as in %s' % bj['syx']['path']] = fn[7] == ds[7]
-        c1em = os.path.join(ROOT, 'out', 'T6.3', 'CMP1', 'C1EM.syx')
-        checks['section 3 stored byte for byte as in out/T6.3/CMP1/C1EM.syx (the container the emulator ran)'] = (
+        emdir = a.stage_info['out']
+        c1em = os.path.join(emdir, a.stage_info['name'] + '.syx')
+        checks['section 3 stored byte for byte as in %s (the container the emulator ran)' % os.path.relpath(c1em, ROOT)] = (
             fn[3] == T.sections(c1em)[0][3])
         dsp_side = {'build_json': os.path.relpath(dj, ROOT), 'syx': bj['syx']['path'], 'syx_sha256': bj['syx']['sha256'],
                     'stored_bytes': len(fn[7]), 'c1em_syx_sha256': sha(open(c1em, 'rb').read())}
@@ -273,9 +296,11 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
     checks['main OS depacks to the patcher\'s image'] = sha(img) == man['main_sha256']
     checks['the main-only container depacks to the same main OS'] = T.main_image(mainsyx) == img
     if a.dsp:
-        checks['main OS = out/T6.3/CMP1/main.bin byte for byte, the image the emulator ran (sha256 %s...)'
-               % CMP1_MAIN_SHA[:8]] = (sha(img) == CMP1_MAIN_SHA and
-                                       open(os.path.join(ROOT, 'out', 'T6.3', 'CMP1', 'main.bin'), 'rb').read() == img)
+        want_sha = a.stage_info['main_sha'] or ''
+        tested = os.path.join(a.stage_info['out'], 'main.bin')
+        checks['main OS = %s byte for byte, the image the emulator ran (sha256 %s...)'
+               % (os.path.relpath(tested, ROOT), want_sha[:8])] = (sha(img) == want_sha and
+                                                                 open(tested, 'rb').read() == img)
     for m in man['mods']:
         if m['id'] in GT01_MODS:
             checks['%s .elemod is GT01\'s (sha256 %s...)' % (m['id'], GT01_MODS[m['id']][:8])] = \
@@ -292,6 +317,9 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
     docs = {m: rd(MODDIRS[m]) for m in SET}
     span = lambda s: (int(s['addr'], 16), len(s['stock']) // 2)               # noqa: E731
     ui_spans = [span(s) for s in docs['comp-ui']['sites']]
+    link = 'comp-link' in SET
+    if link:
+        ui_spans += [span(s) for s in docs['comp-link']['sites']]
     new_core = [(PAGEREC, 6)]
     inside = lambda x, spans: any(lo <= x < lo + n for lo, n in spans)         # noqa: E731
     sym_at = lambda m_, v: sorted(k for k, x in m_.items() if int(x, 16) == v and not k.startswith('__'))  # noqa: E731
@@ -358,6 +386,20 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
         ui_seen.append('0x%08x %s -> %s' % (a_, s['stock'], new.hex()))
     checks['comp-ui\'s five sites hold the planned bytes (count 7, page list, DUAL index 7, draw, '
            'row remap)'] = not ui_bad and len(ui_seen) == 5
+    if link:
+        # CMP2: comp-link's one site and its code in the RAM image
+        ls_ = img[LINK_SITE - LOAD:LINK_SITE - LOAD + 6]
+        tail_at = int(mp['compl_tail'], 16)
+        code = lk.ram(tail_at, 0x5a)
+        checks['0x40025e9e (the frame handler\'s driver call, stock 4eb9400cf922) is jsr compl_tail'] = (
+            stock_img[LINK_SITE - LOAD:LINK_SITE - LOAD + 6].hex() == '4eb9400cf922'
+            and gt01[LINK_SITE - LOAD:LINK_SITE - LOAD + 6].hex() == '4eb9400cf922'
+            and ls_[:2].hex() == '4eb9' and struct.unpack('>I', ls_[2:])[0] == tail_at
+            and [s_['addr'] for s_ in docs['comp-link']['sites']] == ['0x40025e9e'])
+        seq_at = int(mp['compl_seq'], 16)
+        checks['compl_tail (90 bytes in .run) ends in jmp 0x400cf922 and keeps its sequence in .bss (compl_seq)'] = (
+            lk.run_start <= tail_at < lk.run_end and code[-6:].hex() == '4ef9%08x' % DRIVER
+            and struct.pack('>I', seq_at) in code and int(mp['__bss_start'], 16) <= seq_at < int(mp['__bss_end'], 16))
 
     # the RAM image: page list, page-record table, records
     pages = [lk.s32(int(mp['compui_pages'], 16) + 4 * i) for i in range(7)]
@@ -434,7 +476,8 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
     checks['the crossover tables in the RAM image are the laws\' (once each)'] = (
         run_img.count(struct.pack('>128H', *lo_t)) == 1 and run_img.count(bytes(hi_t)) == 1)
     for f in ('core_pagerec', 'compui_draw', 'compui_baseid', 'compui_pages', 'compui_rec', 'compui_draws',
-              'compui_bar', 'param_rows_fmt_ratio', 'param_rows_fmt_xlo', 'param_rows_fmt_xhi'):
+              'compui_bar', 'param_rows_fmt_ratio', 'param_rows_fmt_xlo', 'param_rows_fmt_xhi') + (
+                  ('compl_tail', 'compl_seq') if link else ()):
         checks['symbol %s in the RAM image' % f] = f in mp and lk.run_start <= int(mp[f], 16) < lk.run_end + 0x100
 
     # outputs: only when every check holds (the CMP1 review: the first CMP1 recipe wrote NAME.syx and its
@@ -463,8 +506,11 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
     gaps = man['output']['main']['inplace_gaps']
     info = {
         'name': a.name,
-        'what': ('CMP1\'s main OS = core-dn2 0.2 + fx-rename-dn2 0.1 + param-grow-dn2 0.1 + param-rows-dn2 0.2 '
-                 '+ comp-ui-dn2 0.1 (GT01\'s main OS + the 3-band compressor\'s MIXER pages)'
+        'what': (('CMP2\'s main OS = CMP1\'s + comp-link-dn2 0.1 (the band knobs to the DSP in the SPI frame tail): '
+                  if link else 'CMP1\'s main OS = ')
+                 + 'core-dn2 0.2 + fx-rename-dn2 0.1 + param-grow-dn2 0.1 + param-rows-dn2 0.2 '
+                 '+ comp-ui-dn2 0.1' + (' + comp-link-dn2 0.1' if link else '')
+                 + ' (GT01\'s main OS + the 3-band compressor\'s MIXER pages)'
                  + (' with %s' % os.path.relpath(sec7, ROOT) if final else
                     '; %s.syx carries GT01\'s DSP section (FTD1\'s) for the emulator: never flash it' % a.name)),
         'main_bin': {'path': os.path.relpath(os.path.join(out, main_name), ROOT), 'bytes': len(img), 'sha256': sha(img)},
@@ -484,7 +530,7 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
                                        'compui_pages', 'compui_rec', 'compui_draws', 'compui_bar',
                                        'param_rows_fmt_ratio', 'param_rows_fmt_xlo', 'param_rows_fmt_xhi',
                                        'param_rows_comp', 'pg_desc', '__run_start', '__run_load', '__bss_start',
-                                       '__bss_end') if k in mp},
+                                       '__bss_end', 'compl_tail', 'compl_seq') if k in mp},
         'checks': checks,
         'stray_vs_gt01': stray, 'moved_vs_gt01': moved, 'moved_bad': moved_bad,
         'comp_ui_sites': ui_seen, 'comp_ui_problems': ui_bad,

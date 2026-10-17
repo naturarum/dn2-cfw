@@ -546,7 +546,7 @@ static void test_guard(void)
     /* CMP1: a smoother outside its range (the envelopes, the makeup) is found by the control block before the
        samples run (mb_implausible): the state restarts there and the block fades in from 0 (its first sample
        exactly 0) instead of being silent; everything else trips at the end of the block (a silent block).
-       CMP1b: an envelope below -32 log2 units is out of range too, the guard trips at 2^12, and a crossover state
+       CMP1b and later: an envelope below -32 log2 units is out of range too, the guard trips at 2^12 (CMP2; 2^16 as flashed in CMP1b), and a crossover state
        over it is found before the block (CMP1 review: an envelope at -48, inside CMP1's -64, and a crossover state
        at 1e5, under CMP1's 2^20 guard, held the gain down for seconds at REL 127) */
     static const int at_control[] = { 0, 0, 0, 1, 0, 1, 1, 0, 1, 1 };

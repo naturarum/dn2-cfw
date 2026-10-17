@@ -48,7 +48,7 @@ none is a contribution target yet. Pins are the commit cloned.
 | digirta | https://github.com/Alez22/digirta | MIT | 5a0d596 | 2026-10-04 | octave-band analyser for Digitakt mk1, events only |
 | digislicer | https://github.com/irpina/digislicer | GPL-2.0-or-later | 0c1b680 | 2026-10-05 | slicer machine for Digitakt mk1; big tables on the firmware heap |
 | digitables | https://github.com/irpina/digitables | GPL-2.0-or-later | 5bbd9ad | 2026-10-04 | pitch tables for Digitone mk1 via core-dn1's params, pages and project data |
-| digiemu | https://github.com/irpina/digiemu | GPL-2.0-or-later | c1b5735 | 2026-10-03 | digikit fork: mk1 emulator apps with live audio; firmware check for modded builds |
+| digiemu | https://github.com/irpina/digiemu | GPL-2.0-or-later | f57c2f2 | 2026-10-09 | digikit fork: mk1 Digitakt/Digitone and Model:Cycles/Samples emulator apps with live audio (Win/macOS/Linux); `emu.fwcheck` firmware check for modded mk1 builds; DN2/DT2 paths left as upstream digikit had them |
 | elekloader-qa | https://github.com/irpina/elekloader-qa | GPL-2.0-or-later (`js/` GPL-3.0-or-later) | 7922d13 | 2026-10-05 | snapshot of elekloader 0.4.0's kit-release work (TypeScript engine, website kit); no DN2 |
 | modwerk | https://github.com/repeat98/modwerk | GPL-3.0 | 1077590 | 2026-10-06 | community hub; DN2 listed as "research"; octabam's DSP dynload (run-time DSP code upload) |
 | digitakt2-perform | https://github.com/toonst/digitakt2-perform | GPL-2.0-or-later | 09688a6 | 2026-10-05 | two DT2 1.17 elekloader mods (PERFORM KIT keys and levels); no drawing code |

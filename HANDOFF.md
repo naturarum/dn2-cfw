@@ -1367,3 +1367,12 @@ usage limit after the DSP work; a second run confirmed it, combined, reviewed an
   groups added). Open, minor: the guard doesn't reset derived control state; a trip at heavy settings gives a loud
   50-80 ms burst (envelopes restart at no gain reduction with full makeup); no SHARC-vs-Mac check of the dry-crossfade
   branch taken on kit changes.
+
+## CMP1 and CMP2 (T6.3b, T6.3c), `notes/T6.3-cmp1.md`, `notes/T6.3-cmp2.md`
+
+CMP1 (the Low/Mid/High pages with meters) works on the unit (2026-10-14). CMP2 (band knobs live through the SPI frame
+tail, comp-link-dn2 0.1) built 2026-10-17 by one agent, reviewed by one: `out/T6.3/CMP2.syx` `d8551470...`, ACCEPT 12/12.
+The review found the flashed CMP1's compressor missing from the tree (guard 2^16, no #16 check): now frozen in
+`tools/dspsplice/src/cmp1/`, recipe CMP1 rebuilds `ee82aa7c` again. CMP2 injection 0/14,762 failed. Guide fixed for the
+power-on state (all band values 0). Next: CMP3 (kit storage). Owner, 2026-10-17: Beads (granular only) in the chorus
+slot; CPU judged by ear; the weekly usage limit is tight (one agent + one reviewer per build).
