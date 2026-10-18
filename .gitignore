@@ -23,3 +23,6 @@ elektron-firmware/
 
 # Photos of the real unit, for emulator comparison
 photos/
+
+# Private work that must never be published (local git repo inside, no remote)
+private/
