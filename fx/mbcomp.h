@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
- * mbcomp.h - 3-band master compressor for the Digitone II (T3.11, G9; T6.4/T6.3 CMP0, CMP1, CMP1b).
+ * mbcomp.h - 3-band master compressor for the Digitone II (T3.11, G9; T6.4/T6.3 CMP0, CMP1, CMP1b, CMP3).
  *
  * Portable C99, float only, no libc, no malloc. State 1,768 bytes on the SHARC (1,776 on the Mac): filter
  * and smoothing state plus 1,280 bytes of work buffers for one 32-sample block. Built on the Mac (clang) and
@@ -26,6 +26,15 @@
  *   dry = the raw input while the MIX index is 0 (stock MIX 0 is the raw input x 0.99999404, so a
  *   kit at MIX 0 is bit-identical to stock), else the sum of the bands (the allpassed input, in phase
  *   with the wet); a change of the dry source crossfades over 32 blocks (21 ms, smoothstep).
+ *   CMP3: a MIX per band (MB_BMIX), with its own pair of stock one-poles. While the three pairs are equal
+ *   (gains and targets: one MIX for all, as the Mac tools' MB_MIX and the DSP's fallback set it) the output
+ *   is computed exactly as above on band 0's pair (CMP2's arithmetic, bit for bit). Otherwise
+ *     out = sum over the bands of Td_b x band_b + clip(sum over the bands of Tw_b x g_b x band_b, +-1.0)
+ *   (each band's dry is its own split, in phase; the clip acts on the summed wet after the band gains, so with
+ *   equal MIX m it differs from the form above only when the unscaled wet sum passes +-1.0); the raw input
+ *   replaces the dry sum only while all three MIX indices are 0 (its gain the mean of the three dry gains
+ *   during the crossfade). The pairs lock again (band 0's copied into the others) once their targets are
+ *   equal and every gain is within 2^-14 of band 0's (a gain step of -84 dB at most).
  *   Guard: a block whose output or state holds NaN, inf or an absurd value (integer exponent test: over
  *   2^12, +72 dBFS, since CMP2; the flashed CMP1b: 2^16) is output as silence and the whole state is restarted (CMP1): every
  *   filter and envelope at rest, every value derived from the knobs derived again (the knobs read
@@ -79,6 +88,7 @@ enum {
     MB_REL,       /* release: stock table index trunc(v) (10..2000 ms) */
     MB_MUP,       /* makeup 0..+24.08 dB, 24.0824 v/127 (stock law) */
     MB_RAT,       /* ratio step 0..8: 0 = 1:1 (band off), 1..8 = the stock 1.5 2 3 4 6 8 16 20 */
+    MB_BMIX,      /* CMP3: the band's dry/wet, stock MIX table index trunc(v): 0 dry, 127 wet */
     MB_BAND_NP
 };
 #define MB_P(band, p) ((band) * MB_BAND_NP + (p))
@@ -88,7 +98,8 @@ enum {
     MB_XLO = 3 * MB_BAND_NP,  /* low/mid crossover, 30 Hz x (1000/30)^(v/127): 30 Hz..1 kHz (68 = 196 Hz) */
     MB_XHI,       /* mid/high crossover, 1 kHz x 16^(v/127): 1..16 kHz (44 = 2.61 kHz); the two are sorted */
     MB_SCS,       /* sidechain: 0 each band detects itself, 1 every band detects the key (when one is given) */
-    MB_MIX,       /* dry/wet, stock MIX table index trunc(v): 0 dry (raw input), 127 wet */
+    MB_MIX,       /* dry/wet for all three bands at once: mbcomp_set writes the three MB_BMIX knobs (and keeps
+                     the value here, read by nothing else); 0 dry (raw input), 127 wet */
     MB_NPARAMS
 };
 
@@ -101,6 +112,11 @@ typedef struct {
     int32_t on;            /* ratio step > 0 */
     float mk, mk_step, t_mk;   /* makeup in log2 units: current, per-sample step this block, target */
     float hx[2], hy[2];    /* detector filter state per channel (own signal): last input, last output */
+    /* CMP3: the band's MIX, the stock one-poles, per sample cur = target + 0.995 (cur - target), used before
+       the update */
+    float mw, md;          /* current wet and dry gains */
+    float t_mw, t_md;      /* targets T[m], T[127 - m] */
+    int32_t mi;            /* the MIX table index m */
 } MbBand;
 
 typedef struct {
@@ -121,10 +137,8 @@ typedef struct {
 
     MbBand band[3];
 
-    /* MIX: the stock one-poles, per sample cur = target + 0.995 (cur - target), used before the update */
-    float mw, md;                    /* current wet and dry gains */
-    float t_mw, t_md;                /* targets T[m], T[127 - m] */
-    int32_t mix0;                    /* MIX index 0: the dry is the raw input */
+    /* MIX: per band since CMP3 (MbBand mw, md, t_mw, t_md, mi) */
+    int32_t mix0;                    /* all three MIX indices 0: the dry is the raw input */
     float xw, xs;                    /* dry crossfade position (0 = band sum, 1 = raw; moving by xs per
                                         sample over 21 ms after the MIX index left or reached 0) */
 

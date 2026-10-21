@@ -7,6 +7,8 @@
 #include "mbcomp.h"
 
 #define CT_MAGIC 0xC3B1u            /* tail word 0: magic, low byte = layout 1 */
+/* the reader's state (CmpTail): recipe CMP2's FILL at 0x2e2400; CMP3 keeps it there */
+#define CT_STATE_AT 0x2e2400
 #define CT_NL 15                    /* the 30 tail words as 15 longs */
 
 typedef struct {

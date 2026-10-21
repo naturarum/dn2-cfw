@@ -36,6 +36,17 @@ mode pins out/T6.3/CMP2/main.bin and C2EM.syx's section 3. Every CMP1 check hold
 site added to the allowed differences against GT01 and its bytes checked (jsr compl_tail). Without --stage the
 script is CMP1's, unchanged in what it builds and checks.
 
+CMP3 (2026-10-18, --stage CMP3): core 0.2, fx-rename 0.1, param-grow 0.1 + param-rows-dn2 0.3 (three band mix rows
+0x152..0x154, k 87..89, copied from the stock MIX row) + comp-ui-dn2 0.2 (each band page's H is its band's mix) +
+comp-link-dn2 0.2 (the frame tail, and the band values saved per kit: the FX record serializer 0x400dcf34 and loader
+0x400dcef0 hooked, FxSetup's vtable slot 17 0x401da4f0 -> compl_update); defaults --name C3EM --out out/T6.3/CMP3,
+main-only reference C3MO. Built from the fork's working tree; since CMP3 the CMP1 and CMP2 stages build every mod from
+the fork's commit e10bb05 (scripts/elk_pin.py REV_CMP2), where those mods are as CMP1 and CMP2 shipped them, so their
+main OS still rebuild byte for byte. CMP3 adds to CMP2's checks: comp-link's four sites hold the planned bytes, the 20
+rows (the mixes look 0x9e, the stock MIX's text and range, default 0), H on each page is its band's mix, comp-link's
+range/default table equals the rows' maxima and new-kit defaults (the spare k 90..96: 127 / 0), and comp-ui 0.2 and
+comp-link 0.2 are refused with param-rows 0.2 (pinned).
+
 Steps (nothing here talks to hardware), as scripts/t53_build.py does for SE01:
   1. scripts/t63b_make_tables.py --check: param-rows' crossover tables are the DSP's laws;
   2. elekloader's SDK builds the five mods from vendor/elekloader (ELEKLOADER_CROSS=m68k-elf-),
@@ -103,13 +114,21 @@ MAIN_ONLY = 'C1MO'
 VERSIONS = {'core': '0.2', 'comp-ui': '0.1', 'fx-rename': '0.1', 'param-grow': '0.1', 'param-rows': '0.2'}
 # CMP2 (--stage CMP2): comp-link-dn2 0.1 on top; the main OS its emulator proofs ran (out/T6.3/CMP2/main.bin)
 CMP2_MAIN_SHA = '7888a873c44e81032d4d57f0608335598056056f0a6d04316f0a970e1a05200e'
+# CMP3 (--stage CMP3): the main OS its emulator proofs ran (out/T6.3/CMP3/main.bin)
+CMP3_MAIN_SHA = '13c562b304b4a3be62ac4463a74310651ad74c2fa676b3922baebcaa5509ef08'
 STAGES = {
     'CMP1': dict(set=SET, main_only='C1MO', name='C1EM', out=os.path.join(ROOT, 'out', 'T6.3', 'CMP1'),
-                 main_sha=CMP1_MAIN_SHA, versions=VERSIONS),
+                 main_sha=CMP1_MAIN_SHA, versions=VERSIONS, rev=elk_pin.REV_CMP2),
     'CMP2': dict(set=SET + ['comp-link'], main_only='C2MO', name='C2EM', out=os.path.join(ROOT, 'out', 'T6.3', 'CMP2'),
-                 main_sha=CMP2_MAIN_SHA, versions=dict(VERSIONS, **{'comp-link': '0.1'})),
+                 main_sha=CMP2_MAIN_SHA, versions=dict(VERSIONS, **{'comp-link': '0.1'}), rev=elk_pin.REV_CMP2),
+    # CMP3: the fork's working tree (param-rows 0.3, comp-ui 0.2, comp-link 0.2)
+    'CMP3': dict(set=SET + ['comp-link'], main_only='C3MO', name='C3EM', out=os.path.join(ROOT, 'out', 'T6.3', 'CMP3'),
+                 main_sha=CMP3_MAIN_SHA, versions=dict(VERSIONS, **{'comp-ui': '0.2', 'param-rows': '0.3',
+                                                                     'comp-link': '0.2'}), rev=None),
 }
 LINK_SITE, DRIVER = 0x40025e9e, 0x400cf922
+# comp-link 0.2's storage sites: the FX record serializer and loader (entry jmp + nop), FxSetup's vtable slot 17
+SER_SITE, LOAD_SITE, SLOT17 = 0x400dcf34, 0x400dcef0, 0x401da4f0
 CORE_SITES = (0x40000538, 0x4002e464, 0x4002e4ca, 0x4002f20c, 0x4002f256, 0x4009ff88, 0x400987a2,
               0x400da0b2, 0x400d9230, 0x4012b490)
 PAGEREC = 0x400c25d8
@@ -126,6 +145,8 @@ RECORDS = {
     42: ('COMP HIGH', 'Compressor High', [0x14d, 0x14f, 0x150, 0x151, 0x14e, 0, SCS, MIX], VOL),
 }
 MIXER_PAGES = [40, 41, 42, 21, 22, 23, 24]
+# CMP3: H on each band page is its band's mix (param-rows 0.3)
+RECORDS3 = {pid: (sn, ln, knobs[:7] + [0x152 + pid - 40], lv) for pid, (sn, ln, knobs, lv) in RECORDS.items()}
 # the band rows (notes/T6.4 2.2): row -> (long, short, k, max, default, formatter)
 KINDS = [('Threshold', 'THR', 127, 32, FMT_NUMBER), ('Ratio', 'RAT', 8, 4, 'param_rows_fmt_ratio'),
          ('Attack', 'ATK', 127, 24, FMT_NUMBER), ('Release', 'REL', 127, 32, FMT_NUMBER),
@@ -136,6 +157,8 @@ for b, band in enumerate(('Low', 'Mid', 'High')):
         BAND_ROWS[0x141 + 6 * b + i] = ('%s %s' % (band, nm), sn, 70 + 6 * b + i, mx, df, fmt)
 BAND_ROWS[0x146] = ('Low/Mid X-Over', 'XOVR', 75, 127, 68, 'param_rows_fmt_xlo')
 BAND_ROWS[0x14c] = ('Mid/High X-Over', 'XOVR', 81, 127, 44, 'param_rows_fmt_xhi')
+# CMP3: the three band mixes, copied from the stock MIX row 0x9e (its text, range; look 0x9e; default 0)
+MIX_ROWS = {0x152 + b: ('%s Mix' % band, 'MIX', 87 + b, 127, 0, FMT_NUMBER) for b, band in enumerate(('Low', 'Mid', 'High'))}
 log = T.log
 
 
@@ -177,7 +200,8 @@ def refused(files, env, build_dir, *words):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--dsp', help='section7.bin for the final container (default: GT01\'s, for the emulator)')
-    ap.add_argument('--stage', default='CMP1', choices=sorted(STAGES), help='CMP1 (default) or CMP2 (+ comp-link)')
+    ap.add_argument('--stage', default='CMP1', choices=sorted(STAGES),
+                    help='CMP1 (default), CMP2 (+ comp-link 0.1) or CMP3 (param-rows 0.3, comp-ui 0.2, comp-link 0.2)')
     ap.add_argument('--name', help='the ELE3 version field (4 characters; default C1EM / C2EM)')
     ap.add_argument('--dsp-json', help='with --dsp: the DSP side\'s build.json (default: beside section7.bin); '
                                        'it must record this section 7 and its own container')
@@ -222,11 +246,19 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
     rc, o = run([sys.executable, os.path.join(ROOT, 'scripts', 't63b_make_tables.py'), '--check'], ok=(0, 1))
     checks['param-rows\' xover_table.h is as scripts/t63b_make_tables.py writes it from the DSP\'s laws'] = rc == 0
 
-    built = {m: sdk_build(MODDIRS[m], mods_dir, env) for m in SET + ['fx-page2']}
+    # the stage's sources: the fork's working tree (CMP3), or the commit CMP1 and CMP2 were built from (e10bb05)
+    src = elk_pin.tree(a.stage_info['rev']) if a.stage_info['rev'] else EL
+    moddir = lambda m: os.path.join(src, MODDIRS[m])                          # noqa: E731
+    built = {m: sdk_build(moddir(m), mods_dir, env) for m in SET + ['fx-page2']}
     # core 0.1 and param-rows 0.1 as GT01 has them (elekloader 59cd41f), for the refusal tests
     pin = elk_pin.tree(elk_pin.REV_0_1)
     core01 = sdk_build(os.path.join(pin, 'mods', 'core-dn2'), os.path.join(mods_dir, 'pinned'), env)
     rows01 = sdk_build(os.path.join(pin, 'examples', 'param-rows-dn2'), os.path.join(mods_dir, 'pinned'), env)
+    cmp3 = VERSIONS.get('comp-link') == '0.2'
+    if cmp3:
+        # param-rows 0.2 as CMP1 and CMP2 have it (e10bb05), for the refusal tests of comp-ui 0.2 and comp-link 0.2
+        pin2 = elk_pin.tree(elk_pin.REV_CMP2)
+        rows02 = sdk_build(os.path.join(pin2, 'examples', 'param-rows-dn2'), os.path.join(mods_dir, 'pinned'), env)
     files = [built[m] for m in SET]
     run([ELPY, '-m', 'elekloader.lint'] + files + ['--stock', STOCK], cwd=EL, env=env)
     # the main-only reference container, under its own version field (never NAME's)
@@ -242,9 +274,15 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
     run(cmd + ['--version', a.name, '--out', namesyx], cwd=EL, env=env)
     ok, why = refused([core01] + files[1:], env, build_dir, 'core_pagerecs')
     checks['comp-ui with core 0.1 is refused (no table core_pagerecs): %s' % why[:80]] = ok
+    low = '0.3' if cmp3 else '0.2'
     ok, why = refused([rows01 if f == built['param-rows'] else f for f in files], env, build_dir,
-                      'requires param-rows 0.2 or later')
-    checks['comp-ui with param-rows 0.1 (pinned) is refused (it requires param-rows>=0.2): %s' % why[:80]] = ok
+                      'requires param-rows %s or later' % low)
+    checks['comp-ui with param-rows 0.1 (pinned) is refused (it requires param-rows>=%s): %s' % (low, why[:80])] = ok
+    if cmp3:
+        ok, why = refused([rows02 if f == built['param-rows'] else f for f in files], env, build_dir,
+                          'comp-ui 0.2 requires param-rows 0.3 or later', 'comp-link 0.2 requires param-rows 0.3 or later')
+        checks['comp-ui 0.2 and comp-link 0.2 with param-rows 0.2 (pinned) are refused (both require param-rows>=0.3): '
+               '%s' % why[:80]] = ok
     ok, why = refused(files + [built['fx-page2']], env, build_dir, 'overlap')
     checks['core 0.2 with fx-page2 0.1 (its own accessor patch) is refused: %s' % why[:80]] = ok
     man = json.load(open(mainsyx + '.json'))
@@ -313,8 +351,8 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
     mp_gt = json.load(open(GT01_MAP))
     lk = T.Linked(img, mp)
     lk_gt = T.Linked(gt01, mp_gt)
-    rd = lambda path: json.load(open(os.path.join(EL, path, 'mod.json')))       # noqa: E731
-    docs = {m: rd(MODDIRS[m]) for m in SET}
+    rd = lambda path: json.load(open(os.path.join(path, 'mod.json')))           # noqa: E731
+    docs = {m: rd(moddir(m)) for m in SET}
     span = lambda s: (int(s['addr'], 16), len(s['stock']) // 2)               # noqa: E731
     ui_spans = [span(s) for s in docs['comp-ui']['sites']]
     link = 'comp-link' in SET
@@ -395,11 +433,35 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
             stock_img[LINK_SITE - LOAD:LINK_SITE - LOAD + 6].hex() == '4eb9400cf922'
             and gt01[LINK_SITE - LOAD:LINK_SITE - LOAD + 6].hex() == '4eb9400cf922'
             and ls_[:2].hex() == '4eb9' and struct.unpack('>I', ls_[2:])[0] == tail_at
-            and [s_['addr'] for s_ in docs['comp-link']['sites']] == ['0x40025e9e'])
+            and [s_['addr'] for s_ in docs['comp-link']['sites']][:1] == ['0x40025e9e']
+            and len(docs['comp-link']['sites']) == (4 if cmp3 else 1))
         seq_at = int(mp['compl_seq'], 16)
         checks['compl_tail (90 bytes in .run) ends in jmp 0x400cf922 and keeps its sequence in .bss (compl_seq)'] = (
             lk.run_start <= tail_at < lk.run_end and code[-6:].hex() == '4ef9%08x' % DRIVER
             and struct.pack('>I', seq_at) in code and int(mp['__bss_start'], 16) <= seq_at < int(mp['__bss_end'], 16))
+    if cmp3:
+        # comp-link 0.2's storage sites (T6.4 3.2): jmp + nop at the serializer's and the loader's entry, the
+        # vtable slot -> compl_update; the stock bytes as the planner read them
+        got = {SER_SITE: img[SER_SITE - LOAD:SER_SITE - LOAD + 8], LOAD_SITE: img[LOAD_SITE - LOAD:LOAD_SITE - LOAD + 8],
+               SLOT17: img[SLOT17 - LOAD:SLOT17 - LOAD + 4]}
+        stock_b = {SER_SITE: '2f0b2f0a246f000c', LOAD_SITE: '2f0b2f0a226f000c', SLOT17: '4002ffca'}
+        want_b = {SER_SITE: '4ef9%08x4e71' % int(mp['compl_ser'], 16), LOAD_SITE: '4ef9%08x4e71' % int(mp['compl_load'], 16),
+                  SLOT17: '%08x' % int(mp['compl_update'], 16)}
+        checks['comp-link 0.2: 0x400dcf34 jmp compl_ser, 0x400dcef0 jmp compl_load (each + nop), 0x401da4f0 -> '
+               'compl_update; stock and GT01 bytes as planned'] = all(
+            got[x].hex() == want_b[x] and stock_img[x - LOAD:x - LOAD + len(got[x])].hex() == stock_b[x]
+            and gt01[x - LOAD:x - LOAD + len(got[x])].hex() == stock_b[x] for x in got) and sorted(
+            int(s_['addr'], 16) for s_ in docs['comp-link']['sites']) == sorted([LINK_SITE] + list(got))
+        # the stored words' range/default table: the rows' maxima and new-kit defaults, k 70..89; spare 127 / 0
+        vmax = list(lk.ram(int(mp['compl_vmax'], 16), 27))
+        vdef = list(lk.ram(int(mp['compl_vdef'], 16), 27))
+        want_max, want_def = [], []
+        for k in range(70, 97):
+            r_ = [x for x in list(BAND_ROWS.values()) + list(MIX_ROWS.values()) if x[2] == k]
+            want_max.append(r_[0][3] if r_ else 127)
+            want_def.append(r_[0][4] if r_ else 0)
+        checks['comp-link 0.2: compl_vmax/compl_vdef = the rows\' maxima and new-kit defaults for k 70..89 '
+               '(spare k 90..96: 127 / 0)'] = vmax == want_max and vdef == want_def
 
     # the RAM image: page list, page-record table, records
     pages = [lk.s32(int(mp['compui_pages'], 16) + 4 * i) for i in range(7)]
@@ -411,7 +473,7 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
         entries == [(40, rec0), (41, rec0 + PAGE), (42, rec0 + 2 * PAGE), (0, 0)]
         and man['link']['tables']['core_pagerecs']['entries'] == 3)
     recs, rec_bad = {}, []
-    for i, (pid, (sname, lname, knobs, level)) in enumerate(RECORDS.items()):
+    for i, (pid, (sname, lname, knobs, level)) in enumerate((RECORDS3 if cmp3 else RECORDS).items()):
         r = rec0 + PAGE * i
         ps, pl = lk.u32(r), lk.u32(r + 4)
         got = {'short': lk.string(ps), 'long': lk.string(pl),
@@ -423,8 +485,8 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
                 rec_bad.append('%d: string "%s" (len %d cap %d ref %d)' % (pid, lk.string(p_), ln, cap, ref))
         if [lk.u32(r + 8 + 4 * k) for k in range(8)] != knobs or lk.u32(r + 0x28) != level:
             rec_bad.append('%d: rows %s' % (pid, got['rows']))
-    checks['the three records: titles (COW strings, refcount -1), A..H, LEVEL as notes/T6.4 2.1; HIGH F empty'] = \
-        not rec_bad
+    checks['the three records: titles (COW strings, refcount -1), A..H, LEVEL as notes/T6.4 2.1; HIGH F empty'
+           + ('; H = the band\'s mix 0x152/0x153/0x154' if cmp3 else '')] = not rec_bad
 
     # the grown table and the band rows
     table, rows = T.simulate_boot(lk, stock_img)
@@ -439,32 +501,46 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
     stock_same = all(named(lk, table[r * ROW:(r + 1) * ROW]) == named(lk_gt, table_gt[r * ROW:(r + 1) * ROW])
                      for r in range(ROWS0))
     checks['the grown table\'s stock rows are GT01\'s, field by field (names as strings)'] = stock_same
-    checks['the grown table\'s rows past 0x151 are GT01\'s (row-0 copies)'] = all(
-        table[r * ROW:(r + 1) * ROW] == table_gt[r * ROW:(r + 1) * ROW] for r in range(0x152, ROWS))
+    last = 0x155 if cmp3 else 0x152
+    checks['the grown table\'s rows past 0x%x are GT01\'s (row-0 copies)' % (last - 1)] = all(
+        table[r * ROW:(r + 1) * ROW] == table_gt[r * ROW:(r + 1) * ROW] for r in range(last, ROWS))
     row_bad, row_info = [], {}
-    if [r['id'] for r in rows] != list(range(0x141, 0x152)):
+    if [r['id'] for r in rows] != list(range(0x141, last)):
         row_bad.append('rows %s' % [hex(r['id']) for r in rows])
+    all_rows = dict(BAND_ROWS)
+    if cmp3:
+        all_rows.update(MIX_ROWS)
+    if cmp3:
+        # the mixes copy the stock MIX row 0x9e: its range, default and text
+        mixf = T.row_fields(stock_img[lo + 0x9e * ROW:lo + 0x9f * ROW])
+        if (mixf['max'] >> 8, mixf['default'] >> 8, mixf['fmt'], mixf['k']) != (127, 0, FMT_NUMBER, 67):
+            row_bad.append('stock MIX row 0x9e: %r' % mixf)
     for r in rows:
         f = named(lk, r['desc'])
-        lname, sname, k, mx, df, fmt = BAND_ROWS.get(r['id'], (None,) * 6)
+        lname, sname, k, mx, df, fmt = all_rows.get(r['id'], (None,) * 6)
         want_fmt = int(mp[fmt], 16) if isinstance(fmt, str) else fmt
         got = (f['name'], f['short'], f['group'], f['k'], f['min'], f['max'] >> 8, f['default'] >> 8, f['bipolar'],
                f['cc'], f['cc2'], f['nrpn'], f['uid'], f['modmask'], f['fmt'], f['group_name'], f['suffix'],
                r['look'], r['flags_set'], r['opts'], r['page'], r['slot'])
         exp = (lname, sname, 0x14, k, 0, mx, df, 0, -1, -1, -1, 0x400 + r['id'] - 0x141, 0, want_fmt, 'Master', '',
-               0x99, 8, 0, -1, -1)
+               0x9e if r['id'] in MIX_ROWS else 0x99, 8, 0, -1, -1)
         if got != exp:
             row_bad.append('row 0x%x: %r, expected %r' % (r['id'], got, exp))
-        # GT01's row with the same id: the same k, CC, NRPN, Overbridge id, group
+        # GT01's row with the same id: the same k, CC, NRPN, Overbridge id, group (the mixes are new in CMP3)
         g = [x for x in rows_gt if x['id'] == r['id']]
         gf = named(lk_gt, g[0]['desc']) if g else {}
-        if not g or any(gf[x] != f[x] for x in ('group', 'k', 'cc', 'cc2', 'nrpn', 'uid', 'modmask')):
+        if r['id'] in MIX_ROWS and cmp3:
+            pass
+        elif not g or any(gf[x] != f[x] for x in ('group', 'k', 'cc', 'cc2', 'nrpn', 'uid', 'modmask')):
             row_bad.append('row 0x%x: identity differs from GT01\'s' % r['id'])
         row_info['0x%x' % r['id']] = {'long': f['name'], 'short': f['short'], 'k': f['k'],
                                       'range': [0, f['max'] >> 8], 'default': f['default'] >> 8,
                                       'fmt': '0x%08x' % f['fmt'], 'uid': '0x%x' % f['uid']}
-    checks['the 17 band rows as notes/T6.4 2.2 says (names, k 70..86, ranges, defaults, value texts; '
-           'no CC/NRPN, uid 0x400+n, look 0x99, flags |= 8, no randomiser, on no page)'] = not row_bad
+    checks[('the 20 band rows as notes/T6.4 2.2 and notes/T6.3-cmp3.md say (names, k 70..89' if cmp3 else
+            'the 17 band rows as notes/T6.4 2.2 says (names, k 70..86') +
+           ', ranges, defaults, value texts; no CC/NRPN, uid 0x400+n, look 0x99'
+           + (' (the mixes 0x9e, the stock MIX\'s text and range, default 0)' if cmp3 else '')
+           + ', flags |= 8, no randomiser, on no page)'] = not row_bad
     # the stock data the formatters use
     ratios = [lk.string(struct.unpack('>I', stock_img[RATIO_TEXT - LOAD + 4 * i:RATIO_TEXT - LOAD + 4 * i + 4])[0])
               for i in range(8)]
@@ -477,7 +553,9 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
         run_img.count(struct.pack('>128H', *lo_t)) == 1 and run_img.count(bytes(hi_t)) == 1)
     for f in ('core_pagerec', 'compui_draw', 'compui_baseid', 'compui_pages', 'compui_rec', 'compui_draws',
               'compui_bar', 'param_rows_fmt_ratio', 'param_rows_fmt_xlo', 'param_rows_fmt_xhi') + (
-                  ('compl_tail', 'compl_seq') if link else ()):
+                  ('compl_tail', 'compl_seq') if link else ()) + (
+                  ('compl_ser', 'compl_load', 'compl_update', 'compl_encode', 'compl_decode', 'compl_vmax', 'compl_vdef')
+                  if cmp3 else ()):
         checks['symbol %s in the RAM image' % f] = f in mp and lk.run_start <= int(mp[f], 16) < lk.run_end + 0x100
 
     # outputs: only when every check holds (the CMP1 review: the first CMP1 recipe wrote NAME.syx and its
@@ -506,10 +584,12 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
     gaps = man['output']['main']['inplace_gaps']
     info = {
         'name': a.name,
-        'what': (('CMP2\'s main OS = CMP1\'s + comp-link-dn2 0.1 (the band knobs to the DSP in the SPI frame tail): '
+        'what': (('CMP3\'s main OS = CMP2\'s with param-rows-dn2 0.3 (the band mixes), comp-ui-dn2 0.2 (H = the band\'s '
+                  'mix) and comp-link-dn2 0.2 (the band values saved per kit): ' if cmp3 else
+                  'CMP2\'s main OS = CMP1\'s + comp-link-dn2 0.1 (the band knobs to the DSP in the SPI frame tail): '
                   if link else 'CMP1\'s main OS = ')
-                 + 'core-dn2 0.2 + fx-rename-dn2 0.1 + param-grow-dn2 0.1 + param-rows-dn2 0.2 '
-                 '+ comp-ui-dn2 0.1' + (' + comp-link-dn2 0.1' if link else '')
+                 + 'core-dn2 0.2 + fx-rename-dn2 0.1 + param-grow-dn2 0.1 + param-rows-dn2 %s ' % VERSIONS['param-rows']
+                 + '+ comp-ui-dn2 %s' % VERSIONS['comp-ui'] + (' + comp-link-dn2 %s' % VERSIONS['comp-link'] if link else '')
                  + ' (GT01\'s main OS + the 3-band compressor\'s MIXER pages)'
                  + (' with %s' % os.path.relpath(sec7, ROOT) if final else
                     '; %s.syx carries GT01\'s DSP section (FTD1\'s) for the emulator: never flash it' % a.name)),
@@ -530,7 +610,9 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
                                        'compui_pages', 'compui_rec', 'compui_draws', 'compui_bar',
                                        'param_rows_fmt_ratio', 'param_rows_fmt_xlo', 'param_rows_fmt_xhi',
                                        'param_rows_comp', 'pg_desc', '__run_start', '__run_load', '__bss_start',
-                                       '__bss_end', 'compl_tail', 'compl_seq') if k in mp},
+                                       '__bss_end', 'compl_tail', 'compl_seq', 'compl_ser', 'compl_load',
+                                       'compl_update', 'compl_encode', 'compl_decode', 'compl_vmax', 'compl_vdef')
+                    if k in mp},
         'checks': checks,
         'stray_vs_gt01': stray, 'moved_vs_gt01': moved, 'moved_bad': moved_bad,
         'comp_ui_sites': ui_seen, 'comp_ui_problems': ui_bad,

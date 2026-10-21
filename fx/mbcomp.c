@@ -75,6 +75,10 @@
 #define K_BW 1.4142136f      /* 1/Q for Butterworth */
 #define XO_A  0.98347f       /* crossover glide per control block, tau 40 ms at 1,500 Hz */
 #define MIX_C 0.995f         /* the stock MIX one-pole coefficient (state word 0x3f7eb852) */
+/* CMP3: the MIX pairs lock again within 2^-14 of band 0's gains (a step of -84 dB at most). The stock one-pole stalls
+   where 0.005 x (cur - target) rounds away: up to 100 ulps from its target (the stock MIX 0 settles at 0x3f7fff9c, 100
+   ulps under 1.0), so two pairs that came from either side can rest 200 ulps (1.2e-5 near 1.0) apart for good */
+#define MIX_RELOCK 6.1035156e-05f
 #define LOG2_PER_DB 0.16609640f   /* 1 / 6.0205999 */
 #define MUP_LOG2 4.0f        /* the stock makeup range, 20 log10(16) dB = 4 in log2 units */
 #define XLO_OCT 5.0588937f   /* log2(1000/30) */
@@ -190,8 +194,8 @@ static int mb_law_ready = 0;
 
 /* ---------------- control ---------------- */
 
-/* the values derived from the knobs, for the groups in dm. Bits: 1, 2, 4 = band 0, 1, 2; 8 crossovers; 32 SCS;
-   64 MIX. Every knob is read through mb_clampn (CMP1), so a corrupted knob gives an in-range table index; for any
+/* the values derived from the knobs, for the groups in dm. Bits: 1, 2, 4 = band 0, 1, 2 (CMP3: with the band's
+   MIX); 8 crossovers; 32 SCS (64, CMP2's MIX, is no longer a group). Every knob is read through mb_clampn (CMP1), so a corrupted knob gives an in-range table index; for any
    knob value mbcomp_set can store, the results are CMP0's bit for bit. While rec_left > 0 (after a restart) a
    band's attack coefficient is 0: instant attack (#13). The caller clears s->dirty. */
 static void mb_targets(MBComp *s, int32_t dm)
@@ -229,7 +233,20 @@ static void mb_targets(MBComp *s, int32_t dm)
             bd->cr = c;
             bd->cr1 = 1.0f - c;
             bd->t_mk = MUP_LOG2 * fx_knob01(mb_clampn(k[MB_MUP], 0.0f, 127.0f));
+            /* CMP3: the band's MIX (CMP2's global MIX, per band) */
+            i = (int32_t)mb_clampn(k[MB_BMIX], 0.0f, 127.0f);
+            bd->mi = i;
+            c = tab[MB_TAB_MIX + i];
+            bd->t_mw = c;
+            c = tab[MB_TAB_MIX + 127 - i];
+            bd->t_md = c;
         }
+    }
+    if ((dm & 7) != 0) {
+        /* the dry is the raw input only while all three MIX indices are 0 */
+        s->mix0 = 0;
+        if (s->band[0].mi == 0 && s->band[1].mi == 0 && s->band[2].mi == 0)
+            s->mix0 = 1;
     }
     if ((dm & 8) != 0) {
         s->t_lf_lo = fx_log2(mbcomp_xlo_hz(s->knob[MB_XLO]));
@@ -239,16 +256,6 @@ static void mb_targets(MBComp *s, int32_t dm)
         s->sc_ext = 0;
         if (mb_clampn(s->knob[MB_SCS], 0.0f, 1.0f) >= 0.5f)
             s->sc_ext = 1;
-    }
-    if ((dm & 64) != 0) {
-        i = (int32_t)mb_clampn(s->knob[MB_MIX], 0.0f, 127.0f);
-        c = tab[MB_TAB_MIX + i];
-        s->t_mw = c;
-        c = tab[MB_TAB_MIX + 127 - i];
-        s->t_md = c;
-        s->mix0 = 0;
-        if (i == 0)
-            s->mix0 = 1;
     }
 }
 
@@ -267,7 +274,18 @@ void mbcomp_set(MBComp *s, int param, float value)
 {
     float hi = 127.0f;
     int32_t bit = 32;
+    float v;
     if (param < 0 || param >= MB_NPARAMS) return;
+    if (param == MB_MIX) {
+        /* CMP3: one MIX for all three bands */
+        v = mb_clampn(value, 0.0f, 127.0f);
+        s->knob[MB_MIX] = v;
+        s->knob[MB_P(0, MB_BMIX)] = v;
+        s->knob[MB_P(1, MB_BMIX)] = v;
+        s->knob[MB_P(2, MB_BMIX)] = v;
+        s->dirty |= 7;
+        return;
+    }
     if (param < MB_BAND_NP) {
         bit = 1;
         if (param == MB_RAT) hi = 8.0f;
@@ -279,8 +297,6 @@ void mbcomp_set(MBComp *s, int param, float value)
         if (param == 2 * MB_BAND_NP + MB_RAT) hi = 8.0f;
     } else if (param == MB_XLO || param == MB_XHI) {
         bit = 8;
-    } else if (param == MB_MIX) {
-        bit = 64;
     } else if (param == MB_SCS) {
         hi = 1.0f;
     }
@@ -318,11 +334,12 @@ void mbcomp_snap(MBComp *s)
     s->lf_hi = s->t_lf_hi;
     mb_xover_coefs(s);
     for (b = 0; b < 3; b++) {
-        s->band[b].mk = s->band[b].t_mk;
-        s->band[b].mk_step = 0.0f;
+        MbBand *bd = &s->band[b];
+        bd->mk = bd->t_mk;
+        bd->mk_step = 0.0f;
+        bd->mw = bd->t_mw;
+        bd->md = bd->t_md;
     }
-    s->mw = s->t_mw;
-    s->md = s->t_md;
     s->xw = 0.0f;
     if (s->mix0) s->xw = 1.0f;
     s->xs = 0.0f;
@@ -370,11 +387,12 @@ static void mb_restart(MBComp *s)
     s->lf_hi = s->t_lf_hi;
     mb_xover_coefs(s);
     for (b = 0; b < 3; b++) {
-        s->band[b].mk = s->band[b].t_mk;
-        s->band[b].mk_step = 0.0f;
+        MbBand *bd = &s->band[b];
+        bd->mk = bd->t_mk;
+        bd->mk_step = 0.0f;
+        bd->mw = 0.0f;
+        bd->md = 0.0f;
     }
-    s->mw = 0.0f;
-    s->md = 0.0f;
     s->xw = 0.0f;
     if (s->mix0) s->xw = 1.0f;
     s->xs = 0.0f;
@@ -403,6 +421,7 @@ void mbcomp_init(MBComp *s, const float *tab)
         s->knob[MB_P(b, MB_REL)] = 44.0f;
         s->knob[MB_P(b, MB_MUP)] = 0.0f;
         s->knob[MB_P(b, MB_RAT)] = 2.0f;
+        s->knob[MB_P(b, MB_BMIX)] = 127.0f;
     }
     s->knob[MB_XLO] = 68.0f;
     s->knob[MB_XHI] = 44.0f;
@@ -438,12 +457,6 @@ static int32_t mb_implausible(const MBComp *s)
     x = s->lf_hi;
     if (x > 15.0f) bad = 1;
     if (!(x >= 2.0f)) bad = 1;
-    x = s->mw;
-    if (x > 1.0f) bad = 1;
-    if (!(x >= 0.0f)) bad = 1;
-    x = s->md;
-    if (x > 1.0f) bad = 1;
-    if (!(x >= 0.0f)) bad = 1;
     x = s->xw;
     if (x > 1.0f) bad = 1;
     if (!(x >= 0.0f)) bad = 1;
@@ -478,15 +491,22 @@ static int32_t mb_implausible(const MBComp *s)
         x = bd->thr;
         if (x > 0.001f) bad = 1;
         if (!(x >= -10.0f)) bad = 1;
+        /* CMP3: the band's MIX gains and targets (the stock table, [0, 1]; convex combinations of its values) */
+        x = bd->mw;
+        if (x > 1.0f) bad = 1;
+        if (!(x >= 0.0f)) bad = 1;
+        x = bd->md;
+        if (x > 1.0f) bad = 1;
+        if (!(x >= 0.0f)) bad = 1;
+        x = bd->t_mw;
+        if (x > 1.0f) bad = 1;
+        if (!(x >= 0.0f)) bad = 1;
+        x = bd->t_md;
+        if (x > 1.0f) bad = 1;
+        if (!(x >= 0.0f)) bad = 1;
     }
-    /* CMP1b: the MIX targets (the stock table, [0, 1]), the crossover targets (30 Hz..1 kHz, 1..16 kHz in log2
-       Hz) and coefficients ([0, 1] each) */
-    x = s->t_mw;
-    if (x > 1.0f) bad = 1;
-    if (!(x >= 0.0f)) bad = 1;
-    x = s->t_md;
-    if (x > 1.0f) bad = 1;
-    if (!(x >= 0.0f)) bad = 1;
+    /* CMP1b: the crossover targets (30 Hz..1 kHz, 1..16 kHz in log2 Hz) and coefficients ([0, 1] each); the MIX
+       targets: per band above (CMP3) */
     x = s->t_lf_lo;
     if (x > 10.0f) bad = 1;
     if (!(x >= 4.8f)) bad = 1;
@@ -594,16 +614,29 @@ static void mb_control(MBComp *s)
     /* a MIX gain decaying to a target of 0 is 0 below 1e-9 (-180 dB): no denormal products on the Mac (the
        SHARC flushes them), and back on the exact paths below after 86 ms rather than the 365 ms the stock
        one-pole takes to flush */
-    if (s->t_mw == 0.0f) {
-        if (s->mw < 1e-9f) s->mw = 0.0f;
-    }
-    if (s->t_md == 0.0f) {
-        if (s->md < 1e-9f) s->md = 0.0f;
-    }
-
     /* makeup: a linear ramp over this block to the target (stock: (target - cur) / 32 per sample) */
     for (b = 0; b < 3; b++) {
         MbBand *bd = &s->band[b];
+        if (bd->t_mw == 0.0f) {
+            if (bd->mw < 1e-9f) bd->mw = 0.0f;
+        }
+        if (bd->t_md == 0.0f) {
+            if (bd->md < 1e-9f) bd->md = 0.0f;
+        }
+        /* CMP3: a band's MIX pair locks to band 0's again once its targets are band 0's and both gains are within
+           MIX_RELOCK of band 0's; band 0 is first in this loop, so it is settled here */
+        if (b > 0) {
+            if (bd->t_mw == s->band[0].t_mw && bd->t_md == s->band[0].t_md) {
+                e = bd->mw - s->band[0].mw;
+                FX_ABS(e);
+                d = bd->md - s->band[0].md;
+                FX_ABS(d);
+                if (e <= MIX_RELOCK && d <= MIX_RELOCK) {
+                    bd->mw = s->band[0].mw;
+                    bd->md = s->band[0].md;
+                }
+            }
+        }
         bd->mk_step = (bd->t_mk - bd->mk) * inv;
         FX_UNDENORM(bd->y1);
         FX_UNDENORM(bd->y2);
@@ -742,11 +775,165 @@ void mb_state_expo(const MBComp *s, uint32_t *sig, uint32_t *env)
         x = bd->y1; MB_EXPO(x, m2);
         x = bd->y2; MB_EXPO(x, m2);
         x = bd->mk; MB_EXPO(x, m2);
+        x = bd->mw; MB_EXPO(x, m1);
+        x = bd->md; MB_EXPO(x, m1);
     }
-    x = s->mw; MB_EXPO(x, m1);
-    x = s->md; MB_EXPO(x, m1);
     *sig = m1;
     *env = m2;
+}
+
+/* CMP3: the output while the three MIX pairs are apart (mb_run step 4 otherwise). Each band's dry is its own split
+   (in phase with the wet); the wet is the sum of the bands x their gains x their wet gains, clipped at +-1.0 (the stock
+   clip, after the band's wet gains: with three equal MIX pairs the same as clip-then-scale unless the unscaled wet sum
+   passes +-1.0); out = sum of Td_b x band_b + that wet, each band's one-poles per sample (used, then updated). While
+   the dry crossfade is away from the band sums (all three MIX indices 0, or just left), the raw input takes the share
+   sw of the dry, with the mean of the three dry gains. A band whose wet gain is 0 and stays 0 has no gains this block
+   (step 3 skipped them): its gains are set to 0 here. Returns the largest exponent field of the output (the guard).
+   Not static: a call of its own (see mb_state_expo), and mb_run's frame does not grow. */
+uint32_t mb_out_bands(MBComp *s, const float *inL, const float *inR, float *outL, float *outR, int32_t n,
+                      int32_t wet0, int32_t wet1, int32_t wet2);
+/* the SHARC flushes a denormal result to 0; the Mac build does the same to every output sample (fx/test.c's extremes
+   test found one: a wet gain still decaying to 0 times a decaying wet, in CMP2's form too); no code on the DSP */
+#if !defined(__ADSP21000__)
+#define MB_FTZ(x) do { if ((x) < 1.1754944e-38f && (x) > -1.1754944e-38f) (x) = 0.0f; } while (0)
+#else
+#define MB_FTZ(x) do { } while (0)
+#endif
+uint32_t mb_out_bands(MBComp *s, const float *inL, const float *inR, float *outL, float *outR, int32_t n,
+                      int32_t wet0, int32_t wet1, int32_t wet2)
+{
+    MbBand *b0 = &s->band[0];
+    MbBand *b1 = &s->band[1];
+    MbBand *b2 = &s->band[2];
+    const float *l0 = s->buf_lo[0];
+    const float *m0 = s->buf_md[0];
+    const float *h0 = s->buf_hi[0];
+    const float *l1 = s->buf_lo[1];
+    const float *m1 = s->buf_md[1];
+    const float *h1 = s->buf_hi[1];
+    float *g0 = s->buf_g[0];
+    float *g1 = s->buf_g[1];
+    float *g2 = s->buf_g[2];
+    const float tw0 = b0->t_mw;
+    const float tw1 = b1->t_mw;
+    const float tw2 = b2->t_mw;
+    const float td0 = b0->t_md;
+    const float td1 = b1->t_md;
+    const float td2 = b2->t_md;
+    float w0 = b0->mw;
+    float w1 = b1->mw;
+    float w2 = b2->mw;
+    float d0 = b0->md;
+    float d1 = b1->md;
+    float d2 = b2->md;
+    uint32_t esig = 0;
+    int32_t i;
+    if (!wet0) {
+        for (i = 0; i < n; i++)
+            g0[i] = 0.0f;
+    }
+    if (!wet1) {
+        for (i = 0; i < n; i++)
+            g1[i] = 0.0f;
+    }
+    if (!wet2) {
+        for (i = 0; i < n; i++)
+            g2[i] = 0.0f;
+    }
+    if (s->xw == 0.0f && s->xs == 0.0f) {
+        for (i = 0; i < n; i++) {
+            float e0;
+            float e1;
+            float e2;
+            float a;
+            float d;
+            float h;
+            float w;
+            float yl;
+            float yr;
+            e0 = w0 * g0[i];
+            e1 = w1 * g1[i];
+            e2 = w2 * g2[i];
+            a = l0[i];
+            d = m0[i];
+            h = h0[i];
+            w = (e0 * a + e1 * d) + e2 * h;
+            FX_CLAMP(w, -1.0f, 1.0f);
+            yl = ((d0 * a + d1 * d) + d2 * h) + w;
+            a = l1[i];
+            d = m1[i];
+            h = h1[i];
+            w = (e0 * a + e1 * d) + e2 * h;
+            FX_CLAMP(w, -1.0f, 1.0f);
+            yr = ((d0 * a + d1 * d) + d2 * h) + w;
+            w0 = tw0 + MIX_C * (w0 - tw0);
+            w1 = tw1 + MIX_C * (w1 - tw1);
+            w2 = tw2 + MIX_C * (w2 - tw2);
+            d0 = td0 + MIX_C * (d0 - td0);
+            d1 = td1 + MIX_C * (d1 - td1);
+            d2 = td2 + MIX_C * (d2 - td2);
+            MB_FTZ(yl);
+            MB_FTZ(yr);
+            MB_EXPO(yl, esig);
+            MB_EXPO(yr, esig);
+            outL[i] = yl;
+            outR[i] = yr;
+        }
+    } else {
+        float xw = s->xw;
+        const float xs = s->xs;
+        for (i = 0; i < n; i++) {
+            float e0;
+            float e1;
+            float e2;
+            float a;
+            float d;
+            float h;
+            float w;
+            float sw;
+            float dm;
+            float yl;
+            float yr;
+            xw = xw + xs;
+            sw = (xw * xw) * (3.0f - 2.0f * xw);
+            dm = ((d0 + d1) + d2) * 0.33333334f;
+            e0 = w0 * g0[i];
+            e1 = w1 * g1[i];
+            e2 = w2 * g2[i];
+            a = l0[i];
+            d = m0[i];
+            h = h0[i];
+            w = (e0 * a + e1 * d) + e2 * h;
+            FX_CLAMP(w, -1.0f, 1.0f);
+            yl = (sw * (dm * inL[i]) + (1.0f - sw) * ((d0 * a + d1 * d) + d2 * h)) + w;
+            a = l1[i];
+            d = m1[i];
+            h = h1[i];
+            w = (e0 * a + e1 * d) + e2 * h;
+            FX_CLAMP(w, -1.0f, 1.0f);
+            yr = (sw * (dm * inR[i]) + (1.0f - sw) * ((d0 * a + d1 * d) + d2 * h)) + w;
+            w0 = tw0 + MIX_C * (w0 - tw0);
+            w1 = tw1 + MIX_C * (w1 - tw1);
+            w2 = tw2 + MIX_C * (w2 - tw2);
+            d0 = td0 + MIX_C * (d0 - td0);
+            d1 = td1 + MIX_C * (d1 - td1);
+            d2 = td2 + MIX_C * (d2 - td2);
+            MB_FTZ(yl);
+            MB_FTZ(yr);
+            MB_EXPO(yl, esig);
+            MB_EXPO(yr, esig);
+            outL[i] = yl;
+            outR[i] = yr;
+        }
+        s->xw = xw;
+    }
+    b0->mw = w0;
+    b1->mw = w1;
+    b2->mw = w2;
+    b0->md = d0;
+    b1->md = d1;
+    b2->md = d2;
+    return esig;
 }
 
 /* One control block (at most 32 samples): the crossover per channel, the detector levels, the gain
@@ -766,6 +953,10 @@ static int32_t mb_run(MBComp *s, const float *inL, const float *inR,
     int32_t use_key;
     int32_t wet_on;
     int32_t raw_only;
+    int32_t lock;
+    int32_t wet0;
+    int32_t wet1;
+    int32_t wet2;
     uint32_t esig;
     uint32_t eenv;
     int32_t tripped;
@@ -832,10 +1023,28 @@ static int32_t mb_run(MBComp *s, const float *inL, const float *inR,
         s->s2[c].ic1 = v1; s->s2[c].ic2 = v2; s->s2lp[c].ic1 = w1; s->s2lp[c].ic2 = w2;
     }
 
-    /* the wet is needed unless its gain is exactly 0 and stays 0 (stock MIX 0) */
-    wet_on = 0;
-    if (s->mw != 0.0f) wet_on = 1;
-    if (s->t_mw != 0.0f) wet_on = 1;
+    /* a band's wet is needed unless its gain is exactly 0 and stays 0 (stock MIX 0); CMP3: per band, and the
+       three MIX pairs locked (equal gains and targets: one MIX, as CMP2 has it) take CMP2's output paths on band
+       0's pair, bit for bit */
+    wet0 = 0;
+    if (s->band[0].mw != 0.0f) wet0 = 1;
+    if (s->band[0].t_mw != 0.0f) wet0 = 1;
+    wet1 = 0;
+    if (s->band[1].mw != 0.0f) wet1 = 1;
+    if (s->band[1].t_mw != 0.0f) wet1 = 1;
+    wet2 = 0;
+    if (s->band[2].mw != 0.0f) wet2 = 1;
+    if (s->band[2].t_mw != 0.0f) wet2 = 1;
+    wet_on = wet0;
+    lock = 1;
+    if (s->band[1].mw != s->band[0].mw) lock = 0;
+    if (s->band[2].mw != s->band[0].mw) lock = 0;
+    if (s->band[1].md != s->band[0].md) lock = 0;
+    if (s->band[2].md != s->band[0].md) lock = 0;
+    if (s->band[1].t_mw != s->band[0].t_mw) lock = 0;
+    if (s->band[2].t_mw != s->band[0].t_mw) lock = 0;
+    if (s->band[1].t_md != s->band[0].t_md) lock = 0;
+    if (s->band[2].t_md != s->band[0].t_md) lock = 0;
     use_key = 0;
     if (s->sc_ext) use_key = 1;
     if (!keyL) use_key = 0;
@@ -931,17 +1140,20 @@ static int32_t mb_run(MBComp *s, const float *inL, const float *inR,
         float y2 = bd->y2;
         float mk = bd->mk;
         int32_t idle = 0;
+        int32_t wet_b = 0;
+        if (bd->mw != 0.0f) wet_b = 1;
+        if (bd->t_mw != 0.0f) wet_b = 1;
         if (use_key) lv = s->buf_key;
         if (!bd->on && y1 == 0.0f && y2 == 0.0f && mks == 0.0f) idle = 1;
         if (idle) {
-            if (wet_on) {
+            if (wet_b) {
                 float y = mk;
                 float gain;
                 MB_EXP2(y, gain);
                 for (i = 0; i < n; i++)
                     g[i] = gain;
             }
-        } else if (wet_on) {
+        } else if (wet_b) {
             for (i = 0; i < n; i++) {
                 float lev = lv[i];
                 float y;
@@ -963,12 +1175,15 @@ static int32_t mb_run(MBComp *s, const float *inL, const float *inR,
     }
 
     /* 4. output: out = Td x dry + Tw x clip(sum of the bands x gains), the stock one-poles per sample
-          (each gain used, then updated); dry = xw x raw + (1 - xw) x band sum */
+          (each gain used, then updated); dry = xw x raw + (1 - xw) x band sum. CMP3: this form while the three MIX
+          pairs are locked (band 0's pair, then copied to the others); else mb_out_bands */
     esig = 0;
     eenv = 0;
     raw_only = 0;
     if (!wet_on && s->xw == 1.0f && s->xs == 0.0f) raw_only = 1;
-    {
+    if (!lock) {
+        esig = mb_out_bands(s, inL, inR, outL, outR, n, wet0, wet1, wet2);
+    } else {
         const float *l0 = s->buf_lo[0];
         const float *m0 = s->buf_md[0];
         const float *h0 = s->buf_hi[0];
@@ -978,10 +1193,10 @@ static int32_t mb_run(MBComp *s, const float *inL, const float *inR,
         const float *g0 = s->buf_g[0];
         const float *g1 = s->buf_g[1];
         const float *g2 = s->buf_g[2];
-        const float tw = s->t_mw;
-        const float td = s->t_md;
-        float mw = s->mw;
-        float md = s->md;
+        const float tw = s->band[0].t_mw;
+        const float td = s->band[0].t_md;
+        float mw = s->band[0].mw;
+        float md = s->band[0].md;
         if (raw_only) {
             /* stock MIX 0: out = Td(cur) x raw (+ 0 x wet), bit for bit */
             for (i = 0; i < n; i++) {
@@ -990,6 +1205,8 @@ static int32_t mb_run(MBComp *s, const float *inL, const float *inR,
                 yl = md * inL[i];
                 yr = md * inR[i];
                 md = td + MIX_C * (md - td);
+                MB_FTZ(yl);
+                MB_FTZ(yr);
                 MB_EXPO(yl, esig);
                 MB_EXPO(yr, esig);
                 outL[i] = yl;
@@ -1008,6 +1225,8 @@ static int32_t mb_run(MBComp *s, const float *inL, const float *inR,
                 FX_CLAMP(w, -1.0f, 1.0f);
                 yr = mw * w;
                 mw = tw + MIX_C * (mw - tw);
+                MB_FTZ(yl);
+                MB_FTZ(yr);
                 MB_EXPO(yl, esig);
                 MB_EXPO(yr, esig);
                 outL[i] = yl;
@@ -1036,6 +1255,8 @@ static int32_t mb_run(MBComp *s, const float *inL, const float *inR,
                 yr = md * ((a + d) + h) + mw * w;
                 mw = tw + MIX_C * (mw - tw);
                 md = td + MIX_C * (md - td);
+                MB_FTZ(yl);
+                MB_FTZ(yr);
                 MB_EXPO(yl, esig);
                 MB_EXPO(yr, esig);
                 outL[i] = yl;
@@ -1080,6 +1301,8 @@ static int32_t mb_run(MBComp *s, const float *inL, const float *inR,
                 yr = md * dr + mw * w;
                 mw = tw + MIX_C * (mw - tw);
                 md = td + MIX_C * (md - td);
+                MB_FTZ(yl);
+                MB_FTZ(yr);
                 MB_EXPO(yl, esig);
                 MB_EXPO(yr, esig);
                 outL[i] = yl;
@@ -1087,8 +1310,12 @@ static int32_t mb_run(MBComp *s, const float *inL, const float *inR,
             }
             s->xw = xw;
         }
-        s->mw = mw;
-        s->md = md;
+        s->band[0].mw = mw;
+        s->band[0].md = md;
+        s->band[1].mw = mw;
+        s->band[1].md = md;
+        s->band[2].mw = mw;
+        s->band[2].md = md;
     }
 
     /* 5. guard (#10): NaN, inf or an absurd value in the output or the state -> a silent block and a

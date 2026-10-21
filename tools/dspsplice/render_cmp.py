@@ -128,6 +128,8 @@ def render_one(job):
         b = bands[skip:]
         res["band_gr_mean_db"] = [round(sum(x[k] for x in b) / len(b), 2) for k in range(3)]
         res["band_gr_max_db"] = [round(min(x[k] for x in b), 2) for k in range(3)]
+    import memguard
+    memguard.check()
     return res, oL, oR
 
 
@@ -151,8 +153,9 @@ def main():
                   key=lambda j: (j[0], j[1] or "", j[2]))
     t0 = time.time()
     results = {}
-    with ProcessPoolExecutor(max_workers=a.jobs) as ex:
-        for job, (res, oL, oR) in zip(jobs, ex.map(render_one, jobs)):
+    import memguard
+    with ProcessPoolExecutor(max_workers=a.jobs, max_tasks_per_child=memguard.TASKS_PER_CHILD) as ex:
+        for job, (res, oL, oR) in zip(jobs, memguard.pmap(ex, render_one, jobs)):
             name, sid, which = job
             fid = f"{name}_dry" if sid is None else f"{name}_{sid}_{'stock' if which == 'FTD1' else 'cmp0'}"
             write_wav(OUT / "wav" / f"{fid}.wav", oL, oR)

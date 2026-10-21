@@ -14,7 +14,7 @@
 #
 # Outputs in out/T6.3/CMP1/emu/NAME/[SCRIPT name]/. Read-only on digikit; never talks to hardware.
 # CMP2 (2026-10-17): T63_STAGE=CMP2 reads out/T6.3/CMP2/NAME.syx (C2EM) and the C2MO map, and writes under
-# out/T6.3/CMP2/emu/; without it the script is CMP1's.
+# out/T6.3/CMP2/emu/; without it the script is CMP1's. CMP3 (2026-10-18): T63_STAGE=CMP3 the same for out/T6.3/CMP3/ (C3EM, C3MO).
 set -euo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 dk=$root/vendor/digikit
@@ -37,6 +37,7 @@ mapof() {
   case $name in
     GT01) echo "$root/out/T6.5/build/GT01-main.syx.map.json" ;;
     *) if [ "$stage" = CMP2 ]; then echo "$root/out/T6.3/CMP2/C2MO-main.syx.map.json"
+       elif [ "$stage" = CMP3 ]; then echo "$root/out/T6.3/CMP3/C3MO-main.syx.map.json"
        else echo "$root/out/T6.3/CMP1/C1MO-main.syx.map.json"; fi ;;  # the main-only link (C1MO; CMP1 review), the same map as C1EM's
   esac
 }

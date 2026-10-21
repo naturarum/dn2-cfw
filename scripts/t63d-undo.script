@@ -1,0 +1,88 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# T6.3 CMP3: undo. The flanger page (FUNC+FX, SEND FX 1, two pages down) copied, A turned, cleared (FUNC+PLAY), the
+# clear undone (FUNC+PLAY again), pasted (FUNC+STOP), the paste undone (FUNC+STOP again); then pattern A01 copied
+# onto A03 and the paste undone. Elektron's rule: the same key combination again undoes a clear or a paste.
+wait-emu 0.5
+down space
+wait-emu 0.1
+tap l                # FUNC+FX: SEND FX 1
+wait-emu 0.1
+up space
+wait-emu 0.5
+tap Down
+wait-emu 0.4
+tap Down
+wait-emu 0.4
+down space
+wait-emu 0.1
+tap 0                # copy the flanger page
+wait-emu 0.1
+up space
+wait-emu 0.6
+png u00-flanger-copy
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.4
+png u01-a-turned
+down space
+wait-emu 0.1
+tap minus            # FUNC+PLAY: clear the page
+wait-emu 0.1
+up space
+wait-emu 0.6
+png u02-clear
+down space
+wait-emu 0.1
+tap minus            # FUNC+PLAY again: undo the clear
+wait-emu 0.1
+up space
+wait-emu 0.6
+png u03-clear-undone
+down space
+wait-emu 0.1
+tap equal            # FUNC+STOP: paste
+wait-emu 0.1
+up space
+wait-emu 0.6
+png u04-paste
+down space
+wait-emu 0.1
+tap equal            # FUNC+STOP again: undo the paste
+wait-emu 0.1
+up space
+wait-emu 0.6
+png u05-paste-undone
+tap p
+wait-emu 0.5
+down space
+wait-emu 0.1
+tap 0                # FUNC+REC on the main screen: copy pattern
+wait-emu 0.1
+up space
+wait-emu 0.6
+png u06-ptn-copy
+tap comma
+wait-emu 0.4
+tap e                # A03
+wait-emu 0.6
+tap BackSpace
+wait-emu 0.3
+down space
+wait-emu 0.1
+tap equal            # paste pattern
+wait-emu 0.1
+up space
+wait-emu 0.6
+png u07-ptn-paste
+down space
+wait-emu 0.1
+tap equal            # paste again: undo
+wait-emu 0.1
+up space
+wait-emu 0.6
+png u08-ptn-paste-undone
+wait-emu 1.0
+png u09-end

@@ -76,8 +76,9 @@ def install_watch(record):
                     args = struct.unpack('>IIII', u.mem_read(sp, 16))
                 except Exception:
                     args = ()
-                record['calls'].append({'entry': '%#010x' % pc, 'what': WATCH[addr],
-                                        'stack': ['%#010x' % x for x in args]})
+                if len(record['calls']) < 1000:     # a looping candidate must not grow this for 1G instructions
+                    record['calls'].append({'entry': '%#010x' % pc, 'what': WATCH[addr],
+                                            'stack': ['%#010x' % x for x in args]})
             return h
         for addr in WATCH:
             uc.hook_add(UC_HOOK_CODE, entry(addr), begin=addr, end=addr)

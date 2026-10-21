@@ -5,7 +5,10 @@ recovers. The CMP0 review's injection run (out/T6.3/review-safety3/inject.py, st
 review, out/T6.3/review-dsp-cmp1): two more values, a REL 127 setting, the quiet re-init counted, and a peak criterion
 whose window includes the injection block.
 
-    python3 tools/dspsplice/inject_cmp.py [CMP1|CMP0] [--workers 9] [--fields a,b,...] [--quick]
+    python3 tools/dspsplice/inject_cmp.py [CMP1|CMP0|CMP2|CMP3] [--workers 4] [--fields a,b,...] [--quick]
+CMP3 (2026-10-18): the MIX pairs are per band (mb.band[b].mw, md, t_mw, t_md, mi; 22 knob words), and a sixth setting,
+"tail: MIX 20/64/127", runs in tail mode (a valid frame tail held from the first block: three distinct bands, the
+three band mixes apart, so the per-band output path) on the REL 127 setting's words.
 
 On the image in sharcvm (the whole block handler, as verify_cmp.py runs it), at the compressor call of block 60:
   - every 32-bit word of CmpSlot (the glue's words, every scalar of MBComp with the arrays expanded, the table
@@ -69,6 +72,7 @@ HERE = Path(__file__).resolve().parent
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(HERE))
 import verify_cmp as VC  # noqa: E402
+import memguard  # noqa: E402     (tools/sharcvm, on the path through verify_cmp)
 
 V = VC.V
 NB, AT, NB_IN = 400, 60, 700
@@ -107,10 +111,40 @@ DERIVED = (["mb.c_lo.a1", "mb.c_lo.a2", "mb.c_lo.a3", "mb.c_lo.k", "mb.c_hi.a1",
            + [f"mb.band[{b}].{k}" for b in range(3) for k in ("thr", "thr_lin", "rinv", "on", "ca", "ca1", "cr", "cr1",
                                                                "t_mk")])
 G = {}
+NK = [19]                               # the knob words (CMP3: 22)
+TAIL_SET = "tail: MIX 20/64/127"
+# CMP3's tail-mode setting: three bands with distinct THR, RAT and MUP and the other settings' times (ATK 10, REL 30;
+# the first run used ATK 40/80 and REL 60/100 on MID/HIGH: every trip there failed on the RMS alone, the instant-attack
+# return holding MID and HIGH up to 3 dB deeper, given back at their 0.3 s / 1.1 s release: inject.json's tail cases;
+# the setting below: inject-tail.json),
+# crossovers 90 / 70, the mixes 20 / 64 / 127 (the pairs apart: the per-band output path)
+TAIL_VALS = [20, 3, 10, 30, 50, 90, 60, 6, 10, 30, 30, 70, 90, 8, 10, 30, 90, 20, 64, 127] + [0] * 7
+
+
+def adapt(name):
+    """CMP3: the per-band MIX words in place of CMP2's single pair, 22 knob words, the tail-mode setting"""
+    global REL127_FIELDS, UNIT_WORDS, DERIVED
+    if name != "CMP3":
+        return
+    NK[0] = 22
+    one_ = ("mb.mw", "mb.md", "mb.t_mw", "mb.t_md")
+    per = [f"mb.band[{b}].{k}" for b in range(3) for k in ("mw", "md", "t_mw", "t_md")]
+    REL127_FIELDS = [f for f in REL127_FIELDS if f not in one_] + per
+    UNIT_WORDS = {"mb.xw"} | {f"mb.band[{b}].{k}" for b in range(3) for k in ("mw", "md")}
+    DERIVED = ([f for f in DERIVED if f not in ("mb.t_mw", "mb.t_md")]
+               + [f"mb.band[{b}].{k}" for b in range(3) for k in ("t_mw", "t_md", "mi")])
+    SETS[TAIL_SET] = VC.comp(30, 10, 30, 64, 5, 64)
+
+
+def tail_bytes():
+    w = [0xC3B1, 1] + [v << 8 for v in TAIL_VALS]
+    w.append((~sum(w)) & 0xffff)
+    return struct.pack("<30H", *w)
 
 
 def setup(name, outdir=None):
     VC.configure(name)
+    adapt(name)
     stream, info, cache = VC.image(name)
     off = VC.offsets((outdir or VC.OUT) / "build", name, every=True)
     # the SHARC's table pointer: 4 bytes right after the work buffers (the Mac's is 8-aligned)
@@ -123,6 +157,7 @@ def init_worker(name, off, long_=False):
     G["name"] = name
     G["long"] = long_
     VC.configure(name)
+    adapt(name)
     G["stream"], _, G["cache"] = VC.image(name)
     G["off"] = off
     G["L"], G["R"] = VC.load_input("drums", (NB_LONG if long_ else max(NB_IN, NB_REL)) * 32 / VC.SR)
@@ -141,7 +176,7 @@ def inrange_derived(target, valname):
     x = struct.unpack("<f", struct.pack("<I", VALS.get(valname, 0)))[0]
     if abs(x) < 1.1754944e-38:
         x = 0.0
-    untested = {f"mb.band[{b}].{k}" for b in range(3) for k in ("thr_lin", "on")} | {"mb.mix0", "mb.sc_ext"}
+    untested = ({f"mb.band[{b}].{k}" for b in range(3) for k in ("thr_lin", "on", "mi")} | {"mb.mix0", "mb.sc_ext"})
     if target in untested:
         return True
     if not VC.finite(x):
@@ -151,7 +186,8 @@ def inrange_derived(target, valname):
         for k, (lo, hi) in rng.items():
             if target == f"mb.band[{b}].{k}":
                 return lo <= x <= hi
-    if target in ("mb.t_mw", "mb.t_md") or (target.startswith("mb.c_") and target[-2:] in ("a1", "a2", "a3")):
+    if target in ("mb.t_mw", "mb.t_md") or (target.startswith("mb.band[") and target.split(".")[-1] in ("t_mw", "t_md")) or (
+            target.startswith("mb.c_") and target[-2:] in ("a1", "a2", "a3")):
         return 0.0 <= x <= 1.0
     if target == "mb.t_lf_lo":
         return 4.8 <= x <= 10.0
@@ -191,7 +227,7 @@ def plausible(target, valname):
     return False
 
 
-def one(job):
+def _one(job):
     setname, target, valname = job
     nb = NB_IN if (target is not None and target.startswith("in:")) or valname == "none (inputs)" else NB
     if setname == REL_SET:
@@ -202,6 +238,8 @@ def one(job):
     vm = V.candidate_vm(G["stream"], cache=G["cache"])
     words = dict(VC.BASE, **VC.NOFX, **SETS[setname])
     rc = VC.Run(vm, words, VC.ROUTE_IN, keep=False)
+    if setname == TAIL_SET:
+        rc.frame()[0xa80:0xabc] = tail_bytes()           # CMP3: a valid tail, taken at the first block and held
     u = VALS.get(valname, 0)
     st = {}
 
@@ -238,7 +276,7 @@ def one(job):
     else:
         trips = (trips_end - st["trips0"]) & 0xffffffff
     end = {k: vm.rd32(VC.SLOT + off[k]) for k in DERIVED + ["mb.tab", "magic", "fresh", "mb.rec_left", "mb.lf_lo",
-                                                           "mb.lf_hi"] + [f"mb.knob[{i}]" for i in range(19)]
+                                                           "mb.lf_hi"] + [f"mb.knob[{i}]" for i in range(NK[0])]
            if k in off}
     return {"set": setname, "target": target, "value": valname, "blocks": nb, "trips": trips, "reinits": reinits,
             "nonfinite": nonfin,
@@ -247,6 +285,12 @@ def one(job):
             "peak_block_and_100ms": max(win) if win else None, "plausible": residual_class(target, valname) is not None,
             "residual_class": residual_class(target, valname), "end": end,
             "secs": round(time.time() - t0, 1)}
+
+
+def one(job):
+    r = _one(job)
+    memguard.check()                    # a worker past MEMGUARD_MB (2 GB) stops the whole run, with a message
+    return r
 
 
 def f32(u):
@@ -264,7 +308,7 @@ def judge(r, ref):
     for k in DERIVED + ["mb.tab"]:
         if k in e and e[k] != f[k]:
             mism.append(k)
-    for i in range(19):
+    for i in range(NK[0]):
         k = f"mb.knob[{i}]"
         if f32(e[k]) != f32(f[k]):             # -0 == +0
             mism.append(k)
@@ -297,6 +341,9 @@ def verdict(r):
             continue
         if k.startswith("mb.knob[") and r["target"] == k and r["value"] in DENORMAL_VALUES:
             continue                                  # a denormal knob: 0 to the SHARC
+        if k == "mb.knob[21]" and r["target"] == k and VC.NAME == "CMP3":
+            continue                                  # CMP3: MB_MIX's record, written by mbcomp_set, read by nothing
+                                                      # (mb_targets and the glue use the three band knobs)
         mism.append(k)
     r["derived_mismatch_counted"] = mism
     r["extra_silent"] = r["silent"] - r.get("ref_silent", 0)
@@ -415,8 +462,9 @@ def run_long(a):
     jobs = [(s_, None, "none") for s_ in sets] + redo
     t0 = time.time()
     res = []
-    with ProcessPoolExecutor(a.workers, initializer=init_worker, initargs=(a.name, off, True)) as ex:
-        for r in ex.map(one, jobs, chunksize=2):
+    with ProcessPoolExecutor(a.workers, initializer=init_worker, initargs=(a.name, off, True),
+                             max_tasks_per_child=memguard.TASKS_PER_CHILD) as ex:
+        for r in memguard.pmap(ex, one, jobs, chunksize=2):
             res.append(r)
     ref = {r["set"]: r for r in res if r["target"] is None}
     for r in res:
@@ -434,8 +482,8 @@ def run_long(a):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("name", nargs="?", default="CMP1", choices=["CMP0", "CMP1", "CMP2"])
-    ap.add_argument("--workers", type=int, default=9)
+    ap.add_argument("name", nargs="?", default="CMP1", choices=["CMP0", "CMP1", "CMP2", "CMP3"])
+    ap.add_argument("--workers", type=int, default=4, help="processes (default 4; a worker is ~200 MB, and stops the run if it passes MEMGUARD_MB, default 2048)")
     ap.add_argument("--fields", help="only these state words (comma-separated names)")
     ap.add_argument("--sets", help="only these settings (comma-separated)")
     ap.add_argument("--out", help="output file name (default inject.json)")
@@ -447,6 +495,7 @@ def main():
     a = ap.parse_args()
     if a.rejudge or a.long:
         VC.configure(a.name)
+        adapt(a.name)
         return rejudge(a) if a.rejudge else run_long(a)
     outdir = Path(a.outdir).resolve() if a.outdir else None
     if outdir:
@@ -471,7 +520,7 @@ def main():
                 for v in IN_VALS:
                     jobs.append((s, k, v))
         for f in fields:
-            if s == REL_SET and f not in REL127_FIELDS:
+            if s in (REL_SET, TAIL_SET) and f not in REL127_FIELDS:
                 continue
             for v in VALS:
                 jobs.append((s, f, v))
@@ -479,8 +528,9 @@ def main():
     res = []
     log = open(odir / ((a.out or "inject.json").replace(".json", ".log")), "w")
     print(f"{a.name}: {len(jobs)} cases, {len(fields)} state words, {len(sets)} settings", file=log, flush=True)
-    with ProcessPoolExecutor(a.workers, initializer=init_worker, initargs=(a.name, off)) as ex:
-        for r in ex.map(one, jobs, chunksize=4):
+    with ProcessPoolExecutor(a.workers, initializer=init_worker, initargs=(a.name, off),
+                             max_tasks_per_child=memguard.TASKS_PER_CHILD) as ex:
+        for r in memguard.pmap(ex, one, jobs, chunksize=4):
             res.append(r)
             if len(res) % 200 == 0:
                 print(len(res), "/", len(jobs), "%.0fs" % (time.time() - t0), file=log, flush=True)

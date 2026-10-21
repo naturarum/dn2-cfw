@@ -6,7 +6,22 @@ The goals: swap the send effects for new ones (a tape delay, a flanger, a better
 
 **No Elektron firmware is stored here.** You download the OS file from Elektron yourself, and the tools check its sha256 before using it. Every build happens on your own machine.
 
-## Latest: a 3-band master compressor on the Digitone II (2026-10-14)
+## Latest: the 3-band compressor is done (2026-10-21)
+
+**CMP3** runs on my unit: three compressor bands with their own pages, knobs, meters and dry/wet, saved with each kit.
+- **Every band knob acts on its band** (THR, RAT, ATK, REL, MUP, the two crossovers), sent from the main OS to the DSP in spare words at the end of the frame it sends every 0.67 ms.
+- **A MIX per band** on knob H. Each band's dry part stays in phase with the others, so one band wet and two dry doesn't smear the sound.
+- **Saved per kit**, in 56 bytes of the kit's effect record that the stock OS never reads or writes. A stock OS loads and re-saves these kits unchanged. Kits from before CMP3 open as one full-band compressor with their old settings.
+- **Gain-reduction meters** per band, in dB.
+
+**A crash only the chip could show.** CMP2 (band knobs live) stopped the DSP for good whenever LOW makeup changed, and the simulator never reproduced it. Three diagnostic builds found it:
+- **CP2D**, a load meter from the DSP's own cycle counter: the real load is about 50-60 %, far below my instruction-count estimate, so it wasn't CPU.
+- **CP2E**, a heartbeat, a "last step reached" marker and a probe switch: the DSP stopped inside the code that applies the LOW makeup value, and only when that code ran. That code is identical to the MID and HIGH versions except for its address.
+- **CP2F** moved it, and filled the old spot and every other free region with a known pattern that the DSP keeps checking. No crash since, and nothing ever wrote to that memory. So code placed in one stretch of L1 block 2 (`0x315f8c-0x318000`) fails on the chip, for reasons I don't know yet. The build now refuses to put anything there.
+
+Write-ups: [`notes/T6.3-cmp2d.md`](notes/T6.3-cmp2d.md), [`notes/T6.3-cmp2e.md`](notes/T6.3-cmp2e.md), [`notes/T6.3-cmp2f.md`](notes/T6.3-cmp2f.md), [`notes/T6.3-cmp3.md`](notes/T6.3-cmp3.md), and the storage review [`notes/T6.3-cmp3-review.md`](notes/T6.3-cmp3-review.md).
+
+## Earlier: a 3-band master compressor on the Digitone II (2026-10-14)
 
 The stock master compressor is now three compressors, each following Elektron's own design (same detector, curve, attack/release laws and makeup), split at two crossovers and summed back. It runs on the unit:
 - **CMP0** puts the three bands on the DSP, driven by the stock Compressor knobs. One band matches Elektron's compressor within 0.001 dB; at MIX 0 the output is bit-identical to the build before it. A guard catches NaN/inf so the master can never latch silent.
@@ -18,9 +33,9 @@ How the stock compressor works, the plan and the evidence: [`notes/T6.4-compress
 
 Every knob on the Digitone II is a row in one table inside the OS: 321 rows on 1.12, with no room after them. GT00 copies the table at start-up into free memory with room for 384 rows, and GT01 adds 17 hidden rows for the 3-band compressor. On my unit, GT00 starts from cold and saves and loads projects as before, and GT01 has run without problems. Projects store values by slot, never by row, so moving the table doesn't change how they are saved. New rows are safe for projects only if they follow a few rules, listed in the write-up. dn2_firmware_explore did this first, on 1.11, for their LFO4 mod; ours is for 1.12, as an elekloader mod other mods add rows to. How it works, what ran where, and the rules: [`docs/parameter-table-growth.md`](docs/parameter-table-growth.md).
 
-## Where things stand (2026-10-14)
+## Where things stand (2026-10-21)
 
-**On the unit.** Nine builds have run on real hardware:
+**On the unit.** Fourteen builds have run on real hardware:
 - **EF01**, stock 1.12 with only its name changed and the seal redone. That proved our rebuild, seal and flash path.
 - **FLG1**, our flanger in place of the stock chorus. Our first new code on the Digitone II's DSP: the C in [`fx/flanger.c`](fx/flanger.c), compiled with selcc and spliced into the DSP section by [`tools/dspsplice`](tools/dspsplice). It plays on the stock chorus page's knobs (depth, speed, high-pass, width).
 - **FTD1**, FLG1 plus our one-head tape delay in place of the stock delay (resonant loop filters, wow and flutter, wear, and tape-style pitch bends when TIME changes).
@@ -30,6 +45,9 @@ Every knob on the Digitone II is a row in one table inside the OS: 321 rows on 1
 - **GT01**, GT00 with the table grown by 17 rows (still hidden) for the compressor. dn2_firmware_explore grew it first, on 1.11, for their LFO4.
 - **CMP0**, GT01 with the 3-band master compressor on the DSP, on the stock Compressor knobs.
 - **CMP1**, CMP0 with the three band pages and their meters.
+- **CMP2**, the band knobs live. It had the LOW makeup crash above.
+- **CP2D, CP2E, CP2F**, the diagnostic builds that found and fixed it (CP2F is CMP2 fixed).
+- **CMP3**, the finished compressor: band settings saved per kit, a MIX per band, meters in dB.
 
 **In the ColdFire emulator** (digikit, with our changes on [a branch of our fork](https://github.com/naturarum/digikit/tree/dn2-1.12)):
 - 1.12 boots to the main screen.
@@ -49,7 +67,9 @@ Every knob on the Digitone II is a row in one table inside the OS: 321 rows on 1
 - The STARTUP-menu recovery over DIN MIDI was tested on the unit.
 - An audit of the code that writes flash, and a proof that the STARTUP menu doesn't depend on the main OS (`notes/T1.4*`, `notes/T1.5*`).
 
-**Next:** the band knobs live (CMP2) and saved per kit (CMP3), and a Space Echo style delay ([`fx/spaceecho.c`](fx/spaceecho.c), on the A/B page; its unit build is under way).
+**Next:** one build line with everything: CMP3 plus the Space Echo style delay ([`fx/spaceecho.c`](fx/spaceecho.c)) in place of the tape delay, with the stock feedback law. Memory is the hard part, now that one stretch is off limits. After that, maybe a spring reverb as an option, and a macOS builder so you can make the firmware from your own copy of the stock OS.
+
+**Tooling lesson (2026-10-18):** the DSP simulator leaked about 9.6 MB per test run, and a long parallel test froze my Mac. It's fixed (`tools/sharcvm/vm.py`), test workers now stop themselves at 2 GB ([`tools/sharcvm/memguard.py`](tools/sharcvm/memguard.py)), and [`tools/memwatch.py`](tools/memwatch.py) guards unattended runs.
 
 ## What's where
 

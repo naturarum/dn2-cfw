@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 /* cmp_tail.c - T6.3 CMP2: the band knobs from the SPI frame tail (notes/T6.4-compressor-map-and-plan.md 3.4, 5;
- * notes/T6.3-cmp2.md). The ColdFire mod comp-link-dn2 0.1 (vendor/elekloader/examples/comp-link-dn2/tail.s) writes
+ * notes/T6.3-cmp2.md). CMP3 (notes/T6.3-cmp3.md): cmp_tail_apply also takes the three band mixes, k 87..89 = words
+ * 19..21 (param-rows-dn2 0.3), as table indices (rounded to the step, as ATK and REL); the fetch is CMP2's, unchanged
+ * (frozen with the rest in src/cmp2/). The ColdFire mod comp-link-dn2 0.1 (vendor/elekloader/examples/comp-link-dn2/tail.s) writes
  * 30 words into the frame bytes 0xa80..0xabb, which the stock driver sends but never fills and no stock, FLG1 or FTD1
  * instruction reads (T6.0, T6.4 3.4):
  *   word 0      magic 0xC3B1 (low byte = layout 1)
@@ -43,7 +45,7 @@ void *cmp_native_rx_tail(int half) { return cmp_native_rx[half & 1]; }
 #define CT_RX0 ((const volatile uint32_t *)cmp_native_rx[0])
 #define CT_RX1 ((const volatile uint32_t *)cmp_native_rx[1])
 #else
-#define CT_STATE ((CmpTail *)0x2e2400)                       /* FILL-zeroed at boot (recipe CMP2) */
+#define CT_STATE ((CmpTail *)CT_STATE_AT)                     /* FILL-zeroed at boot (recipes CMP2, CMP3) */
 #define CT_RX0 ((const volatile uint32_t *)(0x2c29d0 + 0xa80))
 #define CT_RX1 ((const volatile uint32_t *)(0x2c39d0 + 0xa80))
 #endif
@@ -196,4 +198,14 @@ void cmp_tail_apply(MBComp *s)
     v = CT_KNOB(18);
     if (v != s->knob[MB_P(2, MB_MUP)])
         mbcomp_set(s, MB_P(2, MB_MUP), v);
+    /* CMP3: the band mixes, k 87..89 = words 19..21 (stock MIX table indices; mbcomp_set clamps them to 0..127) */
+    v = CT_STEP(19);
+    if (v != s->knob[MB_P(0, MB_BMIX)])
+        mbcomp_set(s, MB_P(0, MB_BMIX), v);
+    v = CT_STEP(20);
+    if (v != s->knob[MB_P(1, MB_BMIX)])
+        mbcomp_set(s, MB_P(1, MB_BMIX), v);
+    v = CT_STEP(21);
+    if (v != s->knob[MB_P(2, MB_BMIX)])
+        mbcomp_set(s, MB_P(2, MB_BMIX), v);
 }

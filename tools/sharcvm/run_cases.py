@@ -31,6 +31,13 @@ def expect_of(name):
 
 
 def run_one(args):
+    import memguard
+    r = _run_one(args)
+    memguard.check()
+    return r
+
+
+def _run_one(args):
     name, limit = args
     from vm import VM, VMError, ST_IDLE
     exp = expect_of(name)
@@ -67,8 +74,9 @@ def main():
     names = sorted(p.stem for p in CASES.glob("cctest_*.dxe") if a.only in p.stem)
     res = []
     t0 = time.time()
-    with cf.ProcessPoolExecutor(a.jobs) as ex:
-        for r in ex.map(run_one, [(n, a.limit) for n in names], chunksize=4):
+    import memguard
+    with cf.ProcessPoolExecutor(a.jobs, max_tasks_per_child=memguard.TASKS_PER_CHILD) as ex:
+        for r in memguard.pmap(ex, run_one, [(n, a.limit) for n in names], chunksize=4):
             res.append(r)
             if a.v and r[1] != "PASS":
                 print(r[0], r[1], hex(r[2]) if r[2] is not None else None,

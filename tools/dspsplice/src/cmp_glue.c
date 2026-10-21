@@ -1,5 +1,29 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-/* cmp_glue.c - T6.3 CMP2: CMP1's glue (frozen in src/cmp1/cmp_glue.c) with the band knobs live: once a valid SPI frame
+/* cmp_glue.c - T6.3 CMP3 (final, 2026-10-21; notes/T6.3-cmp3.md): the first CMP3's glue (CMP3A, frozen in
+ * src/cmp3a/cmp_glue.c) with real band gain-reduction meters. Audio, storage of the knobs and every other word are
+ * CMP3A's; only the reply half-words 8..10 change meaning, and the meters keep a small state of their own (CmpMeter,
+ * FILL 0x2e2800, where CP2F's CmpLoad was). recipe CMP3 of tools/dspsplice/build.py puts this glue first in code4
+ * (0x2e2900, CP2F's), cmp_tail.c after it, and nothing of ours in 0x315f8c-0x318000.
+ *
+ * The meters (cmp_mtr): per band, the gain reduction in dB at the block's end (the band's y2, makeup not included;
+ * computed also at MIX 0, as the stock meter is), shown with hold and fall: a deeper value is taken at once (instant
+ * attack), held for CMP_MTR_HOLD blocks (0.5 s), then let fall at CMP_MTR_FALL (20 dB/s) but never below the
+ * current gain reduction; at most CMP_MTR_MAX (25 dB). Each band's value goes out as q = 1310 x dB in its reply
+ * half-word (8 LOW, 9 MID, 10 HIGH): comp-ui 0.2 draws h = q / 655 px (the stock law, unchanged), so the bar is
+ * 2 px per dB, 1 px per 0.5 dB, 24 px (the CMP box's height) at 12 dB, full (50 px) at 25 dB. CMP0..CMP3A sent
+ * Q15 (1 - g) there: 1 px from 0.18 dB, 24 px at 6 dB, 37 px at 12 dB, 47 px at 25 dB. Half-word 11 keeps its stock meaning: the
+ * deepest band's gain reduction now (no hold), 0x257c1c in dB for the stock getter and Q15 (1 - g) in the high half
+ * of +0x14, as CMP0..CMP3A wrote it. A corrupted meter state (NaN, inf, out of range) is read as 0 / no hold.
+ *
+ * CMP3A (2026-10-18): CMP2's glue (frozen in src/cmp2/cmp_glue.c) with a MIX per band (fx/mbcomp.c MB_BMIX;
+ * notes/T6.3-cmp3.md). Once a valid frame tail has arrived, each band's MIX comes from the tail with its other knobs
+ * (k 87..89, tail words 19..21, cmp_tail.c); the stock MIX (k 67) then acts on nothing. In the fallback (no valid tail
+ * yet) the stock MIX sets all three bands' MIX at once (mbcomp's MB_MIX), so the three MIX pairs stay locked and
+ * mbcomp computes CMP2's output, bit for bit: the fallback is CMP2's (tools/dspsplice/verify_cmp3.py). The fresh
+ * snap starts all three pairs from 0, the slot's magic is "CMP3", the layout CMP2's (CmpSlot holds MBComp, whose
+ * bands grew by the MIX pairs). The rest of this comment is CMP2's.
+ *
+ * CMP2: CMP1's glue (frozen in src/cmp1/cmp_glue.c) with the band knobs live: once a valid SPI frame
  * tail of comp-link-dn2 has arrived (cmp_tail.c), each band's THR, RAT, ATK, REL, MUP and the two crossovers come
  * from k 70..86 (notes/T6.4-compressor-map-and-plan.md 3.4, 5 "CMP2"; notes/T6.3-cmp2.md). Until then (no tail has
  * ever been valid: a main OS without comp-link, or the first block before the first tail) the bands run exactly as
@@ -34,11 +58,12 @@
  * band detects the key.
  *
  * Meters (T6.4 4.3 #9): the deepest band's y2 (dB, <= 0) into 0x257c1c, where the stock GR getter 0xb8552b
- * (called at 0x1c3108) reads it for reply half-word 11 (the stock Compressor page's bar, Overbridge). Q15
- * (1 - g) of each band into reply half-words 8, 9, 10 (bytes +0x10/+0x12/+0x14; the ColdFire sees half-word
- * k at byte 2k), written as two 32-bit stores at +0x10 and +0x14 of both reply pages 0x2c49d0/0x2c59d0; the
- * high half of the second is half-word 11, set to the deepest band's value as the getter computes it, which
- * the stock 16-bit store at 0x1c3117 then rewrites in the page of this block.
+ * (called at 0x1c3108) reads it for reply half-word 11 (the stock Compressor page's bar, Overbridge). Up to
+ * CMP3A, Q15 (1 - g) of each band into reply half-words 8, 9, 10 (bytes +0x10/+0x12/+0x14; the ColdFire sees
+ * half-word k at byte 2k); since CMP3 the held dB value above (cmp_mtr). Written as two 32-bit stores at +0x10
+ * and +0x14 of both reply pages 0x2c49d0/0x2c59d0; the high half of the second is half-word 11, set to the
+ * deepest band's value as the getter computes it, which the stock 16-bit store at 0x1c3117 then rewrites in the
+ * page of this block.
  *
  * State: one CmpSlot at 0x2e1c40 (L1 block 1, after the flanger's code), zero-filled by a FILL block at
  * boot; the effect init (cmp_init, from the init hook) sets the magic before the first block (sharcvm: the slot
@@ -77,7 +102,7 @@
 #include "fxio.h"
 #include "cmp_tail.h"
 
-#define CMP_MAGIC 0x434d5032u       /* "CMP2" */
+#define CMP_MAGIC 0x434d5033u       /* "CMP3" */
 #define CMP_XLO 68.0f               /* 196 Hz */
 #define CMP_XHI 44.0f               /* 2.61 kHz */
 
@@ -110,10 +135,31 @@ typedef struct {
    a negative array size, so a compile-time guard would be a no-op there) */
 const uint32_t cmp_slot_bytes = (uint32_t)sizeof(CmpSlot);
 
+/* CMP3: the band meters' state (cmp_mtr), its own FILL (0x2e2800, zeroed at boot: no gain reduction, no hold) */
+typedef struct {
+    float m;                        /* the value shown, dB of gain reduction (0..CMP_MTR_MAX) */
+    int32_t hold;                   /* blocks of hold left (0..CMP_MTR_HOLD) */
+} CmpMtr;
+typedef struct {
+    CmpMtr b0;                      /* LOW, MID, HIGH (constant members: no table indexed by a variable) */
+    CmpMtr b1;
+    CmpMtr b2;
+    uint32_t blocks;                /* blocks metered */
+    uint32_t pad;
+} CmpMeter;
+const uint32_t cmp_meter_bytes = (uint32_t)sizeof(CmpMeter);
+
+#define CMP_MTR_HOLD 750            /* blocks: 0.5 s at 1,500 blocks/s */
+#define CMP_MTR_FALL 0.013333334f   /* dB per block: 20 dB/s */
+#define CMP_MTR_MAX 25.0f           /* dB: the full bar */
+#define CMP_MTR_Q 1310.0f           /* q per dB: comp-ui's h = q / 655 px -> 2 px per dB */
+
 #ifdef CMP_NATIVE
 /* the Mac reference build (tools/dspsplice/verify_cmp.py): the image's tables passed in, the meter word and
    the reply pages as plain arrays */
 static CmpSlot cmp_native_slot;
+static CmpMeter cmp_native_meter;
+void *cmp_native_meter_ptr(void) { return &cmp_native_meter; }
 static const float *cmp_native_tab;
 float cmp_native_gr_y2;
 uint32_t cmp_native_tx[2][8];
@@ -121,12 +167,14 @@ void cmp_native_set_tables(const float *tab) { cmp_native_tab = tab; }
 void *cmp_native_slot_ptr(void) { return &cmp_native_slot; }
 uint32_t cmp_native_mb_offset(void) { return (uint32_t)((char *)&cmp_native_slot.mb - (char *)&cmp_native_slot); }
 #define SLOT (&cmp_native_slot)
+#define METER (&cmp_native_meter)
 #define TABLES (cmp_native_tab)
 #define GR_Y2 (&cmp_native_gr_y2)
 #define TX0 (&cmp_native_tx[0][0])
 #define TX1 (&cmp_native_tx[1][0])
 #else
 #define SLOT ((CmpSlot *)0x2e1c40)
+#define METER ((CmpMeter *)0x2e2800)            /* CMP3: CmpMeter's FILL (CP2F's CmpLoad slot) */
 #define TABLES ((const float *)0x2cfde0)        /* the stock table block, read in place (MB_TAB_*) */
 #define GR_Y2 ((float *)0x257c1c)               /* stock compressor state +0x16c: y2 */
 #define TX0 ((uint32_t *)0x2c49d0)              /* the reply pages */
@@ -202,6 +250,65 @@ static uint32_t cmp_q15(float y)
     if (!(g >= 0.0f))
         g = 0.0f;
     x = (1.0f - g) * 32768.0f + 0.5f;
+    q = (int32_t)x;
+    if (q > 32767)
+        q = 32767;
+    if (q < 0)
+        q = 0;
+    return (uint32_t)q;
+}
+
+/* CMP3: one band's meter, once per block (a leaf: no call, so its stores through mt are safe from selcc's
+   caller-saved-register problem). y = the band's y2 (log2 units, <= 0) -> its gain reduction g in dB; the value shown
+   m takes g at once when g >= m (and restarts the hold), else counts the hold down, then falls by CMP_MTR_FALL per
+   block, never below g. Returns q = round(1310 x m), 0..32750. A NaN or inf (g or the kept m: the exponent test, as
+   the SHARC compares a NaN as greater than everything) counts as 0, a hold outside 0..CMP_MTR_HOLD as none. */
+static uint32_t cmp_mtr(CmpMtr *mt, float y)
+{
+    float g;
+    float m;
+    float x;
+    int32_t h;
+    int32_t q;
+    uint32_t u;
+    g = y * FX_DB_PER_LOG2;
+    g = -g;
+    u = *(uint32_t *)&g;
+    u = u & 0x7f800000u;
+    if (u == 0x7f800000u)
+        g = 0.0f;
+    if (g < 0.0f)
+        g = 0.0f;
+    if (g > CMP_MTR_MAX)
+        g = CMP_MTR_MAX;
+    m = mt->m;
+    u = *(uint32_t *)&m;
+    u = u & 0x7f800000u;
+    if (u == 0x7f800000u)
+        m = 0.0f;
+    if (m < 0.0f)
+        m = 0.0f;
+    if (m > CMP_MTR_MAX)
+        m = CMP_MTR_MAX;
+    h = mt->hold;
+    if (h < 0)
+        h = 0;
+    if (h > CMP_MTR_HOLD)
+        h = 0;
+    if (g >= m) {
+        m = g;
+        h = CMP_MTR_HOLD;
+    } else if (h > 0) {
+        h = h - 1;
+    } else {
+        m = m - CMP_MTR_FALL;
+        if (m < g)
+            m = g;
+    }
+    mt->m = m;
+    mt->hold = h;
+    x = m * CMP_MTR_Q;
+    x = x + 0.5f;
     q = (int32_t)x;
     if (q > 32767)
         q = 32767;
@@ -348,15 +455,25 @@ void cmp_process(const float *p, const CmpIo *io)
             mbcomp_set(s, MB_XLO, CMP_XLO);
         if (s->knob[MB_XHI] != CMP_XHI)
             mbcomp_set(s, MB_XHI, CMP_XHI);
+        /* MIX: CMP2 took the stock row (k 67) in both cases; CMP3, in the fallback the stock row for all three bands
+           (MB_MIX), set when any band differs; in tail mode each band's own (cmp_tail_apply) */
+        t = SLOT;
+        s = &SLOT->mb;
+        v = cmp_knob(p[6]);
+        d = 0;
+        if (v != s->knob[MB_P(0, MB_BMIX)])
+            d = 1;
+        if (v != s->knob[MB_P(1, MB_BMIX)])
+            d = 1;
+        if (v != s->knob[MB_P(2, MB_BMIX)])
+            d = 1;
+        if (d) {
+            mbcomp_set(s, MB_MIX, v);
+            t->last_mix = v;
+        }
     }
     t = SLOT;
     s = &SLOT->mb;
-    /* MIX: the stock row (k 67) in both cases */
-    v = cmp_knob(p[6]);
-    if (v != s->knob[MB_MIX]) {
-        mbcomp_set(s, MB_MIX, v);
-        t->last_mix = v;
-    }
 
     /* SCS: the key is another bus than the compressor's own input */
     in = io->in;
@@ -380,9 +497,14 @@ void cmp_process(const float *p, const CmpIo *io)
     t->sc_ext = ext;
     if (t->fresh) {
         mbcomp_snap(s);
-        /* the stock init leaves both MIX one-poles at the default MIX 0.0: start from there, as stock */
-        s->mw = 0.0f;
-        s->md = 0.0f;
+        /* the stock init leaves both MIX one-poles at the default MIX 0.0: start from there, as stock (CMP3: all three
+           bands' pairs) */
+        s->band[0].mw = 0.0f;
+        s->band[0].md = 0.0f;
+        s->band[1].mw = 0.0f;
+        s->band[1].md = 0.0f;
+        s->band[2].mw = 0.0f;
+        s->band[2].md = 0.0f;
         t->fresh = 0;
     }
 
@@ -415,10 +537,12 @@ void cmp_process(const float *p, const CmpIo *io)
     if (y2 < yd)
         yd = y2;
     *GR_Y2 = yd * FX_DB_PER_LOG2;
-    q0 = cmp_q15(y0);
-    q1 = cmp_q15(y1);
-    q2 = cmp_q15(y2);
+    /* CMP3: each band's held dB (cmp_mtr) in half-words 8..10; half-word 11 the stock meaning (deepest, now, Q15) */
+    q0 = cmp_mtr(&METER->b0, y0);
+    q1 = cmp_mtr(&METER->b1, y1);
+    q2 = cmp_mtr(&METER->b2, y2);
     qd = cmp_q15(yd);
+    METER->blocks = METER->blocks + 1;
     w10 = q0 + q1 * 65536u;
     w14 = q2 + qd * 65536u;
     tx = TX0;

@@ -29,6 +29,7 @@ HERE = Path(__file__).resolve().parent
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(HERE))
 import verify_cmp as VC  # noqa: E402
+import memguard  # noqa: E402
 
 V = VC.V
 AT, NB, WIN = 200, 400, 480
@@ -66,7 +67,9 @@ def run(job):
     r = VC.Run(V.candidate_vm(stream, cache=cache), dict(VC.BASE, **VC.NOFX, **SETTINGS[setting]), VC.ROUTE_IN, keep=False)
     r.process(L, R, inject=inj)
     reinits = r.vm.rd32(VC.SLOT + off["reinits"]) if "reinits" in off else None
-    return job, r.out, (r.vm.rd32(VC.SLOT + 16), reinits)
+    res = job, r.out, (r.vm.rd32(VC.SLOT + 16), reinits)
+    memguard.check()
+    return res
 
 
 def db(x):
@@ -98,8 +101,9 @@ def main():
         s_, info, cache = VC.image(n)
         V.candidate_vm(s_, cache=cache)          # the snapshot once, before the workers
         offs[n] = VC.offsets(VC.ROOT / VC.B.RECIPES[n]["outdir"] / "build", n)
-    with ProcessPoolExecutor(a.workers, initializer=init_worker, initargs=(offs,)) as ex:
-        for job, out, trips in ex.map(run, jobs):
+    with ProcessPoolExecutor(a.workers, initializer=init_worker, initargs=(offs,),
+                             max_tasks_per_child=memguard.TASKS_PER_CHILD) as ex:
+        for job, out, trips in memguard.pmap(ex, run, jobs):
             outs[job] = (out, trips)
     i0 = (AT + 1) * 32
     j0 = AT * 32                        # CMP1b: the injection block and the 100 ms after it

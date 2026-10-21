@@ -6,7 +6,7 @@ To contribute to one: fork it on GitHub, add the fork as a remote in its `vendor
 
 | dir | upstream | licence | commit | commit date | used for | contributor notes |
 |---|---|---|---|---|---|---|
-| digikit | https://github.com/m-dwyer/digikit | GPL-2.0-or-later | 21b38b9 | 2026-09-24 | ColdFire emulator (boots DN2 1.10E/1.11), SHARC+ analysis database | `CLAUDE.md` |
+| digikit | https://github.com/m-dwyer/digikit (now ElekLabs/digikit, **AGPL-3.0 upstream** as of 2026-10-18; our pin and fork are GPL-2.0-or-later) | GPL-2.0-or-later | 21b38b9 | 2026-09-24 | ColdFire emulator (boots DN2 1.10E/1.11), SHARC+ analysis database | `CLAUDE.md` |
 | elekloader | https://github.com/irpina/elekloader | GPL-2.0-or-later (since 2026-09-27; `js/` GPL-3.0-or-later) | 793b2e4 | 2026-10-04 | mod loader; Digitakt II 1.17 profile and core are the template for DN2 | `AGENTS.md`, `docs/DEVICES.md` |
 | elektron-firmware-tool | https://github.com/mischa85/elektron-firmware-tool | MIT | a5bce9a | 2026-09-08 | unpack/rebuild `.syx`; verified on DN2 1.12 (byte-exact `-r`, HMAC ok) | `README.md` |
 | octabam | https://github.com/sambanks/octabam | MIT | 86a81970 | 2026-10-05 | Octatrack remixer: design reference only (different SoC and OS) | `CONTRIBUTING.md`, `AGENTS.md` |
@@ -57,3 +57,6 @@ none is a contribution target yet. Pins are the commit cloned.
 | dt2-re-kb | https://github.com/Fadedlimes/My-personal-Digitakt-II-reverse-engeneering-knowledge-base | none stated | d383048 | 2026-10-05 | personal DT2 reverse-engineering notes |
 | digitakt-ii-firmware-research-public | https://github.com/lalzart/digitakt-ii-firmware-research-public | CC0-1.0 | b2f93c1 | 2026-09-15 | DT2 OS 1.15C architecture research (SHARC audio task chain, machine selector) |
 | elektron-model-tweaks | https://github.com/drumkilla/elektron-model-tweaks | MIT | adc22ed | 2026-10-05 | Model:Cycles/Samples 1.13 ColdFire tweaks in image caves |
+| Synthack-OS | https://github.com/karigardarsson/Synthack-OS | MIT ("Angelo-politek and Syntakt+ contributors") | b536fa5 | 2026-10-10 | Syntakt 1.41 "MAX" bundle: master compressor with GR display, a third send FX with track sends, Beat Repeat, readable units, DV LFO, chord waves; a bring-your-own-.syx Windows builder. Read before a new send FX or our builder |
+| digitakt-ii-research | https://github.com/karigardarsson/digitakt-ii-research | MIT | a1c44a1 | 2026-10-18 | DT2 1.16/1.17 "Déjà Vu" random-loop LFOs and ONESHOT zoom (ColdFire only, on hardware); `windows-builder/` (Python + PyInstaller, SHA-256-checked stock input, mischa85's container code): the model for our macOS builder |
+| mi-eurorack | https://github.com/pichenettes/eurorack | MIT (code), CC-BY-SA 3.0 (hardware) | f4cfa76 | 2026-10-12 | Mutable Instruments modules; `beads/dsp` (granular, ~5.8k lines C++) is the source for our Beads port (T-Beads); the derivative may not use the name "Mutable Instruments" |

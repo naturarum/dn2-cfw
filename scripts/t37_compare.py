@@ -55,6 +55,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools/sharcvm"))
 sys.dont_write_bytecode = True
 from fx import read_wav, write_wav  # noqa: E402
+import memguard  # noqa: E402
 
 SR = 48000
 STOCK = ROOT / "out/T3.11/stock"
@@ -325,6 +326,7 @@ def run_take(args):
     emu = emulate(name, dry, effect, knobs)
     r = compare(rec[:2], emu, until=knobs.get("_until"))
     r.update(take=name, effect=effect or "path", secs=round(time.time() - t0, 1))
+    memguard.check()
     return r
 
 
@@ -440,8 +442,8 @@ def main():
         print(f"not recorded (skipped): {', '.join(missing)}")
     if not todo:
         sys.exit("no takes to compare")
-    with ProcessPoolExecutor(max_workers=a.jobs) as ex:
-        rows = list(ex.map(run_take, [(t, str(STOCK)) for t in todo]))
+    with ProcessPoolExecutor(max_workers=a.jobs, max_tasks_per_child=memguard.TASKS_PER_CHILD) as ex:
+        rows = list(memguard.pmap(ex, run_take, [(t, str(STOCK)) for t in todo]))
     paths = [r for r in rows if r["effect"] == "path"]
     path_lag = sum(r["lag"] for r in paths) / len(paths) if paths else None
     path_gain = sum(r["gain_db"] for r in paths) / len(paths) if paths else None

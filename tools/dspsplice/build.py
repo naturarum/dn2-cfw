@@ -7,6 +7,11 @@
     python3 tools/dspsplice/build.py CMP0      # T6.3: FTD1 + the 3-band master compressor (frozen sources, src/cmp0/)
     python3 tools/dspsplice/build.py CMP1      # T6.3 CMP1's DSP: CMP0 + the review's fixes (fx/mbcomp.c #12-#14)
     python3 tools/dspsplice/build.py CMP2      # T6.3 CMP2's DSP: CMP1 + the band knobs from the frame tail
+    python3 tools/dspsplice/build.py CMP2D     # T6.3 CMP2D: CMP2's DSP with a load meter (diagnostic, src/cmp2d/)
+    python3 tools/dspsplice/build.py CMP2E     # T6.3 CMP2E: CMP2D + heartbeat, breadcrumbs, LOW MUP probe (src/cmp2e/)
+    python3 tools/dspsplice/build.py CMP2F     # T6.3 CMP2F: CMP2E moved out of 0x315f8c-0x318000 + a memory scanner
+    python3 tools/dspsplice/build.py CMP3A     # T6.3 the first CMP3 (2026-10-18, superseded; frozen sources, src/cmp3a/)
+    python3 tools/dspsplice/build.py CMP3      # T6.3 CMP3's DSP: CMP3A on CP2F's layout + band GR meters in dB
 
 Pipeline (notes/T3.8-dsp-splice.md section 1):
   1. compile the recipe's C with selcc -O1 (as tools/sharcvm/tests/fxcheck.py does), generate the
@@ -178,13 +183,17 @@ RECIPES = {
     # (src/cmp_tail.c; notes/T6.3-cmp2.md). CMP1's compressor and glue are frozen in src/cmp1/ (recipe CMP1
     # above rebuilds ee82aa7c, the unit's). cmp_tail.c goes after the tape delay in block 2 (FTD1's code2, 8 KB free there; code3 has 406 bytes
     # left), its state CmpTail in its own FILL after CmpSlot.
+    # CMP2's sources as built (commit c48b179, the image on the owner's unit since 2026-10-18: section 7 1a888114) are
+    # frozen in src/cmp2/ (mbcomp.c, mbcomp.h, cmp_glue.c, cmp_tail.c, cmp_tail.h, byte for byte as committed), first
+    # on the include path, since CMP3 (2026-10-18) moved fx/mbcomp.c and the glue on.
     "CMP2": dict(
         what="T6.3 CMP2: FTD1 (flanger, tape delay) with the 3-band master compressor (fx/mbcomp.c), the band knobs "
              "and both crossovers from k 70..86 in the SPI frame tail (comp-link-dn2); until a valid tail has "
              "arrived, CMP1's bands from the stock knobs",
         c=["fx/flanger.c", "tools/dspsplice/src/flg_glue.c"],
-        c2=["fx/tapedelay.c", "tools/dspsplice/src/td_glue.c", "tools/dspsplice/src/cmp_tail.c"],
-        c3=["fx/mbcomp.c", "tools/dspsplice/src/cmp_glue.c"], inc=["fx", "tools/dspsplice/src"],
+        c2=["fx/tapedelay.c", "tools/dspsplice/src/td_glue.c", "tools/dspsplice/src/cmp2/cmp_tail.c"],
+        c3=["tools/dspsplice/src/cmp2/mbcomp.c", "tools/dspsplice/src/cmp2/cmp_glue.c"],
+        inc=["tools/dspsplice/src/cmp2", "fx", "tools/dspsplice/src"],
         stubs=[("fxh_chorus", [("c", "flg_process", ["R8", "R12"])]),
                ("fxh_chorus_init", [("c", "flg_init", []), ("tail", CHORUS_INIT)]),
                ("fxh_delay", [("c", "td_process", ["R8", "R12"])]),
@@ -199,6 +208,179 @@ RECIPES = {
                    ((0x2e2400, 0x2e2800), "cmp_tail_bytes", "frame-tail reader state (CmpTail), zeroed at boot")],
         state=(0x300000, 0x308400), code=(0x2dd600, 0x2e1c40), code3=(0x308400, 0x310000),
         outdir="out/T6.3/CMP2-dsp", syx="CMP2-dsp.syx", version="CM2D"),
+    # T6.3 CMP2D's DSP (2026-10-18): a diagnostic build (notes/T6.3-cmp2d.md): CMP2's DSP (src/cmp2d/ = src/cmp2/'s
+    # frozen sources) with a load meter in place of the glue's band meters: cmp_load.c and cmp_clk.s (two leaf functions,
+    # EMUCLK and I6, assembled with selas: recipe key asm2) after cmp_tail.c in code2, the state CmpLoad in its own FILL
+    # after CmpTail's slot. The audio is CMP2's sample for sample.
+    "CMP2D": dict(
+        what="T6.3 CMP2D: CMP2's DSP (FTD1's flanger and tape delay, the 3-band master compressor with the band knobs "
+             "from the SPI frame tail) with a DSP load meter in reply half-words 8..11 and the stock meter word "
+             "(diagnostic build)",
+        c=["fx/flanger.c", "tools/dspsplice/src/flg_glue.c"],
+        c2=["fx/tapedelay.c", "tools/dspsplice/src/td_glue.c", "tools/dspsplice/src/cmp2d/cmp_tail.c",
+            "tools/dspsplice/src/cmp2d/cmp_load.c"],
+        asm2=["tools/dspsplice/src/cmp2d/cmp_clk.s"],
+        c3=["tools/dspsplice/src/cmp2d/mbcomp.c", "tools/dspsplice/src/cmp2d/cmp_glue.c"],
+        inc=["tools/dspsplice/src/cmp2d", "fx", "tools/dspsplice/src"],
+        stubs=[("fxh_chorus", [("c", "flg_process", ["R8", "R12"])]),
+               ("fxh_chorus_init", [("c", "flg_init", []), ("tail", CHORUS_INIT)]),
+               ("fxh_delay", [("c", "td_process", ["R8", "R12"])]),
+               ("fxh_delay_init", [("c", "td_init", [])])],
+        stubs3=[("fxh_comp", [("c", "cmp_process", ["R8", "R12"])]),
+                ("fxh_comp_init", [("c", "cmp_init", []), ("tail", COMP_INIT)])],
+        hooks=[(CHORUS_CALL, CHORUS, "fxh_chorus"), (CHORUS_INIT_CALL, CHORUS_INIT, "fxh_chorus_init"),
+               (DELAY_CALL, DELAY, "fxh_delay"), (DELAY_INIT_CALL, DELAY_INIT, "fxh_delay_init"),
+               (COMP_CALL, COMP, "fxh_comp"), (COMP_INIT_CALL, COMP_INIT, "fxh_comp_init")],
+        fills=[(0x300000, 0x8400, "flanger state (FlgSlot: Flanger + glue), zeroed at boot")],
+        fills_sym=[((0x2e1c40, 0x2e2400), "cmp_slot_bytes", "3-band compressor state (CmpSlot), zeroed at boot"),
+                   ((0x2e2400, 0x2e2800), "cmp_tail_bytes", "frame-tail reader state (CmpTail), zeroed at boot"),
+                   ((0x2e2800, 0x2e2900), "cmp_load_bytes", "load meter state (CmpLoad), zeroed at boot")],
+        state=(0x300000, 0x308400), code=(0x2dd600, 0x2e1c40), code3=(0x308400, 0x310000),
+        outdir="out/T6.3/CMP2D-dsp", syx="CMP2D-dsp.syx", version="D2DS"),
+    # T6.3 CMP2E's DSP (2026-10-18): CMP2D with breadcrumbs (src/cmp2e/cmp_crumb.h, in the glue and mbcomp.c), a heartbeat,
+    # a trip/re-init counter, the master-latched flag and a probe switch in cmp_tail.c (notes/T6.3-cmp2e.md). Layout as
+    # CMP2D's, but the glue (with its breadcrumbs, code3 would overflow by 20 bytes) moves to a fourth code region after
+    # CmpLoad's slot, 0x2e2900-0x2e6000 (L1 block 1's free tail, as CMP3 does; mbcomp.c and the stubs stay in code3).
+    # The audio is CMP2's sample for sample but in the probe mode.
+    "CMP2E": dict(
+        what="T6.3 CMP2E: CMP2D's DSP with a heartbeat, breadcrumbs (a stage id per stage of our code), a trip/re-init "
+             "counter and the master-latched flag in reply half-words 8..10, the highest load in half-word 11, and a "
+             "probe switch (LOW XOVR word >= 126: LOW MUP not applied) (diagnostic build)",
+        c=["fx/flanger.c", "tools/dspsplice/src/flg_glue.c"],
+        c2=["fx/tapedelay.c", "tools/dspsplice/src/td_glue.c", "tools/dspsplice/src/cmp2e/cmp_tail.c",
+            "tools/dspsplice/src/cmp2e/cmp_load.c"],
+        asm2=["tools/dspsplice/src/cmp2e/cmp_clk.s"],
+        c3=["tools/dspsplice/src/cmp2e/mbcomp.c"], c4=["tools/dspsplice/src/cmp2e/cmp_glue.c"],
+        inc=["tools/dspsplice/src/cmp2e", "fx", "tools/dspsplice/src"],
+        stubs=[("fxh_chorus", [("c", "flg_process", ["R8", "R12"])]),
+               ("fxh_chorus_init", [("c", "flg_init", []), ("tail", CHORUS_INIT)]),
+               ("fxh_delay", [("c", "td_process", ["R8", "R12"])]),
+               ("fxh_delay_init", [("c", "td_init", [])])],
+        stubs3=[("fxh_comp", [("c", "cmp_process", ["R8", "R12"])]),
+                ("fxh_comp_init", [("c", "cmp_init", []), ("tail", COMP_INIT)])],
+        hooks=[(CHORUS_CALL, CHORUS, "fxh_chorus"), (CHORUS_INIT_CALL, CHORUS_INIT, "fxh_chorus_init"),
+               (DELAY_CALL, DELAY, "fxh_delay"), (DELAY_INIT_CALL, DELAY_INIT, "fxh_delay_init"),
+               (COMP_CALL, COMP, "fxh_comp"), (COMP_INIT_CALL, COMP_INIT, "fxh_comp_init")],
+        fills=[(0x300000, 0x8400, "flanger state (FlgSlot: Flanger + glue), zeroed at boot")],
+        fills_sym=[((0x2e1c40, 0x2e2400), "cmp_slot_bytes", "3-band compressor state (CmpSlot), zeroed at boot"),
+                   ((0x2e2400, 0x2e2800), "cmp_tail_bytes", "frame-tail reader state (CmpTail), zeroed at boot"),
+                   ((0x2e2800, 0x2e2900), "cmp_load_bytes", "load meter and readout state (CmpLoad), zeroed at boot")],
+        state=(0x300000, 0x308400), code=(0x2dd600, 0x2e1c40), code3=(0x308400, 0x310000),
+        code4=(0x2e2900, 0x2e6000),
+        outdir="out/T6.3/CMP2E-dsp", syx="CMP2E-dsp.syx", version="E2DS"),
+    # T6.3 CMP2F's DSP (2026-10-18): CMP2E with every byte of ours out of 0x315f8c-0x318000 (CMP2E's LOW MUP code sat at
+    # 0x3166xx; on the unit the DSP stopped there, step 4): cmp_tail.c after the glue in code4, cmp_load.c and cmp_clk.s
+    # after mbcomp.c in code3, code2 the tape delay alone (FTD1's bytes). A memory scanner (cmp_load.c) checks a slice
+    # per block of the page table this script writes (recipe key scan): watermarked free L1 ranges (payload blocks of
+    # decode-safe parcels, the vacated range in small pages) and our own code and constant data (Fletcher-32 per page).
+    # notes/T6.3-cmp2f.md.
+    "CMP2F": dict(
+        what="T6.3 CMP2F: CMP2E (heartbeat, breadcrumbs, LOW MUP probe) with its code out of 0x315f8c-0x318000 and a "
+             "memory scanner (watermarked free L1 ranges, our code and constant data per page) in the HIGH and right "
+             "bars (diagnostic build)",
+        c=["fx/flanger.c", "tools/dspsplice/src/flg_glue.c"],
+        c2=["fx/tapedelay.c", "tools/dspsplice/src/td_glue.c"],
+        asm2=["tools/dspsplice/src/cmp2f/cmp_clk.s"],
+        c3=["tools/dspsplice/src/cmp2f/mbcomp.c", "tools/dspsplice/src/cmp2f/cmp_load.c"],
+        c4=["tools/dspsplice/src/cmp2f/cmp_glue.c", "tools/dspsplice/src/cmp2f/cmp_tail.c"],
+        inc=["tools/dspsplice/src/cmp2f", "fx", "tools/dspsplice/src"],
+        stubs=[("fxh_chorus", [("c", "flg_process", ["R8", "R12"])]),
+               ("fxh_chorus_init", [("c", "flg_init", []), ("tail", CHORUS_INIT)]),
+               ("fxh_delay", [("c", "td_process", ["R8", "R12"])]),
+               ("fxh_delay_init", [("c", "td_init", [])])],
+        stubs3=[("fxh_comp", [("c", "cmp_process", ["R8", "R12"])]),
+                ("fxh_comp_init", [("c", "cmp_init", []), ("tail", COMP_INIT)])],
+        hooks=[(CHORUS_CALL, CHORUS, "fxh_chorus"), (CHORUS_INIT_CALL, CHORUS_INIT, "fxh_chorus_init"),
+               (DELAY_CALL, DELAY, "fxh_delay"), (DELAY_INIT_CALL, DELAY_INIT, "fxh_delay_init"),
+               (COMP_CALL, COMP, "fxh_comp"), (COMP_INIT_CALL, COMP_INIT, "fxh_comp_init")],
+        fills=[(0x300000, 0x8400, "flanger state (FlgSlot: Flanger + glue), zeroed at boot")],
+        fills_sym=[((0x2e1c40, 0x2e2400), "cmp_slot_bytes", "3-band compressor state (CmpSlot), zeroed at boot"),
+                   ((0x2e2400, 0x2e2800), "cmp_tail_bytes", "frame-tail reader state (CmpTail), zeroed at boot"),
+                   ((0x2e2800, 0x2e2900), "cmp_load_bytes", "load meter, readout and scanner state (CmpLoad), zeroed at boot")],
+        state=(0x300000, 0x308400), code=(0x2dd600, 0x2e1c40), code3=(0x308400, 0x310000),
+        code4=(0x2e2900, 0x2e6000),
+        scan=dict(table=0x2e6880, table_slot=(0x2e6880, 0x2e7000),
+                  # (lo, hi, page bytes (0: one page), what); lo ("after", section) = its end, ("slot_end", size symbol,
+                  # base) = base + the size, "table_end" = the page table's end
+                  marks=[(0x315f8c, 0x316000, 0, "vacated: CMP2's cmp_tail.c (fetch)"),
+                         (0x316000, 0x317000, 0x100, "vacated: CMP2's cmp_tail.c (apply; LOW MUP at 0x3166xx)"),
+                         (0x317000, 0x318000, 0x400, "vacated: CMP2D/CMP2E's cmp_load.c"),
+                         (("after", "t38_code3"), 0x310000, 0, "code3's free tail"),
+                         (("after", "t38_code4"), 0x2e6000, 0, "code4's free tail"),
+                         (("slot_end", "cmp_slot_bytes", 0x2e1c40), 0x2e2400, 0, "CmpSlot's slot tail"),
+                         (("slot_end", "cmp_tail_bytes", 0x2e2400), 0x2e2800, 0, "CmpTail's slot tail"),
+                         (("slot_end", "cmp_load_bytes", 0x2e2800), 0x2e2900, 0, "CmpLoad's slot tail"),
+                         (("after", "t38_data"), 0x2e6800, 0, "the data slot's tail"),
+                         ("table_end", 0x2e7000, 0, "after the page table"),
+                         (0x2e7000, 0x2e8000, 0, "0x2e7000-0x2e8000, below the 32 KB DM cache")],
+                  code=[("t38_code", 0x1800), ("t38_code4", 0x1200), ("t38_data", 0x100), ("t38_code3", 0x1800),
+                        ("t38_code2", 0x1800)]),
+        outdir="out/T6.3/CMP2F-dsp", syx="CMP2F-dsp.syx", version="F2DS"),
+    # T6.3 CMP3A = the first CMP3's DSP (2026-10-18; superseded, never flashed): CMP2 with a MIX per band (fx/mbcomp.c
+    # MB_BMIX; the glue's fallback sets all three from the stock MIX, so it is CMP2's fallback bit for bit; cmp_tail.c
+    # takes tail words 19..21). code3 had 174 bytes left, so the glue (5.4 KB, once per block) moves to a fourth code
+    # region in L1 block 1's free tail, 0x2e2800-0x2e6000 (between CmpTail's slot and the data block; inside dnfw's
+    # silicon-proven 0x2dd600-0x2e7000, notes/T3.8 3), and code3 keeps mbcomp.c and the two stubs. Its cmp_tail.c ran
+    # after the tape delay in code2, to 0x316dba, inside 0x315f8c-0x318000, where code stopped the DSP on the unit
+    # (CMP2, CP2E; notes/T6.3-cmp2f.md), so it was put on hold. Its sources as built are frozen in src/cmp3a/
+    # (mbcomp.c, mbcomp.h, cmp_glue.c, cmp_tail.c, cmp_tail.h, byte for byte), first on the include path, so this
+    # recipe still rebuilds 3a54d9a9; its outputs and evidence moved to out/T6.3/superseded/CMP3A-dsp/.
+    "CMP3A": dict(
+        what="T6.3 CMP3A (the first CMP3, 2026-10-18, superseded): FTD1 (flanger, tape delay) with the 3-band master "
+             "compressor (fx/mbcomp.c), a MIX per band, the band knobs, mixes and crossovers from k 70..89 in the SPI "
+             "frame tail (comp-link-dn2); until a valid tail has arrived, CMP2's fallback (CMP1's bands and the stock "
+             "MIX from the stock knobs)",
+        c=["fx/flanger.c", "tools/dspsplice/src/flg_glue.c"],
+        c2=["fx/tapedelay.c", "tools/dspsplice/src/td_glue.c", "tools/dspsplice/src/cmp3a/cmp_tail.c"],
+        c3=["tools/dspsplice/src/cmp3a/mbcomp.c"], c4=["tools/dspsplice/src/cmp3a/cmp_glue.c"],
+        inc=["tools/dspsplice/src/cmp3a", "fx", "tools/dspsplice/src"],
+        stubs=[("fxh_chorus", [("c", "flg_process", ["R8", "R12"])]),
+               ("fxh_chorus_init", [("c", "flg_init", []), ("tail", CHORUS_INIT)]),
+               ("fxh_delay", [("c", "td_process", ["R8", "R12"])]),
+               ("fxh_delay_init", [("c", "td_init", [])])],
+        stubs3=[("fxh_comp", [("c", "cmp_process", ["R8", "R12"])]),
+                ("fxh_comp_init", [("c", "cmp_init", []), ("tail", COMP_INIT)])],
+        hooks=[(CHORUS_CALL, CHORUS, "fxh_chorus"), (CHORUS_INIT_CALL, CHORUS_INIT, "fxh_chorus_init"),
+               (DELAY_CALL, DELAY, "fxh_delay"), (DELAY_INIT_CALL, DELAY_INIT, "fxh_delay_init"),
+               (COMP_CALL, COMP, "fxh_comp"), (COMP_INIT_CALL, COMP_INIT, "fxh_comp_init")],
+        fills=[(0x300000, 0x8400, "flanger state (FlgSlot: Flanger + glue), zeroed at boot")],
+        fills_sym=[((0x2e1c40, 0x2e2400), "cmp_slot_bytes", "3-band compressor state (CmpSlot), zeroed at boot"),
+                   ((0x2e2400, 0x2e2800), "cmp_tail_bytes", "frame-tail reader state (CmpTail), zeroed at boot")],
+        state=(0x300000, 0x308400), code=(0x2dd600, 0x2e1c40), code3=(0x308400, 0x310000), code4=(0x2e2800, 0x2e6000),
+        outdir="out/T6.3/superseded/CMP3A-dsp", syx="CMP3-dsp.syx", version="CM3D"),
+    # T6.3 CMP3's DSP (2026-10-21, the final CMP3; notes/T6.3-cmp3.md): CMP3A's compressor, mixes and tail reader on
+    # CP2F's layout, which ran on the unit with LOW MUP turned hard and no stop (notes/T6.3-cmp2f.md): code2 = the tape
+    # delay alone (FTD1's bytes, as on the unit since FTD1), code3 = mbcomp.c and the two stubs, code4 = the glue then
+    # cmp_tail.c from 0x2e2900 (CP2F's code4), and nothing of ours in 0x315f8c-0x318000 (key forbid: a build check).
+    # The glue adds the band GR meters (src/cmp_glue.c cmp_mtr: dB, instant attack, 0.5 s hold, 20 dB/s fall) with
+    # their state CmpMeter in its own FILL where CP2F's CmpLoad was (0x2e2800-0x2e2900). None of CP2D-CP2F's
+    # diagnostics (heartbeat, breadcrumbs, probe switch, load meter, scanner, watermarks, page table).
+    "CMP3": dict(
+        what="T6.3 CMP3: FTD1 (flanger, tape delay) with the 3-band master compressor (fx/mbcomp.c), a MIX per band, "
+             "the band knobs, mixes and crossovers from k 70..89 in the SPI frame tail (comp-link-dn2), band gain "
+             "reduction meters in dB with hold and fall in reply half-words 8..10; until a valid tail has arrived, "
+             "CMP2's fallback (CMP1's bands and the stock MIX from the stock knobs); on CP2F's layout",
+        c=["fx/flanger.c", "tools/dspsplice/src/flg_glue.c"],
+        c2=["fx/tapedelay.c", "tools/dspsplice/src/td_glue.c"],
+        c3=["fx/mbcomp.c"], c4=["tools/dspsplice/src/cmp_glue.c", "tools/dspsplice/src/cmp_tail.c"],
+        inc=["fx", "tools/dspsplice/src"],
+        stubs=[("fxh_chorus", [("c", "flg_process", ["R8", "R12"])]),
+               ("fxh_chorus_init", [("c", "flg_init", []), ("tail", CHORUS_INIT)]),
+               ("fxh_delay", [("c", "td_process", ["R8", "R12"])]),
+               ("fxh_delay_init", [("c", "td_init", [])])],
+        stubs3=[("fxh_comp", [("c", "cmp_process", ["R8", "R12"])]),
+                ("fxh_comp_init", [("c", "cmp_init", []), ("tail", COMP_INIT)])],
+        hooks=[(CHORUS_CALL, CHORUS, "fxh_chorus"), (CHORUS_INIT_CALL, CHORUS_INIT, "fxh_chorus_init"),
+               (DELAY_CALL, DELAY, "fxh_delay"), (DELAY_INIT_CALL, DELAY_INIT, "fxh_delay_init"),
+               (COMP_CALL, COMP, "fxh_comp"), (COMP_INIT_CALL, COMP_INIT, "fxh_comp_init")],
+        fills=[(0x300000, 0x8400, "flanger state (FlgSlot: Flanger + glue), zeroed at boot")],
+        fills_sym=[((0x2e1c40, 0x2e2400), "cmp_slot_bytes", "3-band compressor state (CmpSlot), zeroed at boot"),
+                   ((0x2e2400, 0x2e2800), "cmp_tail_bytes", "frame-tail reader state (CmpTail), zeroed at boot"),
+                   ((0x2e2800, 0x2e2900), "cmp_meter_bytes", "band GR meter state (CmpMeter), zeroed at boot")],
+        state=(0x300000, 0x308400), code=(0x2dd600, 0x2e1c40), code3=(0x308400, 0x310000), code4=(0x2e2900, 0x2e6000),
+        forbid=[(0x315f8c, 0x318000, "0x315f8c-0x318000: code there stopped the DSP on the unit (CMP2, CP2E); "
+                                     "nothing of ours, code or data (notes/T6.3-cmp2f.md)")],
+        outdir="out/T6.3/CMP3-dsp", syx="CMP3-dsp.syx", version="CM3D"),
 }
 
 LDF = """ARCHITECTURE(ADSP-21569)
@@ -282,16 +464,27 @@ LDF_SEC3 = """      t38_code3 SW
          INPUT_SECTIONS( $OBJECTS(seg_t38c3) )
       }} > mem_t38_code3
 """
+# CMP3: a fourth code region (the compressor glue, in L1 block 1's free tail)
+LDF_MEM4 = """   mem_t38_code4 {{ TYPE(BW RAM) START(0x{g0:08x}) END(0x{g1:08x}) WIDTH(8) }}
+"""
+LDF_SEC4 = """      t38_code4 SW
+      {{
+         INPUT_SECTION_ALIGN(2)
+         FILL(0x1)
+         INPUT_SECTIONS( $OBJECTS(seg_t38c4) )
+      }} > mem_t38_code4
+"""
 
 
 def compile_link(name, rec, bdir, log):
     bdir.mkdir(parents=True, exist_ok=True)
     flags = ["-proc", "ADSP-21569", "-char-size-8", "-O1"] + [f"-I{ROOT / i}" for i in rec["inc"]]
     objs = []
-    for src in rec["c"] + rec.get("c2", []) + rec.get("c3", []):
+    for src in rec["c"] + rec.get("c2", []) + rec.get("c3", []) + rec.get("c4", []):
         stem = Path(src).stem
         run([SEL / "selcc", *flags, "-S", "-o", bdir / f"{stem}.s", ROOT / src], log)
-        seg = "seg_t38c2" if src in rec.get("c2", []) else ("seg_t38c3" if src in rec.get("c3", []) else None)
+        seg = "seg_t38c2" if src in rec.get("c2", []) else ("seg_t38c3" if src in rec.get("c3", []) else
+                                                           ("seg_t38c4" if src in rec.get("c4", []) else None))
         if seg:
             # the same code, only its section renamed so the LDF puts it in the second (third) code region
             s = (bdir / f"{stem}.s").read_text()
@@ -300,6 +493,11 @@ def compile_link(name, rec, bdir, log):
                 raise SystemExit(f"{stem}.s: unexpected sections")
             (bdir / f"{stem}.s").write_text(s.replace(".SECTION/SW seg_swco;", f".SECTION/SW {seg};"))
         run([SEL / "selas", "-proc", "ADSP-21569", "-o", bdir / f"{stem}.doj", bdir / f"{stem}.s"], log)
+        objs.append(bdir / f"{stem}.doj")
+    # CMP2D: hand-written assembly (each file names its own section), after the C objects
+    for src in rec.get("asm2", []):
+        stem = Path(src).stem
+        run([SEL / "selas", "-proc", "ADSP-21569", "-o", bdir / f"{stem}.doj", ROOT / src], log)
         objs.append(bdir / f"{stem}.doj")
     (bdir / "stubs.s").write_text(stub.module(rec["stubs"], SAVE))
     run([SEL / "selas", "-proc", "ADSP-21569", "-o", bdir / "stubs.doj", bdir / "stubs.s"], log)
@@ -320,6 +518,15 @@ def compile_link(name, rec, bdir, log):
         anchor = "      }} > mem_t38_code2\n".replace("}}", "}")
         i = ldf.index(anchor) + len(anchor)
         ldf = ldf[:i] + LDF_SEC3.format() + ldf[i:]
+    if "code4" in rec:
+        g0, g1 = rec["code4"]
+        anchor = "   mem_t38_code2 {"
+        i = ldf.index(anchor)
+        i = ldf.index("\n", i) + 1
+        ldf = ldf[:i] + LDF_MEM4.format(g0=g0, g1=g1 - 1) + ldf[i:]
+        anchor = "      }} > mem_t38_code2\n".replace("}}", "}")
+        i = ldf.index(anchor) + len(anchor)
+        ldf = ldf[:i] + LDF_SEC4.format() + ldf[i:]
     (bdir / "t38.ldf").write_text(ldf)
     run([SEL / "seld", "-proc", "ADSP-21569", "-T", bdir / "t38.ldf", "-o", bdir / f"{name}.dxe", *objs], log)
     return E.read_elf(bdir / f"{name}.dxe")
@@ -388,8 +595,8 @@ def selcc_shift_imm_count(bdir, rec):
     """immediate-count shifts in our assembly (selas mis-encodes negative ones; selcc emits none)"""
     import re
     n = 0
-    for p in ([bdir / f"{Path(s).stem}.s" for s in rec["c"] + rec.get("c2", []) + rec.get("c3", [])] + [bdir / "stubs.s"]
-              + ([bdir / "stubs3.s"] if rec.get("stubs3") else [])):
+    for p in ([bdir / f"{Path(s).stem}.s" for s in rec["c"] + rec.get("c2", []) + rec.get("c3", []) + rec.get("c4", [])] + [bdir / "stubs.s"]
+              + ([bdir / "stubs3.s"] if rec.get("stubs3") else []) + [ROOT / a for a in rec.get("asm2", [])]):
         n += len(re.findall(r"(LSHIFT|ASHIFT|ROT)\s+R\d+\s+BY\s+-?(0x)?[0-9A-Fa-f]+\s*;", p.read_text()))
     return n
 
@@ -476,7 +683,7 @@ def layout_check(rec, e, fills):
     other (so neither FTD1's blocks nor ours), and must stay out of the cache and L2 ranges in FORBIDDEN.
     fills: [(addr, bytes, why, slot)]. Returns (rows, problems)."""
     code, code2, code3 = rec.get("code", CODE), rec.get("code2", CODE2), rec.get("code3")
-    slot_of = {"t38_code": code, "t38_code2": code2, "t38_code3": code3}
+    slot_of = {"t38_code": code, "t38_code2": code2, "t38_code3": code3, "t38_code4": rec.get("code4")}
     rows = []
     for addr, n, s in ranges_of(e):
         rows.append(dict(what=f"{s.name} ({s.kind})", lo=addr, hi=addr + n, slot=slot_of.get(s.name, DATA)))
@@ -490,7 +697,7 @@ def layout_check(rec, e, fills):
         if r["slot"] is None or not (r["slot"][0] <= r["lo"] and r["hi"] <= r["slot"][1]):
             slot = "%#x-%#x" % tuple(r["slot"]) if r["slot"] else "(none)"
             problems.append(f"{r['what']} {r['lo']:#x}-{r['hi']:#x} is outside its slot {slot}")
-        for lo, hi, name in FORBIDDEN:
+        for lo, hi, name in FORBIDDEN + rec.get("forbid", []):
             if r["lo"] < hi and lo < r["hi"]:
                 problems.append(f"{r['what']} {r['lo']:#x}-{r['hi']:#x} overlaps {name}")
     for i, a in enumerate(rows):
@@ -501,6 +708,97 @@ def layout_check(rec, e, fills):
                 slot="%#x-%#x" % tuple(r["slot"]) if r["slot"] else None,
                 slot_left=(r["slot"][1] - r["hi"]) if r["slot"] else None) for r in sorted(rows, key=lambda r: r["lo"])]
     return out, problems
+
+
+# ---- CMP2F: the memory scanner's page table and watermarks (src/cmp2f/cmp_load.c reads them) ----
+SCAN_MAX_PAGES = 50
+
+
+def scan_field(v):
+    """a 32-bit value as two words whose four 16-bit halves are 0xC000 | 13 bits (13 + 13 + 6 bits used): every half
+    is a 16-bit short-compute parcel to a linear decoder (tools/brickcheck's shift scan decodes payload blocks)"""
+    w0 = (0xC000 | (v & 0x1FFF)) | ((0xC000 | ((v >> 13) & 0x1FFF)) << 16)
+    w1 = (0xC000 | ((v >> 26) & 0x3F)) | (0xC000 << 16)
+    return struct.pack("<II", w0, w1)
+
+
+def mark_word(a):
+    """the watermark of the word at byte address a (cmp_load.h CL_MARK_K1/K2); both halves short-compute parcels"""
+    x = a >> 2
+    return 0xC000C000 | ((x ^ 0x0A5C) & 0x1FFF) | (((x ^ 0x15A3) & 0x1FFF) << 16)
+
+
+def fletcher(data):
+    a = b = 0
+    for (w,) in struct.iter_unpack("<I", data):
+        a = (a + w) & 0xFFFFFFFF
+        b = (b + a) & 0xFFFFFFFF
+    return a, b
+
+
+def scan_layout(rec, e, slot_sizes):
+    """-> (pages [(lo, hi, kind, fa, fb, what)], payload blocks [(lo, bytes, why, slot)]): the watermark ranges in
+    pages (in the recipe's order: the page number is the index + 1), then the code pages with their Fletcher-32 over the
+    linked bytes, and the page table at scan["table"]"""
+    sc = rec["scan"]
+    secs = {s.name: (addr, n, s) for addr, n, s in ranges_of(e)}
+
+    def lo_of(lo):
+        if isinstance(lo, tuple) and lo[0] == "after":
+            addr, n, _ = secs[lo[1]]
+            return addr + n
+        if isinstance(lo, tuple) and lo[0] == "slot_end":
+            return lo[2] + slot_sizes[lo[1]]
+        return lo
+
+    def split(lo, hi, pg, why):
+        out, a = [], lo
+        while a < hi:
+            b = min(hi, (a // pg + 1) * pg) if pg else hi
+            out.append((a, b, 1, 0, 0, why))
+            a = b
+        return out
+    code_pages = []
+    for name, pg in sc["code"]:
+        addr, n, s = secs[name]
+        data = bytes(s.data)
+        lo, hi = (addr + 3) // 4 * 4, (addr + n) // 4 * 4
+        a = lo
+        while a < hi:
+            b = min(hi, a + pg)
+            fa, fb = fletcher(data[a - addr:b - addr])
+            code_pages.append((a, b, 2, fa, fb, "%s %#x-%#x" % (name, a, b)))
+            a = b
+    # the watermark ranges; "table_end" (one page) once the page count is known
+    ranges = []
+    for lo, hi, pg, why in sc["marks"]:
+        if lo != "table_end":
+            lo = (lo_of(lo) + 3) // 4 * 4
+        ranges.append([lo, hi // 4 * 4, pg, why])
+    n_pages = len(code_pages) + sum(len(split(lo, hi, pg, why)) if lo != "table_end" else 1
+                                    for lo, hi, pg, why in ranges if lo == "table_end" or hi - lo >= 16)
+    pages, marks = [], []
+    for lo, hi, pg, why in ranges:
+        if lo == "table_end":
+            lo = sc["table"] + 8 + 40 * n_pages
+        if hi - lo < 16:
+            continue
+        marks.append((lo, hi, why))
+        pages += split(lo, hi, pg, why)
+    pages += code_pages
+    if len(pages) != n_pages:
+        raise SystemExit(f"scan: {len(pages)} pages, {n_pages} expected")
+    if len(pages) > SCAN_MAX_PAGES:
+        raise SystemExit(f"scan: {len(pages)} pages, at most {SCAN_MAX_PAGES}")
+    table = scan_field(len(pages)) + b"".join(scan_field(lo) + scan_field(hi) + scan_field(k) + scan_field(fa) + scan_field(fb)
+                                              for lo, hi, k, fa, fb, _ in pages)
+    t0 = sc["table"]
+    if t0 + len(table) > sc["table_slot"][1]:
+        raise SystemExit("scan: the page table does not fit its slot")
+    blocks = [(lo, b"".join(struct.pack("<I", mark_word(a)) for a in range(lo, hi, 4)), "watermark: " + why, (lo, hi))
+              for lo, hi, why in marks]
+    blocks.append((t0, table, "scanner page table (%d pages)" % len(pages), (t0, t0 + len(table))))
+    return pages, blocks
 
 
 def build(name, out_root=ROOT / "out/T3.8", odir=None):
@@ -523,7 +821,7 @@ def build(name, out_root=ROOT / "out/T3.8", odir=None):
 
     e = compile_link(name, rec, bdir, log)
     census = collections.Counter()
-    for src in rec["c"] + rec.get("c2", []) + rec.get("c3", []):
+    for src in rec["c"] + rec.get("c2", []) + rec.get("c3", []) + rec.get("c4", []):
         census += register_census((bdir / f"{Path(src).stem}.s").read_text())
     extra = sorted(set(census) - CENSUS_ALLOWED)
     if extra:
@@ -534,7 +832,7 @@ def build(name, out_root=ROOT / "out/T3.8", odir=None):
     placed = []
     for addr, n, s in ranges_of(e):
         lo, hi = {"t38_code": rec.get("code", CODE), "t38_code2": code2,
-                  "t38_code3": rec.get("code3", (0, 0))}.get(s.name, DATA)
+                  "t38_code3": rec.get("code3", (0, 0)), "t38_code4": rec.get("code4", (0, 0))}.get(s.name, DATA)
         if not (lo <= addr and addr + n <= hi):
             raise SystemExit(f"section {s.name} at {addr:#x}+{n} is outside {lo:#x}-{hi:#x}")
         placed.append({"section": s.name, "kind": s.kind, "core": "%#x" % addr, "bytes": n,
@@ -565,6 +863,12 @@ def build(name, out_root=ROOT / "out/T3.8", odir=None):
         n = (n + 3) // 4 * 4
         st.add_fill(lo, n, why=f"{why} ({symname} = {slot_sizes[symname]})")
         fills.append((lo, n, why, (lo, hi)))
+    scan_pages, scan_blocks = None, []
+    if rec.get("scan"):
+        scan_pages, scan_blocks = scan_layout(rec, e, slot_sizes)
+        for lo, data, why, slot in scan_blocks:
+            st.add_payload(lo, data, why=why)
+            fills.append((lo, len(data), why, slot))
     layout, problems = layout_check(rec, e, fills)
     if problems:
         raise SystemExit("layout check failed:\n  " + "\n  ".join(problems))
@@ -586,6 +890,8 @@ def build(name, out_root=ROOT / "out/T3.8", odir=None):
                 (ldr.loader_addr(code2[0]), ldr.loader_addr(code2[1]))]
     if "code3" in rec:
         allowed.append((ldr.loader_addr(rec["code3"][0]), ldr.loader_addr(rec["code3"][1])))
+    for lo, data, why, slot in scan_blocks:
+        allowed.append((ldr.loader_addr(lo), ldr.loader_addr(lo + len(data))))
     merged = []                          # touching ranges as one (SE01's code2 starts where its state ends)
     for lo, hi in sorted(allowed):
         if merged and lo <= merged[-1][1]:
@@ -597,6 +903,11 @@ def build(name, out_root=ROOT / "out/T3.8", odir=None):
     if stray:
         raise SystemExit("final image differs from stock outside the planned ranges: %s"
                          % [(hex(a), hex(b)) for a, b in stray])
+    # CMP3: no byte of the final image that differs from stock (code, data, FILL) in a forbidden range of the recipe
+    hit = [(a, b, w) for a, b in diffs for lo, hi, w in rec.get("forbid", [])
+           if a < ldr.loader_addr(hi) and ldr.loader_addr(lo) < b]
+    if hit:
+        raise SystemExit("final image differs from stock inside a forbidden range: %s" % [(hex(a), hex(b), w) for a, b, w in hit])
 
     odir.mkdir(parents=True, exist_ok=True)
     (odir / "section7.bin").write_bytes(stream)
@@ -618,12 +929,15 @@ def build(name, out_root=ROOT / "out/T3.8", odir=None):
         "syx": {"path": rel(syx), "bytes": syx.stat().st_size, "sha256": sha(syx.read_bytes())},
         "placed": placed, "symbols": {k: "%#x" % v for k, v in sorted(sym.items(), key=lambda kv: kv[1])},
         "sources": {src: sha((ROOT / src).read_bytes()) for src in
-                    rec["c"] + rec.get("c2", []) + rec.get("c3", []) + [f"tools/dspsplice/src/{h}" for h in ("fxio.h",)]
-                    + ["fx/fxmath.h"] + [str(Path(src).with_suffix(".h")) for src in rec["c"] + rec.get("c2", []) + rec.get("c3", [])
+                    rec["c"] + rec.get("c2", []) + rec.get("c3", []) + rec.get("c4", []) + [f"tools/dspsplice/src/{h}" for h in ("fxio.h",)]
+                    + ["fx/fxmath.h"] + rec.get("asm2", []) + [str(Path(src).with_suffix(".h")) for src in rec["c"] + rec.get("c2", []) + rec.get("c3", []) + rec.get("c4", [])
                                          if (ROOT / Path(src).with_suffix(".h")).exists()]},
-        "layout_check": {"rows": layout, "problems": problems, "forbidden": [("%#x" % a, "%#x" % b, w) for a, b, w in FORBIDDEN],
+        "layout_check": {"rows": layout, "problems": problems, "forbidden": [("%#x" % a, "%#x" % b, w) for a, b, w in FORBIDDEN + rec.get("forbid", [])],
                          "slot_sizes_from_image": slot_sizes},
         "patches": st.patches, "added_blocks": st.added,
+        "scan_pages": [{"page": i + 1, "lo": "%#x" % lo, "hi": "%#x" % hi, "bytes": hi - lo,
+                        "kind": "watermark" if k == 1 else "code", "fletcher": ["%#010x" % fa, "%#010x" % fb] if k == 2 else None,
+                        "what": what} for i, (lo, hi, k, fa, fb, what) in enumerate(scan_pages)] if scan_pages else None,
         "image_diff_ranges": [("%#x" % a, "%#x" % b) for a, b in diffs],
         "shift_immediates_in_our_asm": selcc_shift_imm_count(bdir, rec),
         "register_census": dict(sorted(census.items())),

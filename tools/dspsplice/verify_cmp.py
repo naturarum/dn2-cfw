@@ -82,12 +82,19 @@ FTD1 = ROOT / "out/T3.8/FTD1"
 DRY = ROOT / "out/T3.11/dry"
 SLOT, MAGIC = 0x2e1c40, 0x434d5030
 NAME = "CMP0"
-MAGICS = {"CMP0": 0x434d5030, "CMP1": 0x434d5031, "CMP2": 0x434d5032}
-# the image (h) and (d) compare with: CMP1 against CMP0; CMP2 (zero tails: the fallback) against CMP1
-REFS = {"CMP1": "CMP0", "CMP2": "CMP1"}
+MAGICS = {"CMP0": 0x434d5030, "CMP1": 0x434d5031, "CMP2": 0x434d5032, "CMP3": 0x434d5033, "CMP3A": 0x434d5033}
+# the image (h) and (d) compare with: CMP1 against CMP0; CMP2 (zero tails: the fallback) against CMP1; CMP3 (the fallback)
+# against CMP2 (notes/T6.3-cmp3.md: the fallback is unchanged)
+REFS = {"CMP1": "CMP0", "CMP2": "CMP1", "CMP3": "CMP2"}
 # CMP2: the frame-tail reader's state (CmpTail, recipe CMP2) and its code after the tape delay in block 2
 TAILST = (0x2e2400, 0x2e2800)
 TAILCODE = (0x315f8c, 0x318000)
+
+
+def code4(name=None):
+    """CMP3: the glue's code region in L1 block 1 (recipe code4), as a list of ranges to ignore"""
+    c = B.RECIPES[name or NAME].get("code4")
+    return [tuple(c)] if c else []
 
 
 def configure(name):
@@ -111,8 +118,9 @@ def image(name):
 def recipe_sources(name):
     """the compressor's C sources (mbcomp.c, cmp_glue.c) and include directories of a recipe"""
     rec = B.RECIPES[name]
-    # CMP2: the glue calls the frame-tail reader (src/cmp_tail.c, in the recipe's c2)
-    return ([ROOT / c for c in rec["c3"]] + [ROOT / c for c in rec.get("c2", []) if Path(c).name == "cmp_tail.c"],
+    # CMP2: the glue calls the frame-tail reader (src/cmp_tail.c, in the recipe's c2); CMP3: the glue is in c4
+    return ([ROOT / c for c in rec["c3"]] + [ROOT / c for c in rec.get("c4", [])]
+            + [ROOT / c for c in rec.get("c2", []) if Path(c).name == "cmp_tail.c"],
             [ROOT / i for i in rec["inc"]])
 PARAMS, IO = 0x257964, 0x257e6c
 COMP_CALL, COMP_RET = 0x1c215c, 0x1c2163
@@ -383,20 +391,30 @@ def offsets(bdir, name=None, every=False):
               "mb.s2[1].ic1", "mb.kx[0]", "mb.ky[0]", "mb.band[0].y1", "mb.band[0].y2", "mb.band[0].ca", "mb.band[0].cr",
               "mb.band[0].rinv", "mb.band[0].mk", "mb.band[0].hy[0]", "mb.band[1].y2", "mb.band[2].y2", "mb.mw", "mb.md",
               "mb.t_mw", "mb.t_md", "mb.mix0", "mb.xw", "mb.trips", "mb.buf_g", "mb.tab"]
+    cmp3 = name in ("CMP3", "CMP3A")          # CMP3A: the first CMP3 (2026-10-18), the same CmpSlot
+    nknob = 22 if cmp3 else 19
+    if cmp3:
+        # CMP3: the MIX pairs per band; "mb.mw" etc. name band 0's (the locked pair: CMP2's one)
+        fields = [f for f in fields if f not in ("mb.mw", "mb.md", "mb.t_mw", "mb.t_md")]
+        fields += [f"mb.band[{b}].{k}" for b in range(3) for k in ("mw", "md", "t_mw", "t_md", "mi")]
     if name != "CMP0":
         fields += ["mb.scrub", "mb.rec_left", "reinits"]
     if every:
         fields = ["magic", "fresh", "blocks", "sc_ext", "trips", "last_thr", "last_atk", "last_rel", "last_mup",
                   "last_rat", "last_mix", "gr0", "gr1", "gr2", "grd", "word10", "word14",
                   "pad" if name == "CMP0" else "reinits"]
-        fields += [f"mb.knob[{i}]" for i in range(19)] + ["mb.dirty", "mb.lf_lo", "mb.lf_hi", "mb.t_lf_lo", "mb.t_lf_hi"]
+        fields += [f"mb.knob[{i}]" for i in range(nknob)] + ["mb.dirty", "mb.lf_lo", "mb.lf_hi", "mb.t_lf_lo", "mb.t_lf_hi"]
         fields += [f"mb.{c}.{k}" for c in ("c_lo", "c_hi") for k in ("a1", "a2", "a3", "k")]
         fields += [f"mb.{f}[{c}].{k}" for f in ("s1", "s1lp", "apl", "s2", "s2lp") for c in (0, 1) for k in ("ic1", "ic2")]
         fields += ["mb.sb0", "mb.sp", "mb.kx[0]", "mb.kx[1]", "mb.ky[0]", "mb.ky[1]", "mb.sc_ext"]
         fields += [f"mb.band[{b}].{k}" for b in range(3) for k in ("y1", "y2", "ca", "ca1", "cr", "cr1", "thr", "thr_lin",
                                                                    "rinv", "on", "mk", "mk_step", "t_mk", "hx[0]", "hx[1]",
                                                                    "hy[0]", "hy[1]")]
-        fields += ["mb.mw", "mb.md", "mb.t_mw", "mb.t_md", "mb.mix0", "mb.xw", "mb.xs", "mb.ctl_left", "mb.trips"]
+        if cmp3:
+            fields += [f"mb.band[{b}].{k}" for b in range(3) for k in ("mw", "md", "t_mw", "t_md", "mi")]
+            fields += ["mb.mix0", "mb.xw", "mb.xs", "mb.ctl_left", "mb.trips"]
+        else:
+            fields += ["mb.mw", "mb.md", "mb.t_mw", "mb.t_md", "mb.mix0", "mb.xw", "mb.xs", "mb.ctl_left", "mb.trips"]
         if name != "CMP0":
             fields += ["mb.scrub", "mb.rec_left"]
         fields += ["mb.buf_lo[0][0]", "mb.buf_lo[1][31]", "mb.buf_md[0][13]", "mb.buf_hi[1][7]", "mb.buf_key[0]",
@@ -417,7 +435,11 @@ printf("\\"band_bytes\\": %lu, \\"slot_bytes_mac\\": %lu}\\n", (unsigned long)si
     more = [str(x) for x in srcs if x.name == "cmp_tail.c"]
     subprocess.check_call(["clang", "-O0", "-DCMP_NATIVE"] + [f"-I{i}" for i in [glue.parent] + inc]
                           + ["-o", str(exe), str(src), str(mb)] + more, stderr=subprocess.DEVNULL)
-    return json.loads(subprocess.check_output([str(exe)]).decode())
+    off = json.loads(subprocess.check_output([str(exe)]).decode())
+    if cmp3 and not every:
+        for k in ("mw", "md", "t_mw", "t_md"):
+            off["mb." + k] = off[f"mb.band[0].{k}"]
+    return off
 
 
 def image_diff_any(ia, ib):
@@ -654,7 +676,7 @@ def stale_sources(name, info):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("name", nargs="?", default="CMP1", choices=["CMP0", "CMP1", "CMP2"])
+    ap.add_argument("name", nargs="?", default="CMP1", choices=["CMP0", "CMP1", "CMP2", "CMP3"])
     ap.add_argument("--quick", action="store_true", help="shorter runs (development)")
     ap.add_argument("--only", help="comma-separated proofs to run (a,b,c,d,e,f,g,h); the verdict then covers those")
     a = ap.parse_args()
@@ -678,7 +700,7 @@ def main():
            "ftd1_section7_sha256": finfo["section7"]["sha256"], "proofs_run": "".join(sorted(only))}
     cmp1 = NAME != "CMP0"
     REF = REFS.get(NAME, "CMP0")
-    tail = NAME == "CMP2"
+    tail = NAME in ("CMP2", "CMP3")
     if cmp1:
         s0, i0, c0 = image(REF)
         res["%s_section7_sha256" % REF.lower()] = i0["section7"]["sha256"]
@@ -981,7 +1003,7 @@ def main():
             ignore = [(SLOT, SLOT + 0x800), (0x2e6034, 0x2e6040 + 4 * tail), (0x2e6800, 0x2e7000), (0x308400, 0x310000),
                       STOCK_STATE, (V.STACK_LO, V.STACK_TOP), (TX[0], TX[0] + 0x1000), (TX[1], TX[1] + 0x1000)]
             if tail:
-                ignore += [TAILST, TAILCODE]
+                ignore += [TAILST, TAILCODE] + code4()
             for lo, hi in ((0x240000, 0x2c0000), (0x2c0000, 0x2f0000), (0x300000, 0x320000)):
                 a_ = rf.vm.read(lo, hi - lo)
                 b_ = rc.vm.read(lo, hi - lo)
@@ -1366,7 +1388,7 @@ def main():
         ignore = [(SLOT, SLOT + 0x800), (0x2e6000, 0x2e6040 + 4 * tail), (0x2e6800, 0x2e7000), (0x308400, 0x310000),
                   (V.STACK_LO, V.STACK_TOP), (TX[0], TX[0] + 0x1000), (TX[1], TX[1] + 0x1000)]
         if tail:
-            ignore += [TAILST, TAILCODE]
+            ignore += [TAILST, TAILCODE] + code4() + code4(REF)
         total = 0
         for name, (words, raw, each, m) in hcfg.items():
             L, R = prog[0][:32 * m], prog[1][:32 * m]

@@ -236,7 +236,9 @@ static void test_comp_laws(void)
             if (k == 127 && b) continue;
             if (s->band[b].ca != tab[MB_TAB_ATK + k] || s->band[b].cr != tab[MB_TAB_REL + k]) bad++;
             if (s->band[b].ca1 != 1.0f - tab[MB_TAB_ATK + k] || s->band[b].cr1 != 1.0f - tab[MB_TAB_REL + k]) bad++;
-            if (s->t_mw != tab[MB_TAB_MIX + k] || s->t_md != tab[MB_TAB_MIX + 127 - k] || s->mix0 != (k == 0)) bad++;
+            if (s->band[0].t_mw != tab[MB_TAB_MIX + k] || s->band[0].t_md != tab[MB_TAB_MIX + 127 - k] || s->mix0 != (k == 0)) bad++;
+            if (s->band[1].t_mw != s->band[0].t_mw || s->band[2].t_mw != s->band[0].t_mw || s->band[1].t_md != s->band[0].t_md ||
+                s->band[2].t_md != s->band[0].t_md) bad++;          /* CMP3: MB_MIX sets all three bands */
         }
     for (k = 0; k <= 8; k++) {
         mbcomp_set(s, MB_P(2, MB_RAT), (float)k);
@@ -440,8 +442,7 @@ static void test_mix(void)
     CHECK(mbcomp_gr_db(s, 1) < -10.0, "the detector does not run at MIX 0 (meter %.1f dB)", mbcomp_gr_db(s, 1));
     /* the stock cold start: both gains from 0 (the stock init leaves the ramps at the MIX default 0.0); the dry
        gain then follows cur = 1 + 0.995 (cur - 1) per sample, each value used before the update */
-    s->md = 0.0f;
-    s->mw = 0.0f;
+    for (i = 0; i < 3; i++) { s->band[i].md = 0.0f; s->band[i].mw = 0.0f; }
     mbcomp_process(s, x, xr, NULL, NULL, yl, yr, (int)N);
     md = 0.0f;
     td = 1.0f;
@@ -451,8 +452,8 @@ static void test_mix(void)
         md = td + 0.995f * (md - td);
     }
     printf("  MIX 0 from a cold start: %ld samples off the stock one-pole model; dry gain settles at %.8f (%08x)\n",
-           bad, s->md, fx_f2i(s->md));
-    CHECK(bad == 0 && fx_f2i(s->md) == 0x3f7fff9cu, "cold-start MIX 0: %ld off, gain %08x (stock 0x3f7fff9c)", bad, fx_f2i(s->md));
+           bad, s->band[0].md, fx_f2i(s->band[0].md));
+    CHECK(bad == 0 && fx_f2i(s->band[0].md) == 0x3f7fff9cu, "cold-start MIX 0: %ld off, gain %08x (stock 0x3f7fff9c)", bad, fx_f2i(s->band[0].md));
     /* MIX 127 snapped: the wet alone; MIX 64: T[64] x wet + T[63] x dry with the dry the band sum */
     {
         float *w = fbuf(N), *wr = fbuf(N);
@@ -750,6 +751,7 @@ static void test_restart_any_field(void)
             truth[MB_P(b, MB_MUP)] = 64.0f;
         }
         truth[MB_MIX] = key ? 127.0f : 64.0f;
+        for (b = 0; b < 3; b++) truth[MB_P(b, MB_BMIX)] = truth[MB_MIX];      /* CMP3: MB_MIX sets the three */
         truth[MB_SCS] = (float)key;
         mb_apply(S0, truth);
         mbcomp_snap(S0);
@@ -791,8 +793,10 @@ static void test_restart_any_field(void)
                 /* the crossover glide is a smoother (40 ms, and it lands on its target below 1e-5 octave): within
                    0.001 octave of the undisturbed run's at the end */
                 if (S->sb0 != R->sb0 || S->sp != R->sp || S->t_lf_lo != R->t_lf_lo || S->t_lf_hi != R->t_lf_hi ||
-                    fabs(S->lf_lo - R->lf_lo) > 1e-3 || fabs(S->lf_hi - R->lf_hi) > 1e-3 || S->t_mw != R->t_mw ||
-                    S->t_md != R->t_md || S->mix0 != R->mix0 || S->sc_ext != R->sc_ext || S->rec_left != 0 ||
+                    fabs(S->lf_lo - R->lf_lo) > 1e-3 || fabs(S->lf_hi - R->lf_hi) > 1e-3 || S->band[0].t_mw != R->band[0].t_mw ||
+                    S->band[1].t_mw != R->band[1].t_mw || S->band[2].t_mw != R->band[2].t_mw ||
+                    S->band[0].t_md != R->band[0].t_md || S->band[1].t_md != R->band[1].t_md ||
+                    S->band[2].t_md != R->band[2].t_md || S->mix0 != R->mix0 || S->sc_ext != R->sc_ext || S->rec_left != 0 ||
                     S->tab != R->tab) mism++;
                 if (S->lf_lo == R->lf_lo && S->lf_hi == R->lf_hi &&
                     (memcmp(&S->c_lo, &R->c_lo, sizeof S->c_lo) || memcmp(&S->c_hi, &R->c_hi, sizeof S->c_hi))) mism++;
@@ -857,7 +861,7 @@ static void test_quiet_return(void)
             mbcomp_snap(s);
             for (long blk = 0; blk < NB; blk++) {
                 float bl[32], br2[32];
-                float mw = s->mw, md = s->md;
+                float mw = s->band[0].mw, md = s->band[0].md;
                 memcpy(bl, x + 32 * blk, sizeof bl);
                 memcpy(br2, xr + 32 * blk, sizeof br2);
                 if (m > 0 && blk == AT) bl[5] = fx_i2f(0x7fc00000u);
@@ -865,8 +869,7 @@ static void test_quiet_return(void)
                 if (m == 2 && blk == AT) {      /* CMP0's reset: no instant attack, MIX gains as they were */
                     s->rec_left = 0;
                     mb_targets(s, 7);
-                    s->mw = mw;
-                    s->md = md;
+                    for (b = 0; b < 3; b++) { s->band[b].mw = mw; s->band[b].md = md; }
                 }
             }
             pk[m] = 0; rm[m] = 0;
@@ -1401,7 +1404,8 @@ static void test_extremes(void)
             CKF(mb->band[b].y1); CKF(mb->band[b].y2); CKF(mb->band[b].mk); CKF(mb->band[b].mk_step);
             CKF(mb->band[b].hx[0]); CKF(mb->band[b].hx[1]); CKF(mb->band[b].hy[0]); CKF(mb->band[b].hy[1]);
         }
-        CKF(mb->mw); CKF(mb->md); CKF(mb->xw); CKF(mb->lf_lo); CKF(mb->lf_hi);
+        for (b = 0; b < 3; b++) { CKF(mb->band[b].mw); CKF(mb->band[b].md); }
+        CKF(mb->xw); CKF(mb->lf_lo); CKF(mb->lf_hi);
         CKF(fl->lc); CKF(fl->dep); CKF(fl->off); CKF(fl->ofs); CKF(fl->lh); CKF(fl->da); CKF(fl->fb); CKF(fl->fb_i);
         CKF(fl->pg); CKF(fl->pg_i); CKF(fl->hpG); CKF(fl->sl_h);
 #undef CKF

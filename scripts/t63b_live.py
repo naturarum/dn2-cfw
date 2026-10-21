@@ -18,7 +18,8 @@ At every `png NAME` of the script, also records (into DIR/t63b.json, by screen n
 --fake-gr writes those half-words (Q15 of 1 - g) at the start of every drawAll (0x4011d60a): the
 emulator runs no DSP, so the band pages' meters read what this puts there. --list-reads counts the
 reads of the stock MIXER page list 0x401e0434 (5 longs) by PC. --set-k writes live kit FX words
-(K=value, value << 8) once at the start. --force-ob8 stands in for an OUTBOX 8 on USB (which the
+(K=value, value << 8) once at the start. --stock-sites (CMP3) gives comp-link 0.2's three storage sites their stock
+bytes back at the start. --force-ob8 stands in for an OUTBOX 8 on USB (which the
 emulator does not model): FUN_400f2e54 (connected) and FUN_400f2f1e (outputs) answer 1, and the
 MIXER view's page list gets the Outbox 8 page (26) at its end, as the view's constructor pushes it
 when one is connected (FUN_40070bc6); the list is moved to a buffer with room (0x47B00000) so that
@@ -50,6 +51,7 @@ OB8_LIST = 0x47B00000
 
 class S:
     force_ob8 = False
+    stock_sites = False
     syms = {}
     fake = None
     set_k = {}
@@ -107,7 +109,7 @@ def grab(uc):
     fx = [struct.unpack('>H', bytes(uc.mem_read(kit + FXOFF + 2 * k, 2)))[0] for k in range(101)]
     out = {'mixer': mixer(uc), 'texts': [list(t) for t in S.last], 'frame': S.frames,
            'k59': fx[59] >> 8, 'k60_69': [v >> 8 for v in fx[60:70]], 'k70_86': [v >> 8 for v in fx[70:87]],
-           'k70_86_raw': ['%04x' % v for v in fx[70:87]],
+           'k70_86_raw': ['%04x' % v for v in fx[70:87]], 'k87_89': [v >> 8 for v in fx[87:90]],
            'rx_hw8_11': list(struct.unpack('>4h', bytes(uc.mem_read(RX + 16, 8))))}
     for nm, a in S.syms.items():
         if nm == 'compui_bar':
@@ -141,6 +143,11 @@ def install_more(m, args):
         uc.mem_write(OB8_LIST, b''.join(struct.pack('>I', x) for x in pages))
         uc.mem_write(S.mpv + 0x7c, struct.pack('>III', OB8_LIST, OB8_LIST + 4 * len(pages), OB8_LIST + 0x40))
         print('[t63b] --force-ob8: MIXER view now %s' % mixer(uc), flush=True)
+    if S.stock_sites:
+        # CMP3 (2026-10-18): comp-link 0.2's three storage sites given their stock bytes back (the base runs)
+        for a, sb in ((0x400dcf34, '2f0b2f0a246f000c'), (0x400dcef0, '2f0b2f0a226f000c'), (0x401da4f0, '4002ffca')):
+            uc.mem_write(a, bytes.fromhex(sb))
+        print('[t63b] --stock-sites: the FX record serializer, loader and FxSetup slot 17 as stock', flush=True)
     kit = rd32(uc, KITPTR)
     for k, v in S.set_k.items():
         uc.mem_write(kit + FXOFF + 2 * k, struct.pack('>H', v << 8))
@@ -195,6 +202,9 @@ def main():
     if '--force-ob8' in argv:
         argv.remove('--force-ob8')
         S.force_ob8 = True
+    if '--stock-sites' in argv:
+        argv.remove('--stock-sites')
+        S.stock_sites = True
     orig_install = t65_live.install
 
     def install(m, args):

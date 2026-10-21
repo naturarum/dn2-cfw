@@ -131,6 +131,14 @@ class VM:
         lib.vm_set_mmr_strict(self.h, 1 if strict_mmr else 0)
         lib.vm_set_align_strict(self.h, 0)
 
+    def __del__(self):
+        # the C vm_t (~9.6 MB) is calloc'd by vm_new; without this every VM leaked it, and a long
+        # inject_cmp.py run grew each worker to ~30 GB (2026-10-18, the machine ran out of memory)
+        h = getattr(self, "h", None)
+        if h is not None and h.value:
+            self.lib.vm_free(h)
+            self.h = C.c_void_p(0)
+
     # ---------------- memory ----------------
     def _region(self, addr, n):
         for name, (base, size, buf) in self.mem.items():
