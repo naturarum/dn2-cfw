@@ -126,11 +126,19 @@ static int se_heads(int m)
 }
 int spaceecho_heads(float mode_knob) { return se_heads((int)(fx_clampf(mode_knob, 0.0f, 6.0f) + 0.5f)); }
 
+/* INTENSITY on the stock delay's FDBK law (T5.4, SC01; the owner 2026-10-18: "Yes give our delay the stock law"):
+   the loop gain is FDBK / 64, so the display's 100 % (knob 64) is endless repeats and above it the repeats grow
+   until the tape's saturator (and, on the way out, the wet ceiling) holds them, as on the stock delay (127: 198 %).
+   SC02 (the owner 2026-10-21: MODE 4 running away at about FDBK 32 was "weird"): the playing heads share it, each
+   feeding back 1/2 or 1/3 of it (se_mix_targets), so 64 is endless in every MODE; SC01 gave each head FDBK / 64, so
+   two heads ran away from 32 and three from 21. SE01 had 1.1 x^1.5 here (x = FDBK / 127). A leaf with no call:
+   1/64 is exact, so the gain is the knob scaled exactly; the knob is clamped to 0..127 as fx_knob01 clamps it. */
 float spaceecho_fb(float knob)
 {
-    float x = fx_knob01(knob);
-    if (x <= 0.0f) return 0.0f;
-    return 1.1f * x * fx_exp2(0.5f * fx_log2(x));       /* 1.1 x^1.5 */
+    float x = knob;
+    if (x > 127.0f) x = 127.0f;
+    if (x > 0.0f) return x * 0.015625f;
+    return 0.0f;
 }
 
 float spaceecho_center_hz(float knob) { return fx_exp2(SE_LC0 + SE_CTR_OCT * fx_knob01(knob)); }
@@ -233,10 +241,12 @@ static void se_pan_gains(float p, float *gl, float *gr)
    records on A; the feedback crosses tracks, so a signal's passes alternate between A and
    B; heads 1 and 3 play A at -w (left) and B at +w, head 2 the other way round. RND: the
    input to mono on both tracks, feedback on the same track, head k plays (A+B)/2 at its
-   random position w x pos_k. Every head is scaled by its MODE gain (0 or 1). */
+   random position w x pos_k. Every head is scaled by its MODE gain (0 or 1); into the feedback
+   also by its share of the loop gain (1, 1/2 or 1/3 of it with one, two or three heads playing).
+   An if chain, not a table: selcc bug 3 (notes/T3.11 12.7). */
 static void se_mix_targets(const SpaceEcho *s, float *t)
 {
-    float w = s->t_wid, g[3], al, ar, bl, br, x;
+    float w = s->t_wid, g[3], al, ar, bl, br, x, sh;
     int k, hm = se_heads(s->mode);
     for (k = 0; k < SE_NMIX; k++) t[k] = 0.0f;
     g[0] = 0.0f;
@@ -245,9 +255,12 @@ static void se_mix_targets(const SpaceEcho *s, float *t)
     if (hm & 1) g[0] = 1.0f;
     if (hm & 2) g[1] = 1.0f;
     if (hm & 4) g[2] = 1.0f;
-    t[8] = g[0];
-    t[9] = g[1];
-    t[10] = g[2];
+    sh = 1.0f;
+    if (hm == 3 || hm == 5 || hm == 6) sh = 0.5f;
+    if (hm == 7) sh = 0.33333334f;
+    t[8] = g[0] * sh;
+    t[9] = g[1] * sh;
+    t[10] = g[2] * sh;
     if (s->pan == SE_PAN_ALT) {
         t[0] = 0.5f; t[1] = 0.5f;               /* A <- (L+R)/2, B <- nothing */
         t[5] = 1.0f; t[6] = 1.0f;               /* A <- sum B, B <- sum A */
@@ -330,7 +343,7 @@ void spaceecho_init(SpaceEcho *s, uint32_t seed)
     s->M = 0.0f;
     s->knob[SE_TIME] = 31.0f;   /* head 1 a quarter note, heads 2 and 3 a half and a dotted half */
     s->knob[SE_MODE] = 3.0f;    /* heads 1+2 */
-    s->knob[SE_INT] = 50.0f;    /* 27 % per head */
+    s->knob[SE_INT] = 50.0f;    /* 78 %, 39 % per head (SC01: 78 % per head; SE01's law: 27 %) */
     s->knob[SE_AGE] = 40.0f;
     s->knob[SE_CTR] = 64.0f;
     s->knob[SE_BW] = 127.0f;    /* no filter */

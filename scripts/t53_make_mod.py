@@ -205,12 +205,13 @@ if len(set(addrs)) != len(addrs):
 
 mod = {
     'id': 'fx-echo',
-    'version': '0.1',
-    'title': 'Echo page: the Space Echo on one page (SE01)',
+    'version': '0.2',
+    'title': 'Echo page: the Space Echo on one page (SE01, SC01)',
     'category': 'Examples',
     'license': 'GPL-2.0-or-later',
     'author': 'naturarum',
-    'description': 'EXPERIMENT: emulator-tested only, never run on a unit. For dn2-cfw\'s SE01 build, whose '
+    'description': 'EXPERIMENT: emulator-tested only, never run on a unit (0.1 in SE01, 0.2 in SC01). For dn2-cfw\'s '
+                   'SE01 and SC01 builds, whose '
                    'DSP runs a Space Echo in the delay slot and a flanger in the chorus slot. Supersedes '
                    'fx-rename: the chorus page and its sends are named Flanger/FLG as there, the delay page '
                    'and its sends Echo/ECHO (the page box says ECH). The delay page becomes TIME MODE WID '
@@ -218,7 +219,9 @@ mod = {
                    '123), HPF/LPF named CNTR/BW with the filter picture drawing the echo\'s band, and the hidden Delay FX Routing '
                    'row made AGE (0..127) and placed on the empty knob G. Every knob keeps its MIDI CC, '
                    'storage and DSP frame word; MODE and AGE are never p-lockable; AGE has no CC. On a '
-                   'stock DSP the names would be wrong.',
+                   'stock DSP the names would be wrong. 0.2: AGE shows its value while it is turned (bit 2 of '
+                   'its display flags, the stock routing row\'s "no value text", cleared; bit 3, never '
+                   'p-lockable, kept).',
     'device': 'digitone-mk2',
     'os': '1.12',
     'sources': ['fx_echo.c', 'graph.s'],

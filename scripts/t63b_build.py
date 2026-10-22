@@ -40,7 +40,8 @@ CMP3 (2026-10-18, --stage CMP3): core 0.2, fx-rename 0.1, param-grow 0.1 + param
 0x152..0x154, k 87..89, copied from the stock MIX row) + comp-ui-dn2 0.2 (each band page's H is its band's mix) +
 comp-link-dn2 0.2 (the frame tail, and the band values saved per kit: the FX record serializer 0x400dcf34 and loader
 0x400dcef0 hooked, FxSetup's vtable slot 17 0x401da4f0 -> compl_update); defaults --name C3EM --out out/T6.3/CMP3,
-main-only reference C3MO. Built from the fork's working tree; since CMP3 the CMP1 and CMP2 stages build every mod from
+main-only reference C3MO. Built from the fork's working tree until SC01, since then from the fork's commit 4b1384b
+(scripts/elk_pin.py REV_CMP3: SC01 moved comp-link-dn2 to 0.3); since CMP3 the CMP1 and CMP2 stages build every mod from
 the fork's commit e10bb05 (scripts/elk_pin.py REV_CMP2), where those mods are as CMP1 and CMP2 shipped them, so their
 main OS still rebuild byte for byte. CMP3 adds to CMP2's checks: comp-link's four sites hold the planned bytes, the 20
 rows (the mixes look 0x9e, the stock MIX's text and range, default 0), H on each page is its band's mix, comp-link's
@@ -121,10 +122,11 @@ STAGES = {
                  main_sha=CMP1_MAIN_SHA, versions=VERSIONS, rev=elk_pin.REV_CMP2),
     'CMP2': dict(set=SET + ['comp-link'], main_only='C2MO', name='C2EM', out=os.path.join(ROOT, 'out', 'T6.3', 'CMP2'),
                  main_sha=CMP2_MAIN_SHA, versions=dict(VERSIONS, **{'comp-link': '0.1'}), rev=elk_pin.REV_CMP2),
-    # CMP3: the fork's working tree (param-rows 0.3, comp-ui 0.2, comp-link 0.2)
+    # CMP3: param-rows 0.3, comp-ui 0.2, comp-link 0.2; since SC01 (comp-link 0.3 in the working tree) from the fork's
+    # commit 4b1384b (scripts/elk_pin.py REV_CMP3), where those mods are as CMP3 shipped them
     'CMP3': dict(set=SET + ['comp-link'], main_only='C3MO', name='C3EM', out=os.path.join(ROOT, 'out', 'T6.3', 'CMP3'),
                  main_sha=CMP3_MAIN_SHA, versions=dict(VERSIONS, **{'comp-ui': '0.2', 'param-rows': '0.3',
-                                                                     'comp-link': '0.2'}), rev=None),
+                                                                     'comp-link': '0.2'}), rev=elk_pin.REV_CMP3),
 }
 LINK_SITE, DRIVER = 0x40025e9e, 0x400cf922
 # comp-link 0.2's storage sites: the FX record serializer and loader (entry jmp + nop), FxSetup's vtable slot 17

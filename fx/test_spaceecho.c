@@ -268,7 +268,10 @@ static void test_se_intensity(void)
     long n;
     int m;
     printf("space echo INTENSITY: echo-to-echo ratio of one head = the law; full INTENSITY with a narrow band held\n");
-    CHECK(spaceecho_fb(0) == 0.0f && fabs(spaceecho_fb(127) - 1.1) < 1e-6, "INT law ends %g %g", spaceecho_fb(0), spaceecho_fb(127));
+    /* the stock FDBK law (SC01): FDBK / 64, exact; 64 = 100 %, 127 = 198 % (shared by the playing heads since SC02) */
+    CHECK(spaceecho_fb(0) == 0.0f && spaceecho_fb(-3) == 0.0f && spaceecho_fb(64) == 1.0f
+          && spaceecho_fb(127) == 127.0f / 64.0f && spaceecho_fb(300) == 127.0f / 64.0f && spaceecho_fb(32.5f) == 32.5f / 64.0f,
+          "INT law %g %g %g %g", spaceecho_fb(0), spaceecho_fb(64), spaceecho_fb(127), spaceecho_fb(300));
     {
         static const float iv[] = { 32, 64, 100 };
         size_t k;
@@ -297,10 +300,68 @@ static void test_se_intensity(void)
         spaceecho_process(s, x, x, yl, yr, (int)N);
         for (n = 0; n < N; n++) { if (fabs(yl[n]) > pk) pk = fabs(yl[n]); if (fabs(yr[n]) > pk) pk = fabs(yr[n]); }
         tail = rms(yl, N - 48000, N);
-        printf("  heads 1+2+3, INT 127 (3 x 110 %%), %s: peak %.3f, RMS of the last second %.3f (held by the saturator)\n",
+        printf("  heads 1+2+3, INT 127 (198 %%, 66 %% per head), %s: peak %.3f, RMS of the last second %.3f (held by the saturator)\n",
                m ? "BW 127, AGE 0" : "BW 0 (narrow, resonant), AGE 64", pk, tail);
         CHECK(pk <= SE_CEIL && tail > 0.05, "runaway: peak %.3f, tail %.3f", pk, tail);
         CHECK(fabs(rms(yl, N - 48000, N) - rms(yl, N - 96000, N - 48000)) < 0.5 * tail, "runaway level unsteady");
+    }
+    free(s); free(x); free(yl); free(yr);
+}
+
+/* ---------- INTENSITY shared by the playing heads (SC02): 64 is endless in every MODE ---------- */
+
+static void test_se_share(void)
+{
+    SpaceEcho *s = malloc(sizeof *s);
+    const long D = 6000, N = 48000 * 8;
+    float *x = fbuf(N), *yl = fbuf(N), *yr = fbuf(N);
+    /* per MODE: the head count, the window of the first echo and of the first pass that the feedback adds (in D),
+       and whether a head's own first echo lands there too (MODE 1+2, 1+2+3 at 2D: 1 + the pass) */
+    static const struct { int heads, first, pass, plus1; } md[7] = {
+        { 1, 1, 2, 0 }, { 1, 2, 4, 0 }, { 1, 3, 6, 0 }, { 2, 1, 2, 1 }, { 2, 2, 4, 0 }, { 2, 1, 2, 0 }, { 3, 1, 2, 1 } };
+    static const float iv[] = { 32, 64, 100 };
+    long n;
+    int m;
+    size_t k;
+    printf("space echo INTENSITY shared (SC02): the playing heads share FDBK/64 (each 1/n of it), so a pass is FDBK/64/n\n"
+           "  per head and FDBK 64 holds in every MODE (a 1 kHz burst at 0.01; TIME 7 at 120 BPM: D = 6000 samples)\n");
+    for (m = 0; m < 7; m++) {
+        printf("  MODE %d:", m + 1);
+        for (k = 0; k < 3; k++) {
+            double r, want = (double)spaceecho_fb(iv[k]) / md[m].heads + md[m].plus1;
+            se_clean(s, 7, 120, (float)m);
+            spaceecho_set(s, SE_INT, iv[k]);
+            spaceecho_snap(s);
+            memset(x, 0, sizeof(float) * (size_t)N);
+            for (n = 0; n < 480; n++) x[n] = (float)(0.01 * sin(2 * M_PI * 1000.0 * n / 48000.0));
+            spaceecho_process(s, x, x, yl, yr, (int)(D * md[m].pass + 1000));
+            r = rms(yl, D * md[m].pass, D * md[m].pass + 480) / rms(yl, D * md[m].first, D * md[m].first + 480);
+            printf(" FDBK %3.0f %.4f (want %.4f)", iv[k], r, want);
+            CHECK(fabs(r / want - 1) < 0.01, "MODE %d FDBK %.0f: pass ratio %.4f vs %.4f", m + 1, iv[k], r, want);
+        }
+        printf("\n");
+    }
+    /* the level 3..4 s after the burst against 6..7 s: 64 holds, 56 dies away, 72 grows, in every MODE */
+    for (m = 0; m < 7; m++) {
+        static const float hv[] = { 56, 64, 72 };
+        printf("  MODE %d, level change from 3-4 s to 6-7 s:", m + 1);
+        for (k = 0; k < 3; k++) {
+            double a, b, db;
+            se_clean(s, 7, 120, (float)m);
+            spaceecho_set(s, SE_INT, hv[k]);
+            spaceecho_snap(s);
+            memset(x, 0, sizeof(float) * (size_t)N);
+            for (n = 0; n < 480; n++) x[n] = (float)(0.01 * sin(2 * M_PI * 1000.0 * n / 48000.0));
+            spaceecho_process(s, x, x, yl, yr, (int)N);
+            a = rms(yl, 3 * 48000, 4 * 48000);
+            b = rms(yl, 6 * 48000, 7 * 48000);
+            db = 20 * log10(b / a);
+            printf(" FDBK %2.0f %+.2f dB", hv[k], db);
+            if (k == 0) CHECK(db < -2.0, "MODE %d FDBK 56: %+.2f dB, not dying away", m + 1, db);
+            if (k == 1) CHECK(fabs(db) < 0.5, "MODE %d FDBK 64: %+.2f dB, not holding", m + 1, db);
+            if (k == 2) CHECK(db > 2.0, "MODE %d FDBK 72: %+.2f dB, not growing", m + 1, db);
+        }
+        printf("\n");
     }
     free(s); free(x); free(yl); free(yr);
 }
@@ -317,7 +378,7 @@ static void test_se_ceiling(void)
     float prev = 0.0f;
     printf("space echo wet ceiling: one head, INTENSITY 0, a ramp 0..1.5 into the tape: the echo is lim(sat(input)),\n"
            "  bit for bit, rises monotonically, and is the plain sat(input) up to the knee 0.5; then MODE 1+2+3 at\n"
-           "  INTENSITY 127 (3 x 110 %%), BW 127, AGE 0, a held tone and 3 s of silence, in MONO, ALT and RND at full width\n");
+           "  INTENSITY 127 (198 %%, 66 %% per head), BW 127, AGE 0, a held tone and 3 s of silence, in MONO, ALT and RND at full width\n");
     for (n = 0; n < N; n++) x[n] = 1.5f * (float)n / (float)N;
     se_clean(s, 7, 120, 0);
     spaceecho_process(s, x, x, yl, yr, (int)N);
@@ -456,7 +517,9 @@ static void test_se_age(void)
     for (k = 0; k < 4; k++) {
         double sig, res;
         se_clean(s, 7, 120, 0);
-        spaceecho_set(s, SE_INT, 50); spaceecho_set(s, SE_AGE, ages[k]);
+        /* INT 17.5: 27 % per head on the stock law, the loop gain SE01's INT 50 gave (1.1 x^1.5); at 78 % the
+           echo's own build-up over the window (a step every repeat) would count as noise here */
+        spaceecho_set(s, SE_INT, 17.5f); spaceecho_set(s, SE_AGE, ages[k]);
         spaceecho_snap(s);
         s->t_wow = 0.0f; s->t_flut = 0.0f; s->wowA = 0.0f; s->flutA = 0.0f;   /* noise only */
         spaceecho_process(s, x, x, yl, yr, (int)N);
@@ -675,6 +738,7 @@ static void test_spaceecho(void)
     test_se_transparent();
     test_se_band();
     test_se_intensity();
+    test_se_share();
     test_se_ceiling();
     test_se_pan();
     test_se_age();

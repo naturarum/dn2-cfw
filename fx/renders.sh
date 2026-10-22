@@ -30,6 +30,10 @@ r() {
 }
 # a reference render shown in its own row of the page (T5.2: the one-head tape delay, FTD1)
 tp() { KIND=tape r "$@"; }
+# SC01: the same render with SE01's Space Echo (tools/dspsplice/src/se01/spaceecho.c: INTENSITY 1.1 (INT/127)^1.5)
+rse01() { R="$OUT/bin/fxrender_se01" KIND=se01 r "$@"; }
+# SC02: the same render with SC01's Space Echo (tools/dspsplice/src/sc01/spaceecho.c: FDBK/64 per head)
+rsc01() { R="$OUT/bin/fxrender_sc01" KIND=sc01 r "$@"; }
 
 TD="-fx tapedelay -tail 4 -bpm 120 -vol 64"
 CLEAN="-p WOW=0 -p FLUT=0 -p AGE=0"
@@ -37,25 +41,30 @@ CLEAN="-p WOW=0 -p FLUT=0 -p AGE=0"
 echo "space echo (T5.2)"
 # The Space Echo: three heads at 1x, 2x, 3x the head-1 time. Each group also has FTD1 (the one-head tape
 # delay as it runs on the unit: RES 32, WOW 20, FLUT 20, AGE 24, DRIV 32 fixed, notes/T3.8 section 9) at the
-# same head-1 time and the same feedback per head (FDBK = 127 x (INT/127)^1.5), and, after make stock, the
-# stock delay at its closest knobs.
+# same head-1 time and the same feedback per head, and, after make stock, the stock delay at its closest knobs.
+# SC01 (2026-10-21): INTENSITY is on the stock delay's FDBK law, INT/64 per head (64 = 100 %); every INT below was
+# converted from SE01's 1.1 (INT/127)^1.5 to the same gain per head (INT 64 -> 25.2, 50 -> 17.4, ...), so these
+# renders sound as before (FTD1's FDBK, 1.1 FDBK/127 per pass, unchanged). The new law itself: group se_fdbk.
+# SC02 (2026-10-21): the playing heads share that gain (1/2 or 1/3 each), so 64 is endless in every MODE; every INT
+# with two or three heads below was multiplied by the head count (25.2 -> 50.4, 17.4 -> 52.2, ...), so the gain per
+# head and the sound stay as they were. The change itself: group se_share.
 SE="-fx spaceecho -tail 5 -bpm 120 -vol 64 -gain -4"
 TP="-fx tapedelay -tail 5 -bpm 120 -vol 64 -gain -4 -p RES=32 -p WOW=20 -p FLUT=20 -p AGE=24 -p DRIV=32"
-SEP="-p TIME=15 -p INT=64 -p AGE=48 -p BW=127 -p PAN=1 -p WID=100"
+SEP="-p TIME=15 -p INT=25.2 -p AGE=48 -p BW=127 -p PAN=1 -p WID=100"
 
-g se_modes pluck.wav "Space Echo: the seven head modes (plucked melody)" "T5.2. Three playback heads on one tape at 1x, 2x and 3x the head-1 time (Roland's 1:2:3). TIME 15: head 1 an eighth note, head 2 a quarter, head 3 a dotted quarter. MODE picks the heads (RE-202 order: 1, 2, 3, 1+2, 2+3, 1+3, 1+2+3); the feedback is the sum of the heads that sound, so more heads repeat denser. INTENSITY 64 (39 % per head), AGE 48, no band filter (BW 127), ALT at WIDTH 100. Send mix, VOL 64, the input 4 dB down (the heads add up, and a hard-panned head is +3 dB on its side)."
+g se_modes pluck.wav "Space Echo: the seven head modes (plucked melody)" "T5.2. Three playback heads on one tape at 1x, 2x and 3x the head-1 time (Roland's 1:2:3). TIME 15: head 1 an eighth note, head 2 a quarter, head 3 a dotted quarter. MODE picks the heads (RE-202 order: 1, 2, 3, 1+2, 2+3, 1+3, 1+2+3); the feedback is the sum of the heads that sound, so more heads repeat denser. 39 % per head: INTENSITY 25.2 on one head, 50.4 on two (the heads share it), AGE 48, no band filter (BW 127), ALT at WIDTH 100. Send mix, VOL 64, the input 4 dB down (the heads add up, and a hard-panned head is +3 dB on its side)."
 r se_modes se_m1 "MODE 1: head 1" "Head 1 alone: an eighth-note tape echo, the one-head delay's job." $SE -i $D/pluck.wav $SEP -p MODE=0
 r se_modes se_m2 "MODE 2: head 2" "Head 2 alone: a quarter note." $SE -i $D/pluck.wav $SEP -p MODE=1
 r se_modes se_m3 "MODE 3: head 3" "Head 3 alone: a dotted quarter (3 eighths)." $SE -i $D/pluck.wav $SEP -p MODE=2
-r se_modes se_m12 "MODE 4: heads 1+2" "Eighth and quarter: the repeats fill the eighths." $SE -i $D/pluck.wav $SEP -p MODE=3
-r se_modes se_m23 "MODE 5: heads 2+3" "Quarter and dotted quarter: a lopsided, swinging pattern." $SE -i $D/pluck.wav $SEP -p MODE=4
-r se_modes se_m13 "MODE 6: heads 1+3" "Eighth and dotted quarter." $SE -i $D/pluck.wav $SEP -p MODE=5
-r se_modes se_m123 "MODE 7: heads 1+2+3, INTENSITY 50" "All three heads. INTENSITY down to 50 (27 % per head, 82 % summed): three heads feeding back run away from about 57." $SE -i $D/pluck.wav $SEP -p MODE=6 -p INT=50
-r se_modes se_mstep "MODE steps through all seven" "MODE 1, 2, 3, 1+2, 2+3, 1+3, 1+2+3, one every 2 s: heads fade in and out in 20 ms, no clicks; what is on the tape keeps playing from the heads that stay." $SE -i $D/pluck.wav $SEP -p INT=50 -p MODE=0 -at 2 MODE=1 -at 4 MODE=2 -at 6 MODE=3 -at 8 MODE=4 -at 10 MODE=5 -at 12 MODE=6
+r se_modes se_m12 "MODE 4: heads 1+2" "Eighth and quarter: the repeats fill the eighths." $SE -i $D/pluck.wav $SEP -p MODE=3 -p INT=50.4
+r se_modes se_m23 "MODE 5: heads 2+3" "Quarter and dotted quarter: a lopsided, swinging pattern." $SE -i $D/pluck.wav $SEP -p MODE=4 -p INT=50.4
+r se_modes se_m13 "MODE 6: heads 1+3" "Eighth and dotted quarter." $SE -i $D/pluck.wav $SEP -p MODE=5 -p INT=50.4
+r se_modes se_m123 "MODE 7: heads 1+2+3, INTENSITY 52.2" "All three heads. INTENSITY 52.2 (82 %, 27 % per head): the loop runs away from 64 as on one head (SC01: from about 21, SE01's law: 57)." $SE -i $D/pluck.wav $SEP -p MODE=6 -p INT=52.2
+r se_modes se_mstep "MODE steps through all seven" "MODE 1, 2, 3, 1+2, 2+3, 1+3, 1+2+3, one every 2 s, INTENSITY 40 (62 % shared by the heads that play): heads fade in and out in 20 ms, no clicks; what is on the tape keeps playing from the heads that stay, and the repeats die away about as fast in every mode." $SE -i $D/pluck.wav $SEP -p INT=40 -p MODE=0 -at 2 MODE=1 -at 4 MODE=2 -at 6 MODE=3 -at 8 MODE=4 -at 10 MODE=5 -at 12 MODE=6
 tp se_modes ftd_modes "FTD1: one head, same time and feedback" "The one-head tape delay as it runs on the unit (RES 32, WOW 20, FLUT 20, AGE 24, DRIV 32 fixed; its own HPF 50 Hz and LPF 6.5 kHz), TIME 15, FDBK 45 (the same 39 % per pass as INTENSITY 64), WID 127 (ping-pong, as ALT)." $TP -i $D/pluck.wav -p TIME=15 -p FDBK=45 -p HPF=22 -p LPF=102 -p WID=127
 
-g se_age pad.wav "Space Echo: AGE, one knob for all the wear (held chords)" "Wow, flutter, hiss, crackle, top-end loss and a little more drive, all on AGE. 0 = clean tape (no wow, no noise, no filter: the echo is the input through the tape saturator), 64 = a vintage machine, 127 = worn out. Wow and flutter act like a real tape: each head plays at the tape speed now against the speed when that bit was recorded, so the farther heads wobble differently. MODE 4 (heads 1+2), TIME 31 (a quarter and a half note), INTENSITY 60, BW 127, MONO at WIDTH 127 (the pad's own stereo). Send mix, VOL 64, the input 4 dB down (the heads add up, and a hard-panned head is +3 dB on its side)."
-SEA="-p TIME=31 -p MODE=3 -p INT=60 -p BW=127 -p PAN=0 -p WID=127"
+g se_age pad.wav "Space Echo: AGE, one knob for all the wear (held chords)" "Wow, flutter, hiss, crackle, top-end loss and a little more drive, all on AGE. 0 = clean tape (no wow, no noise, no filter: the echo is the input through the tape saturator), 64 = a vintage machine, 127 = worn out. Wow and flutter act like a real tape: each head plays at the tape speed now against the speed when that bit was recorded, so the farther heads wobble differently. MODE 4 (heads 1+2), TIME 31 (a quarter and a half note), INTENSITY 45.8 (36 % per head), BW 127, MONO at WIDTH 127 (the pad's own stereo). Send mix, VOL 64, the input 4 dB down (the heads add up, and a hard-panned head is +3 dB on its side)."
+SEA="-p TIME=31 -p MODE=3 -p INT=45.8 -p BW=127 -p PAN=0 -p WID=127"
 r se_age se_age0 "AGE 0: clean tape" "No wear at all: the reference." $SE -i $D/pad.wav $SEA -p AGE=0
 r se_age se_age32 "AGE 32" "Slight: wow and flutter about 0.04 % and 0.02 % of speed, hiss about 74 dB under the echoes, the loop's top-end loss from about 10.8 kHz (one pole per pass)." $SE -i $D/pad.wav $SEA -p AGE=32
 r se_age se_age64 "AGE 64: a vintage machine" "Wow 0.15 %, flutter 0.08 % of tape speed (the heads hear up to twice that), hiss 62 dB under the echoes, a soft tick now and then, top-end loss from 6.5 kHz per pass, +3.9 dB of drive." $SE -i $D/pad.wav $SEA -p AGE=64
@@ -64,39 +73,39 @@ r se_age se_age127 "AGE 127: worn out" "Wow 0.6 %, flutter 0.3 % of speed, hiss 
 r se_age se_agesweep "AGE sweep 0 -> 127" "AGE rises from 0 to 127 over 14 s." $SE -i $D/pad.wav $SEA -p AGE=0 -ramp 0 14 AGE 0 127
 tp se_age ftd_age "FTD1: its fixed wear" "The one-head tape delay as on the unit (WOW 20, FLUT 20, AGE 24, RES 32, HPF 50 Hz, LPF 6.5 kHz), TIME 31, FDBK 41 (as INTENSITY 60 per head), WID 64 (the pad's stereo)." $TP -i $D/pad.wav -p TIME=31 -p FDBK=41 -p HPF=22 -p LPF=102 -p WID=64
 
-g se_hits clave.wav "Space Echo: AGE on single hits" "One clave hit per bar, lots of silence: hiss and ticks live in the echoes' tails and die with them. All three heads, TIME 23 (dotted eighth, dotted quarter, and 9 sixteenths), INTENSITY 50, ALT at WIDTH 100. Send mix, VOL 64, the input 4 dB down (the heads add up, and a hard-panned head is +3 dB on its side)."
-r se_hits se_hits_age "AGE sweep 0 -> 127" "AGE rises from 0 to 127 over 12 s." $SE -i $D/clave.wav -p TIME=23 -p MODE=6 -p INT=50 -p BW=127 -p PAN=1 -p WID=100 -p AGE=0 -ramp 0 12 AGE 0 127
+g se_hits clave.wav "Space Echo: AGE on single hits" "One clave hit per bar, lots of silence: hiss and ticks live in the echoes' tails and die with them. All three heads, TIME 23 (dotted eighth, dotted quarter, and 9 sixteenths), INTENSITY 52.2 (27 % per head), ALT at WIDTH 100. Send mix, VOL 64, the input 4 dB down (the heads add up, and a hard-panned head is +3 dB on its side)."
+r se_hits se_hits_age "AGE sweep 0 -> 127" "AGE rises from 0 to 127 over 12 s." $SE -i $D/clave.wav -p TIME=23 -p MODE=6 -p INT=52.2 -p BW=127 -p PAN=1 -p WID=100 -p AGE=0 -ramp 0 12 AGE 0 127
 tp se_hits ftd_hits "FTD1, ping-pong" "One head, TIME 23, FDBK 31 (as INTENSITY 50), WID 127." $TP -i $D/clave.wav -p TIME=23 -p FDBK=31 -p HPF=22 -p LPF=102 -p WID=127
 
-g se_band stabs.wav "Space Echo: the band filter, CENTER and BW (dub style)" "A resonant high-pass and low-pass in the loop, so every repeat is filtered again. BW 127 = no filter at all; closing BW narrows the band around CENTER to half an octave, and the band edges resonate more as it narrows (Q 0.7 at 8 octaves and wider, 3.5 at half an octave; one pass peaks at about +6 dB at the narrowest). Wide and off-centre it is a low-pass or a high-pass. Head 1 (TIME 15) unless said, INTENSITY 90 (66 % per pass), AGE 40, ALT at WIDTH 100. Send mix, VOL 64, the input 4 dB down (the heads add up, and a hard-panned head is +3 dB on its side)."
-SEB="-p TIME=15 -p MODE=0 -p INT=90 -p AGE=40 -p PAN=1 -p WID=100"
+g se_band stabs.wav "Space Echo: the band filter, CENTER and BW (dub style)" "A resonant high-pass and low-pass in the loop, so every repeat is filtered again. BW 127 = no filter at all; closing BW narrows the band around CENTER to half an octave, and the band edges resonate more as it narrows (Q 0.7 at 8 octaves and wider, 3.5 at half an octave; one pass peaks at about +6 dB at the narrowest). Wide and off-centre it is a low-pass or a high-pass. Head 1 (TIME 15) unless said, INTENSITY 42 (66 % per pass), AGE 40, ALT at WIDTH 100. Send mix, VOL 64, the input 4 dB down (the heads add up, and a hard-panned head is +3 dB on its side)."
+SEB="-p TIME=15 -p MODE=0 -p INT=42 -p AGE=40 -p PAN=1 -p WID=100"
 r se_band se_band_open "BW 127: no filter" "The reference: the loop unfiltered (only AGE's gentle top-end loss)." $SE -i $D/stabs.wav $SEB -p BW=127
 r se_band se_band_wide "BW 64: a tape band" "CENTER 64 (820 Hz), BW 64 (3.2 octaves: about 270 Hz to 2.5 kHz), a little resonance at the edges (Q 1.2)." $SE -i $D/stabs.wav $SEB -p CTR=64 -p BW=64
-r se_band se_band_narrow "BW 24: narrow and resonant" "CENTER 72 (1.16 kHz), BW 24 (1 octave: 820 Hz to 1.6 kHz, Q 2.3), INTENSITY 85 (60 % per pass): telephone-like repeats that ring at the band." $SE -i $D/stabs.wav $SEB -p CTR=72 -p BW=24 -p INT=85
+r se_band se_band_narrow "BW 24: narrow and resonant" "CENTER 72 (1.16 kHz), BW 24 (1 octave: 820 Hz to 1.6 kHz, Q 2.3), INTENSITY 38.5 (60 % per pass): telephone-like repeats that ring at the band." $SE -i $D/stabs.wav $SEB -p CTR=72 -p BW=24 -p INT=38.5
 r se_band se_band_ctr "CENTER sweep, BW 24" "CENTER sweeps 30 -> 110 -> 30 (185 Hz -> 6.1 kHz -> 185 Hz) over 12 s with BW 24: the classic dub filter move." $SE -i $D/stabs.wav $SEB -p CTR=30 -p BW=24 -ramp 0 6 CTR 30 110 -ramp 6 12 CTR 110 30
-r se_band se_band_bw "BW sweep 127 -> 0 -> 127" "The band closes around CENTER 64 over 6 s and opens again; the resonance rises as it closes." $SE -i $D/stabs.wav $SEB -p CTR=64 -p INT=80 -p BW=127 -ramp 0 6 BW 127 0 -ramp 6 12 BW 0 127
+r se_band se_band_bw "BW sweep 127 -> 0 -> 127" "The band closes around CENTER 64 over 6 s and opens again; the resonance rises as it closes." $SE -i $D/stabs.wav $SEB -p CTR=64 -p INT=35.2 -p BW=127 -ramp 0 6 BW 127 0 -ramp 6 12 BW 0 127
 r se_band se_band_lp "As a low-pass" "CENTER 24 (140 Hz), BW 84 (5.7 octaves): edges near 20 Hz and 1 kHz, so the repeats get darker and darker." $SE -i $D/stabs.wav $SEB -p CTR=24 -p BW=84
 r se_band se_band_hp "As a high-pass" "CENTER 112 (6.6 kHz), BW 70 (3.8 octaves): edges near 1.8 kHz and above hearing: thinner every pass." $SE -i $D/stabs.wav $SEB -p CTR=112 -p BW=70
-r se_band se_sing "Self-oscillation, held" "Heads 1+2+3, BW 20 (0.9 octave, Q 2.5), CENTER 60 (690 Hz); INTENSITY rises 40 -> 110 at 2-4 s and stays, CENTER drifts 60 -> 90, then INTENSITY drops to 30 at 10 s. The loop sings at the band, bounded by the saturator, and dies away. VOL 20: three heads singing together are about 10 dB louder than one echo." $SE -i $D/stabs.wav -vol 20 -p TIME=15 -p MODE=6 -p INT=40 -p AGE=40 -p PAN=1 -p WID=100 -p CTR=60 -p BW=20 -ramp 2 4 INT 40 110 -ramp 2 10 CTR 60 90 -at 10 INT=30
+r se_band se_sing "Self-oscillation, held" "Heads 1+2+3, BW 20 (0.9 octave, Q 2.5), CENTER 60 (690 Hz); INTENSITY rises 37.2 -> 127 at 2-4 s and stays, CENTER drifts 60 -> 90, then INTENSITY drops to 24.3 at 10 s (SC01: 12.4 -> 56.7 and 8.1, the same gain per head but at the top, which is now the stock maximum, 66 % per head instead of 89 %). The loop sings at the band, bounded by the saturator, and dies away. VOL 20: three heads singing together are about 10 dB louder than one echo." $SE -i $D/stabs.wav -vol 20 -p TIME=15 -p MODE=6 -p INT=37.2 -p AGE=40 -p PAN=1 -p WID=100 -p CTR=60 -p BW=20 -ramp 2 4 INT 37.2 127 -ramp 2 10 CTR 60 90 -at 10 INT=24.3
 tp se_band ftd_band "FTD1 at the narrow band's edges" "The one-head tape delay with its resonant filters at the edges of the narrow render (HPF 89 = 820 Hz, LPF 68 = 1.6 kHz; RES 32 fixed on the unit), TIME 15, FDBK 70 (as INTENSITY 85), WID 127." $TP -i $D/stabs.wav -p TIME=15 -p FDBK=70 -p HPF=89 -p LPF=68 -p WID=127
 
-g se_pan pluck.wav "Space Echo: PAN and WIDTH" "PAN is a switch: MONO (the heads are not panned; WIDTH is then the echoes' own stereo: 0 mono, 127 the input's stereo as it comes), ALT (the input, summed to mono, goes on the tape's first track; the feedback crosses tracks, so the passes alternate sides, and heads 1 and 3 play on one side, head 2 on the other: WIDTH is how far apart), RND (each head jumps to a random place once per its own period, gliding there in at most 32 ms: WIDTH is how far it may go). WIDTH 0 is the same mono echo in all three. Heads 1+2+3, TIME 15, INTENSITY 50, AGE 32, BW 127. Send mix, VOL 64, the input 4 dB down (the heads add up, and a hard-panned head is +3 dB on its side)."
-SEW="-p TIME=15 -p MODE=6 -p INT=50 -p AGE=32 -p BW=127"
+g se_pan pluck.wav "Space Echo: PAN and WIDTH" "PAN is a switch: MONO (the heads are not panned; WIDTH is then the echoes' own stereo: 0 mono, 127 the input's stereo as it comes), ALT (the input, summed to mono, goes on the tape's first track; the feedback crosses tracks, so the passes alternate sides, and heads 1 and 3 play on one side, head 2 on the other: WIDTH is how far apart), RND (each head jumps to a random place once per its own period, gliding there in at most 32 ms: WIDTH is how far it may go). WIDTH 0 is the same mono echo in all three. Heads 1+2+3, TIME 15, INTENSITY 52.2 (27 % per head), AGE 32, BW 127. Send mix, VOL 64, the input 4 dB down (the heads add up, and a hard-panned head is +3 dB on its side)."
+SEW="-p TIME=15 -p MODE=6 -p INT=52.2 -p AGE=32 -p BW=127"
 r se_pan se_pan_mono "MONO, WIDTH 0: mono echoes" "Every echo in the middle." $SE -i $D/pluck.wav $SEW -p PAN=0 -p WID=0
 r se_pan se_pan_stereo "MONO, WIDTH 127: the input's stereo" "The melody's notes are panned a little; the echoes keep that." $SE -i $D/pluck.wav $SEW -p PAN=0 -p WID=127
 r se_pan se_pan_alt "ALT, WIDTH 127" "Head 1 left, head 2 right, head 3 left, and every repeat crosses to the other side." $SE -i $D/pluck.wav $SEW -p PAN=1 -p WID=127
-r se_pan se_pan_alt1 "ALT, one head: ping-pong" "MODE 1 (head 1), INTENSITY 64: the classic ping-pong, L, R, L, R." $SE -i $D/pluck.wav $SEW -p MODE=0 -p INT=64 -p PAN=1 -p WID=127
+r se_pan se_pan_alt1 "ALT, one head: ping-pong" "MODE 1 (head 1), INTENSITY 25.2: the classic ping-pong, L, R, L, R." $SE -i $D/pluck.wav $SEW -p MODE=0 -p INT=25.2 -p PAN=1 -p WID=127
 r se_pan se_pan_rnd "RND, WIDTH 127" "Each head moves to a new random place once per its own period (head 1 every eighth, head 2 every quarter, head 3 every dotted quarter)." $SE -i $D/pluck.wav $SEW -p PAN=2 -p WID=127
 r se_pan se_pan_wid "ALT, WIDTH sweep 0 -> 127" "From mono to hard left/right over 12 s." $SE -i $D/pluck.wav $SEW -p PAN=1 -p WID=0 -ramp 0 12 WID 0 127
 tp se_pan ftd_pan "FTD1, ping-pong" "One head, TIME 15, FDBK 31 (as INTENSITY 50), WID 127." $TP -i $D/pluck.wav -p TIME=15 -p FDBK=31 -p HPF=22 -p LPF=102 -p WID=127
 
 g se_drums drums.wav "Space Echo on drums" "TIME 7: head 1 a sixteenth, head 2 an eighth, head 3 a dotted eighth. Send mix, VOL 64, the input 4 dB down (the heads add up, and a hard-panned head is +3 dB on its side)."
-r se_drums se_drums_23 "Heads 2+3, RND, a band" "MODE 5 (2+3), INTENSITY 45, AGE 64, CENTER 72, BW 56 (2.5 octaves: 480 Hz to 2.8 kHz, Q 1.4), RND at WIDTH 90." $SE -i $D/drums.wav -p TIME=7 -p MODE=4 -p INT=45 -p AGE=64 -p CTR=72 -p BW=56 -p PAN=2 -p WID=90
-r se_drums se_drums_123 "All heads, ALT, worn" "MODE 7 (1+2+3), INTENSITY 38 (18 % per head), AGE 96, CENTER 64, BW 64 (270 Hz to 2.5 kHz), ALT at WIDTH 100." $SE -i $D/drums.wav -p TIME=7 -p MODE=6 -p INT=38 -p AGE=96 -p CTR=64 -p BW=64 -p PAN=1 -p WID=100
+r se_drums se_drums_23 "Heads 2+3, RND, a band" "MODE 5 (2+3), INTENSITY 29.6 (23 % per head), AGE 64, CENTER 72, BW 56 (2.5 octaves: 480 Hz to 2.8 kHz, Q 1.4), RND at WIDTH 90." $SE -i $D/drums.wav -p TIME=7 -p MODE=4 -p INT=29.6 -p AGE=64 -p CTR=72 -p BW=56 -p PAN=2 -p WID=90
+r se_drums se_drums_123 "All heads, ALT, worn" "MODE 7 (1+2+3), INTENSITY 34.5 (18 % per head), AGE 96, CENTER 64, BW 64 (270 Hz to 2.5 kHz), ALT at WIDTH 100." $SE -i $D/drums.wav -p TIME=7 -p MODE=6 -p INT=34.5 -p AGE=96 -p CTR=64 -p BW=64 -p PAN=1 -p WID=100
 tp se_drums ftd_drums "FTD1, one head on the eighths" "TIME 15, FDBK 25 (between the two renders), WID 96." $TP -i $D/drums.wav -p TIME=15 -p FDBK=25 -p HPF=22 -p LPF=102 -p WID=96
 
-g se_glide pluck.wav "Space Echo: TIME moves, all three heads bend" "TIME is the tape speed: changing it bends every head by the same pitch ratio, the farther heads for longer (head k glides k times slower), and the bend starts and ends smoothly (motor inertia). Heads 1+2+3, INTENSITY 45, AGE 40, ALT at WIDTH 100. Send mix, VOL 64, the input 4 dB down (the heads add up, and a hard-panned head is +3 dB on its side)."
-r se_glide se_glide "TIME 15 -> 7 -> 23" "TIME jumps from 15 to 7 at 3 s and to 23 at 6.5 s." $SE -i $D/pluck.wav -p TIME=15 -p MODE=6 -p INT=45 -p AGE=40 -p BW=127 -p PAN=1 -p WID=100 -at 3 TIME=7 -at 6.5 TIME=23
+g se_glide pluck.wav "Space Echo: TIME moves, all three heads bend" "TIME is the tape speed: changing it bends every head by the same pitch ratio, the farther heads for longer (head k glides k times slower), and the bend starts and ends smoothly (motor inertia). Heads 1+2+3, INTENSITY 44.4 (23 % per head), AGE 40, ALT at WIDTH 100. Send mix, VOL 64, the input 4 dB down (the heads add up, and a hard-panned head is +3 dB on its side)."
+r se_glide se_glide "TIME 15 -> 7 -> 23" "TIME jumps from 15 to 7 at 3 s and to 23 at 6.5 s." $SE -i $D/pluck.wav -p TIME=15 -p MODE=6 -p INT=44.4 -p AGE=40 -p BW=127 -p PAN=1 -p WID=100 -at 3 TIME=7 -at 6.5 TIME=23
 tp se_glide ftd_glide "FTD1, the same moves" "One head, FDBK 27, WID 127." $TP -i $D/pluck.wav -p TIME=15 -p FDBK=27 -p HPF=22 -p LPF=102 -p WID=127 -at 3 TIME=7 -at 6.5 TIME=23
 
 echo "tape delay"
@@ -217,5 +226,32 @@ r flslap fl_chorus "Chorus range" "MAN 100 (16 ms), DPTH 10, SPD 70 (0.6 Hz), FD
   $FL -i $D/pluck.wav -p MAN=100 -p DPTH=10 -p SPD=70 -p FDBK=64 -p WDTH=90 -p OFS=30
 r flslap fl_slap "Slapback" "MAN 122 (58 ms), DPTH 0, FDBK 74 (+16 %), OFS 80 (2 ms: the right repeat a little later), DAMP 50 (about 2.5 kHz)." \
   $FL -i $D/pluck.wav -p MAN=122 -p DPTH=0 -p FDBK=74 -p OFS=80 -p DAMP=50
+
+g se_fdbk pluck.wav "Space Echo: FDBK on the stock law (SC01)" "SC01 puts INTENSITY (FDBK) on the stock delay's law: each head feeds back FDBK/64, so the display's 100 % (FDBK 64) repeats for ever and above it the repeats grow until the tape's saturator holds them (and the echo's wet ceiling, 0.7, holds what leaves the slot), as on the stock delay. SE01 had 1.1 (FDBK/127)^1.5: 14 % at 32, 39 % at 64, 77 % at 100, 110 % at 127. The input at the unit's level (13 dB down: a full-scale sound reaches the delay slot at about 0.13, notes/T5.3 10.2), VOL 127, no band (BW 127), AGE 0, MONO, TIME 15. Each FDBK with SE01's law next to it (se01_*). Since SC02 two or three heads share the gain (group se_share). Keep the volume low at 64 and above."
+SEF="-fx spaceecho -tail 8 -bpm 120 -vol 127 -gain -13 -p TIME=15 -p AGE=0 -p BW=127 -p PAN=0 -p WID=0"
+r se_fdbk se_fb32_1 "FDBK 32, head 1: 50 % per pass" "The repeats halve each time (-6 dB)." $SEF -i $D/pluck.wav -p MODE=0 -p INT=32
+rse01 se_fdbk se01_fb32_1 "SE01's law, FDBK 32, head 1: 14 %" "SE01: three repeats and gone." $SEF -i $D/pluck.wav -p MODE=0 -p INT=32
+r se_fdbk se_fb64_1 "FDBK 64, head 1: 100 %, endless" "The display's 100 %: the repeats hold their level (only the 15 Hz DC blocker and the saturator's top take a little)." $SEF -i $D/pluck.wav -p MODE=0 -p INT=64
+rse01 se_fdbk se01_fb64_1 "SE01's law, FDBK 64, head 1: 39 %" "SE01 at the same knob." $SEF -i $D/pluck.wav -p MODE=0 -p INT=64
+r se_fdbk se_fb100_1 "FDBK 100, head 1: 156 %" "Each pass is louder than the last until the saturator holds it: a held, saturated loop." $SEF -i $D/pluck.wav -p MODE=0 -p INT=100
+rse01 se_fdbk se01_fb100_1 "SE01's law, FDBK 100, head 1: 77 %" "SE01 at the same knob." $SEF -i $D/pluck.wav -p MODE=0 -p INT=100
+r se_fdbk se_fb127_1 "FDBK 127, head 1: 198 %" "The stock maximum: the loop saturates within a few passes and holds." $SEF -i $D/pluck.wav -p MODE=0 -p INT=127
+rse01 se_fdbk se01_fb127_1 "SE01's law, FDBK 127, head 1: 110 %" "SE01's maximum: a slow build to the saturator." $SEF -i $D/pluck.wav -p MODE=0 -p INT=127
+r se_fdbk se_fb32_123 "FDBK 32, heads 1+2+3: 50 % shared" "Three heads sharing 50 % (17 % each): the repeats die away as on one head, in a denser pattern." $SEF -i $D/pluck.wav -p MODE=6 -p INT=32
+rse01 se_fdbk se01_fb32_123 "SE01's law, FDBK 32, heads 1+2+3: 3 x 14 %" "SE01 at the same knob." $SEF -i $D/pluck.wav -p MODE=6 -p INT=32
+r se_fdbk se_fb64_123 "FDBK 64, heads 1+2+3: 100 % shared, endless" "The display's 100 % on three heads (33 % each): the pattern keeps its level, as one head does at 64." $SEF -i $D/pluck.wav -p MODE=6 -p INT=64
+rse01 se_fdbk se01_fb64_123 "SE01's law, FDBK 64, heads 1+2+3: 3 x 39 %" "SE01 at the same knob." $SEF -i $D/pluck.wav -p MODE=6 -p INT=64
+r se_fdbk se_fb100_123 "FDBK 100, heads 1+2+3: 156 % shared" "Grows until the saturator holds it, as one head does at 100." $SEF -i $D/pluck.wav -p MODE=6 -p INT=100
+r se_fdbk se_fb127_123 "FDBK 127, heads 1+2+3: 198 % shared" "The stock maximum: held at the ceiling." $SEF -i $D/pluck.wav -p MODE=6 -p INT=127
+r se_fdbk se_fb_sweep "FDBK sweep 0 -> 127 -> 0, head 1" "FDBK rises over 8 s and falls again over 8 s: the decay stretches to endless at 64, then the loop holds itself; turning it down below 64 lets it die away." $SEF -i $D/pluck.wav -p MODE=0 -p INT=0 -ramp 0 8 INT 0 127 -ramp 8 16 INT 127 0
+
+g se_share pluck.wav "Space Echo: FDBK shared by the heads (SC02)" "SC02: the heads that play share FDBK/64 (each feeds back 1/2 or 1/3 of it), so the display's 100 % (FDBK 64) is endless in every MODE, as on one head. SC01 gave each head FDBK/64, so two heads ran away from about 32 (the owner, 2026-10-21: MODE 4 ran away at 9 o'clock, \"weird\") and three from about 21. MODE 1 is unchanged. Each render with SC01's law next to it (sc01_*). The input at the unit's level (13 dB down), VOL 127, BW 127, AGE 0, MONO, TIME 15. Keep the volume low."
+for m in 1 4 7; do
+    for v in 32 64; do
+        mi=$((m - 1))
+        r se_share se_sh_m${m}_${v} "MODE $m, FDBK $v" "SC02: FDBK $v shared by the heads of MODE $m." $SEF -i $D/pluck.wav -p MODE=$mi -p INT=$v
+        rsc01 se_share sc01_sh_m${m}_${v} "SC01's law: MODE $m, FDBK $v" "SC01: FDBK $v on every head of MODE $m." $SEF -i $D/pluck.wav -p MODE=$mi -p INT=$v
+    done
+done
 
 echo "manifest: $M"

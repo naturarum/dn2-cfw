@@ -17,7 +17,8 @@ rows' names, ranges and texts) in place, so those recipes build their core and p
 REV_0_1, the fork's commit that holds the 0.1 sources (pushed: naturarum/elekloader dn2-1.12).
 CMP3 moved param-rows-dn2 to 0.3, comp-ui-dn2 to 0.2 and comp-link-dn2 to 0.2 in place, so CMP1's and CMP2's
 main OS (scripts/t63b_build.py without --stage, --stage CMP2) build every mod from REV_CMP2 (e10bb05, the
-fork's commit of comp-link 0.1).
+fork's commit of comp-link 0.1). SC01 moved comp-link-dn2 to 0.3 in place, so CMP3's main OS (--stage CMP3) builds
+from REV_CMP3 (4b1384b, the fork's commit of comp-link 0.2).
 `git archive` of `mods/` and `examples/` at that commit goes to out/pinned/elekloader-REV/ (git
 ignored), fresh on every call; the SDK and the patcher still run from vendor/elekloader (their
 Python did not change). The .elemod files the SDK builds from there are the 0.1 files byte for
@@ -34,6 +35,9 @@ REV_0_1 = '59cd41f9b5d03ea8ce83d2664087f52a269a9ef1'    # core-dn2 0.1, param-ro
 # CMP3 (2026-10-18) moved param-rows-dn2 to 0.3, comp-ui-dn2 to 0.2 and comp-link-dn2 to 0.2 in place; CMP1's and
 # CMP2's main OS build their mods from this commit (core 0.2, comp-ui 0.1, param-rows 0.2, comp-link 0.1)
 REV_CMP2 = 'e10bb05f700954f55f8d6f9f41771e372df2a135'
+# SC01 (2026-10-21) moved comp-link-dn2 to 0.3 in place (the CMP3 storage review's two fixes); CMP3's main OS (on the
+# unit) builds every mod from this commit (core 0.2, comp-ui 0.2, param-rows 0.3, comp-link 0.2, fx-rename 0.1)
+REV_CMP3 = '4b1384b3a2d903ac1553ce8ef28ce3cfc3daa7a1'
 
 
 def tree(rev=REV_0_1):

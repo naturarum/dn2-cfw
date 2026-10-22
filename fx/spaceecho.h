@@ -13,7 +13,8 @@
  *
  * Signal flow. The tape has two tracks, A and B (left and right in MONO mode):
  *   record:  input matrix (PAN mode) + INTENSITY x DC-blocked feedback matrix of the
- *            sum of the active heads (PAN mode: same track, or crossed for ALT)
+ *            sum of the active heads, each at its share (1/n of n heads; PAN mode: same
+ *            track, or crossed for ALT)
  *            -> band filter: resonant 2-pole high-pass and low-pass around CENTER,
  *               BW wide; bypassed exactly at BW 127
  *            -> AGE top-end loss (one-pole low-pass; bypassed exactly at AGE 0)
@@ -50,7 +51,9 @@ enum {
     SE_TIME = 0,  /* repeat rate: head 1 at (v+1)/128 of a whole note (tempo-synced, the stock and
                      FTD1 law), heads 2 and 3 at 2x and 3x; changing it glides the tape speed */
     SE_MODE,      /* heads: 0 = 1, 1 = 2, 2 = 3, 3 = 1+2, 4 = 2+3, 5 = 1+3, 6 = 1+2+3 (RE-202 order) */
-    SE_INT,       /* intensity: feedback from the sum of the active heads, 0..110 %, taper (v/127)^1.5 */
+    SE_INT,       /* intensity: feedback from the sum of the active heads, v/64 shared by them (the stock FDBK
+                     law: 64 = 100 %, endless in every MODE, 127 = 198 %; SC01: v/64 per head; SE01: 0..110 %
+                     per head, taper (v/127)^1.5) */
     SE_AGE,       /* wear: wow, flutter, hiss, crackle, top-end loss, drive; 0 = clean tape */
     SE_CTR,       /* band centre 50 Hz..12.8 kHz, log (64 = 819 Hz) */
     SE_BW,        /* band width 0.5..20 octaves, log (64 = 3.2 oct); resonance rises below 8 octaves

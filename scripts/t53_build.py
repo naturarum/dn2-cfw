@@ -133,10 +133,11 @@ def main():
     env = dict(os.environ, ELEKLOADER_CROSS='m68k-elf-')
     run([sys.executable, os.path.join(ROOT, 'scripts', 't53_make_mod.py')])
     # core-dn2 0.1 and param-rows-dn2 0.1 from the pinned elekloader commit (scripts/elk_pin.py): the
-    # working tree moved them on for CMP1, and SE01 must keep rebuilding byte for byte
+    # working tree moved them on for CMP1, and SE01 must keep rebuilding byte for byte; since SC01 (fx-echo-dn2 0.2 in
+    # the working tree) fx-echo-dn2 0.1 from there too, with its own mod.json (t53_make_mod.py now writes 0.2's)
     import elk_pin
     pin = elk_pin.tree(elk_pin.REV_0_1)
-    dirs = dict(MODDIRS, **{m: os.path.join(pin, MODDIRS[m]) for m in ('core', 'param-rows')})
+    dirs = dict(MODDIRS, **{m: os.path.join(pin, MODDIRS[m]) for m in ('core', 'param-rows', 'fx-echo')})
     built = {}
     for m in SET + ['fx-rename']:
         _, o = run([ELPY, '-m', 'elekloader.sdk.build', dirs[m], '--stock', STOCK, '--out', mods_dir], cwd=EL, env=env)
@@ -186,7 +187,7 @@ def main():
     gt01 = open(GT01_MAIN, 'rb').read()
     lk = T.Linked(img, mp)
     lk_gt = T.Linked(gt01, json.load(open(GT01_MAP)))
-    doc = json.load(open(os.path.join(EL, MODDIRS['fx-echo'], 'mod.json')))
+    doc = json.load(open(os.path.join(dirs['fx-echo'], 'mod.json')))
     grow_sites = json.load(open(os.path.join(EL, MODDIRS['param-grow'], 'mod.json')))['sites']
     ren_sites = json.load(open(os.path.join(EL, MODDIRS['fx-rename'], 'mod.json')))['sites']
     span = lambda s: (int(s['addr'], 16), len(s['stock']) // 2)        # noqa: E731

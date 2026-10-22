@@ -105,6 +105,19 @@ class Stream:
                 hits.append(i)
         return hits
 
+    def read(self, core, n):
+        """the n payload bytes at core byte address `core` (SC01: the stock L2 code a patch replaces); they must lie
+        inside exactly one payload block of the stream"""
+        la = loader_addr(core)
+        hits = self._covering(la, n)
+        if len(hits) != 1:
+            raise ValueError("%#x: written by %d blocks %s, need exactly one" % (core, len(hits), hits))
+        b = self.blocks[hits[0]]
+        off = la - b.target
+        if b.fill or off < 0 or off + n > len(b.payload):
+            raise ValueError("%#x+%d: not inside the payload of block %d" % (core, n, hits[0]))
+        return bytes(b.payload[off:off + n])
+
     # -------- edits --------
     def patch(self, core, old, new, why=""):
         """Replace bytes `old` with `new` at core byte address `core`, inside one payload block.

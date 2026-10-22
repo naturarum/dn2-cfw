@@ -6,7 +6,15 @@ The goals: swap the send effects for new ones (a tape delay, a flanger, a better
 
 **No Elektron firmware is stored here.** You download the OS file from Elektron yourself, and the tools check its sha256 before using it. Every build happens on your own machine.
 
-## Latest: the 3-band compressor is done (2026-10-21)
+## Latest: CMP4, a stable base (2026-10-22)
+
+**CMP4** runs on my unit and is the base for a first release. It is CMP3's 3-band compressor and flanger, with Elektron's own delay back in the delay slot, band meters that move like the stock meter, and two small kit-saving fixes.
+
+**The Space Echo is parked, and it taught me a rule.** SC01 merged the Space Echo with CMP3. The echo and the compressor together didn't fit in the memory where my code had run on the unit, so I put the echo's knob code where Elektron's unused delay code used to be. On the unit the DSP stopped when I turned echo knobs, and sometimes while it sat idle. In the simulator, 74 minutes of the same situations gave no fault at all. It's the same kind of failure as CMP2's: code that is fine in the simulator stops the chip in a place where none of my code has run before. So the rule now is: my DSP code goes only where my code has already run on the unit, the build refuses anything else, and a new place gets tested with a small probe build first. Without the echo's new places the three effects are 13 KB too big, so the echo waits until a probe proves more memory. Write-ups: [`notes/SC01.md`](notes/SC01.md), [`notes/SC01-soak.md`](notes/SC01-soak.md), [`notes/SC02-plan.md`](notes/SC02-plan.md), [`notes/T6.3-cmp4.md`](notes/T6.3-cmp4.md).
+
+**Next, before a release:** fix Overbridge (it refuses my builds as an "incompatible OS version"), retune the flanger so it reaches further into chorus and phaser-like sounds within the same memory and DSP load, and a simple terminal patcher for macOS that walks you through getting Elektron's 1.12 file and builds the firmware from it.
+
+## Earlier: the 3-band compressor is done (2026-10-21)
 
 **CMP3** runs on my unit: three compressor bands with their own pages, knobs, meters and dry/wet, saved with each kit.
 - **Every band knob acts on its band** (THR, RAT, ATK, REL, MUP, the two crossovers), sent from the main OS to the DSP in spare words at the end of the frame it sends every 0.67 ms.
@@ -33,9 +41,9 @@ How the stock compressor works, the plan and the evidence: [`notes/T6.4-compress
 
 Every knob on the Digitone II is a row in one table inside the OS: 321 rows on 1.12, with no room after them. GT00 copies the table at start-up into free memory with room for 384 rows, and GT01 adds 17 hidden rows for the 3-band compressor. On my unit, GT00 starts from cold and saves and loads projects as before, and GT01 has run without problems. Projects store values by slot, never by row, so moving the table doesn't change how they are saved. New rows are safe for projects only if they follow a few rules, listed in the write-up. dn2_firmware_explore did this first, on 1.11, for their LFO4 mod; ours is for 1.12, as an elekloader mod other mods add rows to. How it works, what ran where, and the rules: [`docs/parameter-table-growth.md`](docs/parameter-table-growth.md).
 
-## Where things stand (2026-10-21)
+## Where things stand (2026-10-22)
 
-**On the unit.** Fourteen builds have run on real hardware:
+**On the unit.** Sixteen builds have run on real hardware:
 - **EF01**, stock 1.12 with only its name changed and the seal redone. That proved our rebuild, seal and flash path.
 - **FLG1**, our flanger in place of the stock chorus. Our first new code on the Digitone II's DSP: the C in [`fx/flanger.c`](fx/flanger.c), compiled with selcc and spliced into the DSP section by [`tools/dspsplice`](tools/dspsplice). It plays on the stock chorus page's knobs (depth, speed, high-pass, width).
 - **FTD1**, FLG1 plus our one-head tape delay in place of the stock delay (resonant loop filters, wow and flutter, wear, and tape-style pitch bends when TIME changes).
@@ -48,6 +56,8 @@ Every knob on the Digitone II is a row in one table inside the OS: 321 rows on 1
 - **CMP2**, the band knobs live. It had the LOW makeup crash above.
 - **CP2D, CP2E, CP2F**, the diagnostic builds that found and fixed it (CP2F is CMP2 fixed).
 - **CMP3**, the finished compressor: band settings saved per kit, a MIX per band, meters in dB.
+- **SC01**, CMP3 with the Space Echo in place of the tape delay. The DSP stopped on echo knob turns and sometimes while idle (above).
+- **CMP4**, CMP3 with the stock delay back, breathing meters and two kit-saving fixes. The stable base.
 
 **In the ColdFire emulator** (digikit, with our changes on [a branch of our fork](https://github.com/naturarum/digikit/tree/dn2-1.12)):
 - 1.12 boots to the main screen.
@@ -58,7 +68,7 @@ Every knob on the Digitone II is a row in one table inside the OS: 321 rows on 1
 
 **On the DSP side:**
 - [`tools/sharcvm`](tools/sharcvm) is an interpreter for the Digitone II's SHARC+ DSP code. It renders the stock chorus, delay, reverb and master compressor offline, and the whole per-block DSP handler. It is checked against 2,039 test programs compiled with selache.
-- [`fx/`](fx) holds the new effects, in portable C: a one-head tape delay (resonant filters in the loop, wow and flutter, AGE, width), a 3-band compressor (each band follows the stock compressor's design), and a flanger/comb with damped feedback.
+- [`fx/`](fx) holds the new effects, in portable C: a one-head tape delay (resonant filters in the loop, wow and flutter, AGE, width), a Space Echo style three-head echo (parked, see above), a 3-band compressor (each band follows the stock compressor's design), and a flanger/comb with damped feedback.
   - The SHARC build gives the same output as the Mac build.
   - An A/B page compares each effect with the stock one running in the emulator.
 
@@ -67,7 +77,7 @@ Every knob on the Digitone II is a row in one table inside the OS: 321 rows on 1
 - The STARTUP-menu recovery over DIN MIDI was tested on the unit.
 - An audit of the code that writes flash, and a proof that the STARTUP menu doesn't depend on the main OS (`notes/T1.4*`, `notes/T1.5*`).
 
-**Next:** one build line with everything: CMP3 plus the Space Echo style delay ([`fx/spaceecho.c`](fx/spaceecho.c)) in place of the tape delay, with the stock feedback law. Memory is the hard part, now that one stretch is off limits. After that, maybe a spring reverb as an option, and a macOS builder so you can make the firmware from your own copy of the stock OS.
+**Next:** the release: the Overbridge fix, the flanger retune and the macOS patcher (above). After that, a probe build to test new DSP memory, which the Space Echo, a spring reverb and anything bigger need.
 
 **Tooling lesson (2026-10-18):** the DSP simulator leaked about 9.6 MB per test run, and a long parallel test froze my Mac. It's fixed (`tools/sharcvm/vm.py`), test workers now stop themselves at 2 GB ([`tools/sharcvm/memguard.py`](tools/sharcvm/memguard.py)), and [`tools/memwatch.py`](tools/memwatch.py) guards unattended runs.
 

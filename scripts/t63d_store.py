@@ -25,6 +25,14 @@ version is not 0: the row defaults (FUN_400e7140) for k 70..89; the new-kit defa
 slot-17 single edits: a band knob (k 75) rewrites the 27 words and the check word and puts the id-0 word back; a
 stock knob (k 60) and an LFO row (k 10, id 0) as stock plus our words; a change naming several k (the vector type):
 all from 70 -> id 0 put back, mixed -> left as stock; the whole-setup path (info 0).
+SC01 (2026-10-21), --rules 0.3 (comp-link-dn2 0.3, the CMP3 storage review's two fixes): a vector naming k 25..69 and
+k >= 70 -> id 0 put back, one naming a k in 0..24 -> left as stock; and the retarget (R1): compl_update called with a
+record that is not the setup's mirror (a kit change on another task between vslot04's read of +0x20 and the stock
+routine) writes none of our words there (0.2 wrote the setup's 27 words into it), while the same call on the mirror
+does.
+    cd vendor/digikit && DT2_SYX=../../out/SC01/main/SCEM.syx DT2_SECTIONS=../../out/SC01/emu/SCEM/sections \
+        uv run python ../../scripts/t63d_store.py built ../../out/SC01/emu/SCEM/warm800M.snap OUT.json \
+        --map ../../out/SC01/main/SCMO-main.syx.map.json --rules 0.3
 Emulator RAM only; nothing is saved. Writes OUT.json.
 """
 import json
@@ -214,7 +222,8 @@ def stock_sites(m):
 def main():
     mode, snap, out = sys.argv[1:4]
     cmap = sys.argv[sys.argv.index('--map') + 1] if '--map' in sys.argv else None
-    res = {'mode': mode, 'snapshot': snap}
+    rules = sys.argv[sys.argv.index('--rules') + 1] if '--rules' in sys.argv else '0.2'
+    res = {'mode': mode, 'snapshot': snap, 'rules': rules}
 
     # ---- H: the hooks
     m = setup(snap)
@@ -348,7 +357,13 @@ def main():
         vts = vtable_of(rd, TI_MANY)
         se['vector_type_vtables'] = ['%#010x' % x for x in vts]
         if vts:
-            for nm, ks, restore in (('vector [75, 80] (all from 70)', [75, 80], True), ('vector [60, 75] (mixed)', [60, 75], False)):
+            vcases = (('vector [75, 80] (all from 70)', [75, 80], True), ('vector [60, 75] (mixed)', [60, 75], False))
+            if rules == '0.3':
+                vcases = (('vector [75, 80] (all from 70)', [75, 80], True),
+                          ('vector [60, 75] (k 25..69 and ours: id 0 put back)', [60, 75], True),
+                          ('vector [5, 75] (a k in 0..24 named: left as stock)', [5, 75], False))
+            for nm, ks, restore in vcases:
+                wr(mirror + 4, struct.pack('>H', 0x1234))     # a marker in the id-0 word: put back, or the stock's value
                 before = rd(mirror, 0xa0)
                 for k in ks:
                     wr(live + 2 * k, struct.pack('>H', 0x0300 + k))
@@ -363,6 +378,27 @@ def main():
                 stock_id0 = struct.pack('>H', 0x0300 + 75)
                 e['ok'] = e['our_words_and_check_word'] and (before[4:6] == after[4:6] if restore else after[4:6] == stock_id0)
                 se[nm] = e
+        if rules == '0.3':
+            # R1, the retarget: compl_update given a record that is not the setup's mirror (as if a kit change on
+            # another task moved +0x20 between vslot04's read and the stock routine): the stock routine writes its
+            # one word there, we write none; then the same change on the mirror writes ours
+            other = REC[7]
+            wr(other, rd(mirror, 0xa0))
+            wr(other + 0x60, bytes(0x38))
+            ob = rd(other, 0xa0)
+            mb = rd(mirror, 0xa0)
+            wr(live + 2 * 76, struct.pack('>H', 0x1900))
+            cur[76 - K0] = 0x1900
+            wr(INFO, struct.pack('>III', PARAM_INFO_VT, 76, 1))
+            call(syms['compl_update'], [fxo, other, INFO])
+            oa, ma = rd(other, 0xa0), rd(mirror, 0xa0)
+            e = {'other_record_diff': diff_ranges(ob, oa), 'mirror_diff': diff_ranges(mb, ma),
+                 'our_words_written_into_the_other_record': oa[0x60:0x98] != bytes(0x38)}
+            call(syms['compl_update'], [fxo, mirror, INFO])
+            e['then_on_the_mirror_our_words_written'] = rd(mirror, 0xa0)[0x60:0x98] == ours(cur)
+            e['ok'] = (not e['our_words_written_into_the_other_record'] and e['mirror_diff'] == []
+                       and e['then_on_the_mirror_our_words_written'])
+            se['R1 retarget: a record that is not the mirror'] = e
         # the whole-setup path (info 0: paste, clear, reload): stock posts a job; the hook writes the words at once
         wr(mirror + 0x60, bytes(0x38))
         wr(live + 2 * 80, struct.pack('>H', 0x2100))

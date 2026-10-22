@@ -25,6 +25,8 @@ Steps:
                          the C environment selcc assumes (SISD, RND32, round to nearest, no ALU
                          saturation, no broadcast loads) for the call
   ("tail", sw)           restore everything and JUMP to a stock routine (it returns to our caller)
+  ("cabs", sw, [regs])   as "c", but the call names an absolute SW address instead of a symbol (CMP4: the two delay
+                         stubs kept, unreachable, at CMP3's td_process / td_init, so L1 block 1 stays CMP3's bytes)
 A stub without a "tail" step ends by restoring everything and returning to the caller.
 """
 
@@ -61,13 +63,13 @@ def gen(name, steps, save_base):
             for r in ("R4", "R8", "R12"):
                 L.append(f"    {r} = DM (0x{slot(save_base, r):X});")
             target = f"0x{st[1]:X}"
-        elif st[0] == "c":
+        elif st[0] in ("c", "cabs"):
             L.append(f"    BIT CLR MODE1 0x{MODE1_CLR:X};")
             L.append(f"    BIT SET MODE1 0x{MODE1_SET:X};")
             L.append("    NOP;")
             for dst, src in zip(("R4", "R8", "R12"), st[2]):
                 L.append(f"    {dst} = DM (0x{slot(save_base, src):X});")
-            target = f"{st[1]}."
+            target = f"{st[1]}." if st[0] == "c" else f"0x{st[1]:X}"
         elif st[0] == "tail":
             tail = st[1]
             break

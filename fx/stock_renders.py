@@ -163,7 +163,7 @@ def map_spaceecho(k):
     hm = SE_HEADS[int(min(max(k["MODE"], 0), 6) + 0.5)]
     heads = [h for h in (1, 2, 3) if hm & (1 << (h - 1))]
     h = heads[0]
-    g = 1.1 * c01(k["INT"]) ** 1.5                     # loop gain per head
+    g = min(max(k["INT"], 0.0), 127.0) / 64.0         # loop gain per head: the stock FDBK law (SC01; SE01: 1.1 x^1.5)
     a = c01(k["AGE"])
     bw = min(max(k["BW"], 0.0), 127.0)
     if bw >= 127:
