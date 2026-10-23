@@ -6,6 +6,12 @@ knobs, the stock delay's knobs (FDBK up to 127, X toggled) and tempo changes. so
 probed and Fault) without the Space Echo's checks: the delay slot is Elektron's own delay again.
 
     python3 tools/dspsplice/soak_cmp4.py run [--scale 1.0] [--workers 3] [--only K1,K2]
+    python3 tools/dspsplice/soak_cmp4.py run --dsp out/FL01/FL01-dsp --out out/FL01/soak --only K1,K2,K3,F1 --scale 0.5
+                                                  FL01 (notes/T5.6): the same harness on FL01's DSP image (CMP4's
+                                                  but the flanger glue), and F1: the flanger's knobs spun hard
+    python3 tools/dspsplice/soak_cmp4.py run --dsp out/FL02/FL02-dsp --out out/FL02/soak --only K1,K2,K3,F1,S1 --scale 0.5
+                                                  FL02 (notes/T5.6 7): FL01's recipes on FL02's image and S1: SPD
+                                                  between synced and free values as FUNC + turn makes them
 
 Every block (1,500 blocks = 1 s): the whole handler under a cap of CAP instructions (a block over it = a runaway, with
 where it loops); any sharcvm trap; the instructions of the block and of the delay call; the outputs finite and under
@@ -42,14 +48,14 @@ WATCH = [(0x2dd600, 0x2e1c40, "L1 block 1 code (stubs, flanger)"),
          (0x30ff76, 0x318000, "L1 block 2: the rest of the code area, with 0x315f8c-0x318000")]
 
 
-def setup(cmp_off):
+def setup(cmp_off, dsp=DSP):
     if G:
         return
     import verify_sc01 as S
     import memguard
     import build as BD
     S.OFF.update(cmp_off)
-    stream, info, cache = S.load_image(DSP, "CMP4")
+    stream, info, cache = S.load_image(Path(dsp), json.loads((Path(dsp) / "build.json").read_text())["name"])
     G.update(S=S, V=S.V, VC=S.VC, V2=S.V2, FB=S.V.fullblock, memguard=memguard, BD=BD, stream=stream, info=info,
              cache=cache)
 
@@ -64,7 +70,29 @@ def recipes(scale):
                         "every 8 s", seconds=m(240), seed=602, src="mixed", fb=(64, 127), mangle_s=8),
         "K3": dict(what="idle: drum hits 2 s then silence, everything on (bands at the starting point, MIX 64, the "
                         "delay at FDBK 64, the flanger), nothing moves", seconds=m(180), seed=603, src="hits", idle=True),
+        # FL01 (only with --only): the flanger's four knobs spun hard over their whole range (TIME 0.05 ms .. 25.7 ms
+        # and back in one step), the rest as K1
+        "F1": dict(what="as K1, other seed, the flanger's four knobs moved every 0.1-1.5 s, half of the moves a jump "
+                        "to anywhere in 0..127 (TIME across its whole range in one step)", seconds=m(240), seed=604,
+                   src="mixed", fb=(0, 127), flg=dict(period=(0.1, 1.5), jump=0.5), extra=True),
+        # FL02 (only with --only): F1 with SPD as the FL02 UI makes it: FUNC + turn to one of the 12 synced words
+        # ((a << 8) | i, notes/T5.6 7), a turn without FUNC (the synced word +- whole steps: free, low byte kept), whole
+        # numbers, each through the ColdFire's smoother (the unit's EMAC arithmetic), every 0.2-3 s; the tempo walking
+        "S1": dict(what="as F1, other seed, SPD between the 12 synced values (FUNC + turn), free whole numbers and the "
+                        "free values a turn without FUNC leaves (through the unit's smoother), every 0.2-3 s; the tempo "
+                        "walking 40..240", seconds=m(240), seed=605, src="mixed", fb=(0, 127),
+                   flg=dict(period=(0.1, 1.5), jump=0.5), spd_sync=True, extra=True),
     }
+
+SYNC_WORDS = [(a << 8) | i for i, a in enumerate((9, 23, 37, 52, 66, 80, 86, 94, 100, 108, 122, 126), 1)]
+
+
+def unit_smooth(raw, st):
+    """one frame of the ColdFire's one-pole for one word, the unit's EMAC arithmetic (scripts/t63c_e2e.py)"""
+    r = raw - 0x10000 if raw & 0x8000 else raw
+    x = (((0x03d7 * r) << 1) + ((0x7c290000 * st) >> 31)) & 0xffffffff
+    st = x - (1 << 32) if x & 0x80000000 else x
+    return st, ((st + 0x8000) >> 16) & 0xffff
 
 
 class Control:
@@ -88,8 +116,9 @@ class Control:
              "DEL_FDBK": SK.Hand(r, 64 if idle else (lo + hi) / 2, lo, hi, sty, period=(2, 10), jump=0.25),
              "DEL_HPF": SK.Hand(r, 10, 0, 127, sty, period=(1, 8), jump=0.2),
              "DEL_LPF": SK.Hand(r, 110, 0, 127, sty, period=(1, 8), jump=0.2)}
+        fh = cfg.get("flg", dict(period=(0.5, 6), jump=0.15))
         for k_ in FLG_KEYS:
-            h[k_] = SK.Hand(r, FL.KNOBS[k_], 0, 127, sty, period=(0.5, 6), jump=0.15)
+            h[k_] = SK.Hand(r, FL.KNOBS[k_], 0, 127, sty, **fh)
         self.h = h
         self.bpm = SK.Hand(r, 120, 40, 240, "hold" if idle else "walk", period=(6, 20), jump=0.4)
         self.x, self.x_next = 0, 0
@@ -97,6 +126,8 @@ class Control:
                                        for j, v in enumerate(self.tail17)]
         self.mixh = None if idle else [SK.Hand(r, 64, 0, 127, "walk", period=(2, 12), jump=0.2) for _ in range(3)]
         self.s = {kk: 256.0 * hh.v for kk, hh in h.items()}
+        self.spd_t = int(256 * FL.KNOBS["CHR_SPD"]) & 0xff00          # S1: the SPD word's target and smoother
+        self.spd_st, self.spd_w, self.spd_next, self.spd_moves, self.spd_synced = self.spd_t << 16, self.spd_t, 0, 0, 0
         self.sb = [256.0 * v for v in self.tail17] + [256.0 * 64] * 3
         self.mangle = None
         self.moved = []
@@ -111,7 +142,26 @@ class Control:
                 self.x ^= 1
                 moved.append("DEL_X")
         struct.pack_into("<H", fr, FB.FRAME_WORDS["DEL_X"], self.x << 8)
+        if cfg.get("spd_sync"):
+            if b >= self.spd_next:
+                self.spd_next = b + int(BPS * r.uniform(0.2, 3.0))
+                x = r.random()
+                if x < 0.4:
+                    self.spd_t = r.choice(SYNC_WORDS)
+                elif x < 0.6 and self.spd_t in SYNC_WORDS:
+                    self.spd_t = min(max(self.spd_t + 0x100 * r.choice((-3, -1, 1, 2)), self.spd_t & 0xff), 0x7f00)
+                else:
+                    self.spd_t = r.randrange(128) << 8
+                self.spd_moves += 1
+                self.spd_synced += self.spd_t in SYNC_WORDS
+            self.spd_st, w = unit_smooth(self.spd_t, self.spd_st)
+            if w != self.spd_w:
+                moved.append("CHR_SPD")
+            self.spd_w = w
+            struct.pack_into("<H", fr, FB.FRAME_WORDS["CHR_SPD"], w)
         for kk, hh in self.h.items():
+            if kk == "CHR_SPD" and cfg.get("spd_sync"):
+                continue
             t = 256.0 * hh.step(b)
             s = self.s[kk]
             ns = s + GLIDE * (t - s)
@@ -158,8 +208,9 @@ def func_of(pc):
 
 
 def run_recipe(args):
-    name, cfg, cmp_off = args
-    setup(cmp_off)
+    name, cfg, cmp_off, dsp, outd = args
+    setup(cmp_off, dsp)
+    OUTD = Path(outd)
     S, V, VC, FB, memguard = G["S"], G["V"], G["VC"], G["FB"], G["memguard"]
     from vm import VMError, watch as W, watch_log
     log = open(OUTD / f"{name}.log", "w")
@@ -286,6 +337,17 @@ def run_recipe(args):
         res["faults"].append({"kind": "error", "message": repr(e)[:500], "block": b, "pc": "%#x" % vm.pc,
                               "function": func_of(vm.pc)})
         say("ERROR", res["faults"][-1])
+    try:        # the flanger's slot at the end: flg_init's magic (FLG1 on CMP4, FLG2 on FL01, FLG3 on FL02), the knobs
+        # last applied, and (FLG3) the sync field (bits 0-7 the FL_SYNC playing)
+        mg = vm.rd32(0x300000)
+        res["flg_slot"] = {"magic": "%#x" % mg, "fresh": vm.rd32(0x300004), "word8_sync": "%#x" % vm.rd32(0x300008),
+                           "last": [round(x, 3) for x in vm.rdf(0x30000c, 4)]}
+        if cfg.get("spd_sync"):
+            res["spd_moves"], res["spd_moves_to_sync"] = ctl.spd_moves, ctl.spd_synced
+        if mg not in (0x464c4731, 0x464c4732, 0x464c4733) or res["flg_slot"]["fresh"] != 0:
+            note("flg_slot", b, res["flg_slot"])
+    except Exception as e:
+        note("flg_slot_unreadable", b, {"error": repr(e)[:200]})
     blocks = max(1, res["blocks_run"])
     res["insns"] = {"max": ins_max, "mean_est": round(sum((k * 10000 + 5000) * c for k, c in ins_hist.items()) / blocks),
                     "est_load_max_pct": round(100 * VC.LOAD(ins_max), 1),
@@ -316,18 +378,21 @@ def main():
     ap.add_argument("--scale", type=float, default=1.0)
     ap.add_argument("--workers", type=int, default=3)
     ap.add_argument("--only")
+    ap.add_argument("--dsp", default=str(DSP), help="the DSP build directory (section7.bin, build.json)")
+    ap.add_argument("--out", default=str(OUTD), help="where the results go")
     a = ap.parse_args()
-    OUTD.mkdir(parents=True, exist_ok=True)
+    outd = Path(a.out).resolve()
+    outd.mkdir(parents=True, exist_ok=True)
     off = cmp_offsets()
     rs = recipes(a.scale)
-    names = a.only.split(",") if a.only else list(rs)
+    names = a.only.split(",") if a.only else [n for n in rs if not rs[n].get("extra")]
     names.sort(key=lambda n: -rs[n]["seconds"])
     total = sum(rs[n]["seconds"] for n in names)
     print(f"{len(names)} recipes, {total} s of audio ({total * BPS} blocks), {a.workers} workers", flush=True)
     t0 = time.time()
     summary = {}
     with ProcessPoolExecutor(a.workers, max_tasks_per_child=1) as ex:
-        futs = {ex.submit(run_recipe, (n, rs[n], off)): n for n in names}
+        futs = {ex.submit(run_recipe, (n, rs[n], off, str(Path(a.dsp).resolve()), str(outd))): n for n in names}
         for f in as_completed(futs):
             n = futs[f]
             try:
@@ -337,7 +402,9 @@ def main():
             summary[name] = {"ok": ok, "blocks": blocks, "faults": faults, "anomalies": anoms}
             print(time.strftime("%H:%M:%S"), name, "ok" if ok else "NOT OK", blocks, "blocks", faults, anoms, flush=True)
     summary["wall_s"] = round(time.time() - t0)
-    (OUTD / ("summary.json" if not a.only else "summary-%s.json" % a.only.replace(",", "-"))).write_text(
+    summary["dsp"] = {"dir": str(Path(a.dsp).resolve().relative_to(ROOT)), "section7_sha256": json.loads(
+        (Path(a.dsp) / "build.json").read_text())["section7"]["sha256"], "scale": a.scale}
+    (outd / ("summary.json" if not a.only else "summary-%s.json" % a.only.replace(",", "-"))).write_text(
         json.dumps(summary, indent=1))
     print("all done", summary["wall_s"], "s", flush=True)
     return 0

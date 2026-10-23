@@ -86,16 +86,16 @@ def main():
                            "items": [{"id": "dry", "kind": "dry", "file": dry, "title": "Dry", "settings": "",
                                       "desc": "The input, unprocessed."}]}
             order.append(gid)
-        elif f[0] in ("render", "stock", "tape", "se01", "sc01"):
+        elif f[0] in ("render", "stock", "tape", "se01", "sc01", "cmp4"):
             gid, path, title, settings, desc = f[1], f[2], f[3], f[4], f[5]
             if gid not in groups:
                 continue                         # a stale stock row (its group was removed): make stock redoes them
             it = {"id": os.path.splitext(os.path.basename(path))[0],
-                  "kind": {"render": "new", "stock": "stock", "tape": "tape", "se01": "se01", "sc01": "sc01"}[f[0]],
+                  "kind": {"render": "new", "stock": "stock", "tape": "tape", "se01": "se01", "sc01": "sc01", "cmp4": "cmp4"}[f[0]],
                   "file": path, "title": title, "settings": settings, "desc": desc}
             if f[0] == "stock":
                 it["pairs"] = [x for x in (f[6] if len(f) > 6 else "").split(",") if x]
-            if f[0] == "render" and (it["id"].startswith("mb_") or it["id"].startswith("fl_")):
+            if f[0] == "render" and (it["id"].startswith("mb_") or it["id"].startswith("fl_") or it["id"].startswith("flu_")):
                 groups[gid]["match"] = True      # compressor and flanger groups start level-matched
             if f[0] == "render" and it["id"].startswith("mb_"):
                 groups[gid]["comp"] = True
@@ -104,7 +104,7 @@ def main():
             groups[gid]["items"].append(it)
     # display order: dry, stock, new; a new render points at its stock counterpart
     for g in groups.values():
-        rank = {"dry": 0, "stock": 1, "tape": 2, "se01": 2.5, "sc01": 2.7, "new": 3}
+        rank = {"dry": 0, "stock": 1, "tape": 2, "se01": 2.5, "sc01": 2.7, "cmp4": 2.8, "new": 3}
         g["items"].sort(key=lambda it: rank[it["kind"]])
         for i, it in enumerate(g["items"]):
             if it["kind"] == "stock":
@@ -235,7 +235,7 @@ class Group {
     this.card = card; root.appendChild(card);
     const vb = card.querySelector(".versions");
     const rows = {};
-    const LABELS = { dry: "Dry", stock: "Stock DN2 (emulated)", tape: "FTD1 (one-head tape, on the unit)", se01: "SE01's FDBK law", sc01: "SC01 (FDBK/64 per head)", new: "New", rec: "Recordings" };
+    const LABELS = { dry: "Dry", stock: "Stock DN2 (emulated)", tape: "FTD1 (one-head tape, on the unit)", se01: "SE01's FDBK law", sc01: "SC01 (FDBK/64 per head)", cmp4: "CMP4 on the unit (C = HPF), same knobs", new: "New", rec: "Recordings" };
     this.buttons = g.items.map((it, i) => {
       if (!rows[it.kind]) {
         const r = document.createElement("div"); r.className = "vrow";

@@ -2,7 +2,11 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 """CMP4: write vendor/elekloader/examples/flanger-names-dn2/mod.json (sites checked against the stock image).
 
-    venv/bin/python scripts/cmp4_make_mod.py [--list]
+    venv/bin/python scripts/cmp4_make_mod.py [--list] [--out PATH]
+
+FL01 moved flanger-names-dn2 to 0.2 in the fork's working tree (scripts/fl01_make_mod.py), so scripts/cmp4_build.py
+writes this 0.1 mod.json into the pinned fork tree (elk_pin.REV_CMP4) with --out, and checks it is the committed file.
+Without --out it writes the working tree's mod.json only while that is still 0.1.
 
 flanger-names-dn2 0.1 = fx-rename-dn2 0.1's 13 flanger sites (scripts/t50b_make_mod.py: the chorus page's title and
 short name, the SEND FX page box, five descriptor rows' long names and short labels) with the same strings, and none of
@@ -102,6 +106,12 @@ mod = {
 }
 
 if __name__ == '__main__':
+    if '--out' in sys.argv:
+        OUT = os.path.abspath(sys.argv[sys.argv.index('--out') + 1])
+    elif os.path.exists(OUT) and json.load(open(OUT)).get('version') != mod['version']:
+        raise SystemExit('%s is flanger-names %s now (FL01, scripts/fl01_make_mod.py); CMP4 builds 0.1 from the pinned '
+                         'fork tree (scripts/elk_pin.py REV_CMP4): give --out' % (os.path.relpath(OUT, ROOT),
+                                                                                   json.load(open(OUT)).get('version')))
     with open(OUT, 'w') as f:
         json.dump(mod, f, indent=1)
         f.write('\n')

@@ -20,6 +20,7 @@
 #include "tapedelay.c"
 #include "mbcomp.c"
 #include "flanger.c"
+#include "flanger_unit.h"
 #include "spaceecho.c"
 
 static int fails = 0, checks = 0;
@@ -1307,6 +1308,54 @@ static void test_flanger_feedback(void)
     free(s);
 }
 
+/* T5.6: the unit's four chorus-page knobs, version 1 (FLG1 to CMP4) and version 2 (C = TIME) */
+static void test_flanger_unit(void)
+{
+    Flanger *a = malloc(sizeof *a), *b = malloc(sizeof *b);
+    float u[FLU_N], xl[32], xr[32], al[32], ar[32], bl[32], br[32];
+    uint32_t r = 11u;
+    long blk, same = 0, n = 0;
+    int j;
+    float t, prev = -1.0f;
+    printf("flanger on the unit's knobs (T5.6): version 2's map, its fixed settings, the WDTH cap, TIME 32 = version 1\n");
+    /* version 2's fixed settings are flanger_init's defaults */
+    flanger_init(a);
+    CHECK(a->knob[FL_HPF] == FLU_HPF && a->knob[FL_SHP] == 0.0f && a->knob[FL_SLEW] == 0.0f && a->knob[FL_DAMP] == 12.0f
+          && a->knob[FL_SYNC] == 0.0f && a->knob[FL_OFS] == 0.0f && a->knob[FL_POL] == 0.0f,
+          "flanger_init's defaults moved: HPF %.0f SHP %.0f SLEW %.0f DAMP %.0f SYNC %.0f OFS %.0f POL %.0f",
+          a->knob[FL_HPF], a->knob[FL_SHP], a->knob[FL_SLEW], a->knob[FL_DAMP], a->knob[FL_SYNC], a->knob[FL_OFS],
+          a->knob[FL_POL]);
+    /* the map: MAN rises with TIME, 0 .. 108; TIME 32 = MAN 50 and +68 %; the chorus end FDBK 0 and a tenth */
+    for (t = 0.0f; t <= 127.0f; t += 0.5f) {
+        flanger_unit_td2(a, t, 100.0f);
+        CHECK(a->knob[FL_MAN] > prev || t == 0.0f, "MAN not rising at TIME %.1f", t);
+        prev = a->knob[FL_MAN];
+        if (t <= FLU_T_C0) CHECK(a->knob[FL_FDBK] == 107.0f && a->knob[FL_DPTH] == 100.0f, "TIME %.1f: no fade yet", t);
+        if (t >= FLU_T_C1) CHECK(a->knob[FL_FDBK] == 64.0f && fabsf(a->knob[FL_DPTH] - 10.0f) < 1e-4f,
+                                 "TIME %.1f: FDBK %.2f DPTH %.3f at the chorus end", t, a->knob[FL_FDBK], a->knob[FL_DPTH]);
+    }
+    flanger_unit_td2(a, 32.0f, 96.0f);
+    CHECK(a->knob[FL_MAN] == 50.0f && a->knob[FL_FDBK] == 107.0f && a->knob[FL_DPTH] == 96.0f, "TIME 32 is not version 1");
+    flanger_unit_td2(a, FLU_KMAX, 0.0f);
+    CHECK(fabsf(flanger_man_ms(a->knob[FL_MAN]) - 25.7f) < 0.1f, "TIME top %.2f ms", flanger_man_ms(a->knob[FL_MAN]));
+    /* WDTH at the cap: the LFO offset stays inside int32, so selcc's signed TRUNC cannot overflow */
+    flanger_set(a, FL_WDTH, FLU_KMAX);
+    fl_targets(a);
+    CHECK(a->t_off * 4294967296.0f < 2147483647.0f && a->t_off > 0.49999f, "WDTH cap: offset %.7f cycles", a->t_off);
+    /* the same input through version 1 (C = HPF 32) and version 2 (C = TIME 32): bit-identical */
+    u[FLU_DPTH] = 96.0f; u[FLU_SPD] = 30.0f; u[FLU_C] = 32.0f; u[FLU_WDTH] = 48.0f;
+    flanger_init(a); flanger_unit_init1(a); flanger_unit_set1(a, u); flanger_snap(a);
+    flanger_init(b); flanger_unit_set2(b, u); flanger_snap(b);
+    for (blk = 0; blk < 10L * 1500; blk++) {
+        for (j = 0; j < 32; j++) { xl[j] = 0.5f * fx_rands(&r); xr[j] = 0.5f * fx_rands(&r); }
+        flanger_process(a, xl, xr, al, ar, 32);
+        flanger_process(b, xl, xr, bl, br, 32);
+        for (j = 0; j < 32; j++) { same += al[j] == bl[j]; same += ar[j] == br[j]; n += 2; }
+    }
+    CHECK(same == n, "version 1 at HPF 32 and version 2 at TIME 32 differ: %ld of %ld samples the same", same, n);
+    free(a); free(b);
+}
+
 /* ============================== all three ============================== */
 
 /* ---------- extremes: no NaN, Inf or denormals ---------- */
@@ -1682,6 +1731,7 @@ int main(int argc, char **argv)
     test_flanger_lfo();
     test_flanger_ks();
     test_flanger_feedback();
+    test_flanger_unit();
     test_smoothing();
     test_determinism_blocks();
     test_extremes();

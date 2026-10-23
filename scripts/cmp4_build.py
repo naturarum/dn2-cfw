@@ -157,9 +157,22 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
     env = dict(os.environ, ELEKLOADER_CROSS='m68k-elf-')
     checks = {}
     # flanger-names' mod.json from the stock image (scripts/cmp4_make_mod.py checks every stock value and that the
-    # sites are fx-rename 0.1's flanger sites)
-    run([sys.executable, os.path.join(ROOT, 'scripts', 'cmp4_make_mod.py')])
-    moddir = lambda m: os.path.join(EL, MODDIRS[m])                          # noqa: E731
+    # sites are fx-rename 0.1's flanger sites). FL01 moved flanger-names to 0.2 in the fork's working tree, so CMP4's
+    # 0.1 is built from the fork's commit of 0.1 (elk_pin.REV_CMP4), and the mod.json written there must be that
+    # commit's file byte for byte
+    fln_dir = os.path.join(elk_pin.tree(elk_pin.REV_CMP4), 'examples', 'flanger-names-dn2')
+    committed = open(os.path.join(fln_dir, 'mod.json'), 'rb').read()
+    run([sys.executable, os.path.join(ROOT, 'scripts', 'cmp4_make_mod.py'), '--out', os.path.join(fln_dir, 'mod.json')])
+    checks['flanger-names 0.1\'s mod.json as cmp4_make_mod.py writes it = the fork\'s commit %s' % elk_pin.REV_CMP4[:7]] = (
+        open(os.path.join(fln_dir, 'mod.json'), 'rb').read() == committed)
+    # FL02 moved param-rows-dn2 to 0.4 and comp-ui-dn2 to 0.3 in the fork's working tree: CMP4's 0.3 and 0.2 are built
+    # from the same commit (elk_pin.REV_CMP4, which holds them; the .elemod files are checked against CMP3's below)
+    pin4 = os.path.dirname(os.path.dirname(fln_dir))          # the pinned tree's root
+
+    def moddir(m):
+        if m == 'flanger-names':
+            return fln_dir
+        return os.path.join(pin4 if m in ('param-rows', 'comp-ui') else EL, MODDIRS[m])
     built = {m: sdk_build(moddir(m), mods_dir, env) for m in SET + ['fx-rename']}
     pin2 = elk_pin.tree(elk_pin.REV_CMP2)
     rows02 = sdk_build(os.path.join(pin2, 'examples', 'param-rows-dn2'), os.path.join(mods_dir, 'pinned'), env)

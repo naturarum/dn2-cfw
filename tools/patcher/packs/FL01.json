@@ -1,0 +1,14 @@
+{
+ "title": "Flanger with a TIME knob",
+ "description": "OB01 with the retuned flanger: knob C (TIME) goes from a phaser-like sweep to a chorus.",
+ "tested_on_unit": "23 Oct 2026",
+ "effects": [
+  "cmp3",
+  "flng"
+ ],
+ "dsp": {
+  "code_bytes": null,
+  "state_bytes": null,
+  "load_percent": null
+ }
+}

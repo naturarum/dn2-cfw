@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Digiwerk Patcher: XcodeGen spec (xcodegen generate). app/build.sh builds it unsigned with a set of packs; for the
+# release, the owner fills in DEVELOPMENT_TEAM (and the bundle id if wanted), then signs with Developer ID and
+# notarizes (build.sh's comments). The packs go into Resources/packs from out/patcher/app-packs/packs, which
+# build.sh fills (index.txt, then ID.dn2p per pack, made by `make PACKS=...` in tools/patcher), and the pixel art into
+# Resources/identity from out/patcher/app-packs/identity (build.sh copies it from docs/identity).
+name: Digiwerk Patcher
+options:
+  bundleIdPrefix: com.naturarum
+  deploymentTarget:
+    macOS: "13.0"
+settings:
+  base:
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+    ARCHS: "arm64 x86_64"
+    ONLY_ACTIVE_ARCH: NO
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: CTWUYGFLF6        # naturarum
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "Developer ID Application"
+    ENABLE_HARDENED_RUNTIME: YES
+    ENABLE_APP_SANDBOX: NO
+    GCC_C_LANGUAGE_STANDARD: c99
+    DEAD_CODE_STRIPPING: YES
+targets:
+  Digiwerk Patcher:
+    type: application
+    platform: macOS
+    scheme: {}
+    sources:
+      - path: Sources
+      - path: ../dn2patch.c
+      - path: ../dn2patch.h
+      - path: ../../../out/patcher/app-packs/packs
+        type: folder
+        buildPhase: resources
+      - path: ../../../out/patcher/app-packs/identity
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_NAME: "Digiwerk Patcher"
+        PRODUCT_BUNDLE_IDENTIFIER: com.naturarum.digiwerk-patcher
+        SWIFT_OBJC_BRIDGING_HEADER: Sources/Bridging.h
+        HEADER_SEARCH_PATHS: ["$(SRCROOT)/.."]
+        GENERATE_INFOPLIST_FILE: NO
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: Digiwerk Patcher
+        LSApplicationCategoryType: public.app-category.utilities
+        NSHumanReadableCopyright: "Digiwerk, GPL-2.0-or-later. Not made or supported by Elektron."
+        CFBundleDocumentTypes:          # a .syx (or the .zip, to say "unzip it first") dropped on the icon
+          - CFBundleTypeName: SysEx file
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [com.naturarum.digiwerk-patcher.syx]
+          - CFBundleTypeName: ZIP archive
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.zip-archive]
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: com.naturarum.digiwerk-patcher.syx
+            UTTypeDescription: SysEx file
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [syx]

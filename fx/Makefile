@@ -20,7 +20,7 @@ CFLAGS  := -O2 -fno-strict-aliasing -ffp-contract=off $(FXWARN)
 SELCC   := $(ROOT)/vendor/selache/target/release/selcc
 
 FX_SRC  := tapedelay.c mbcomp.c flanger.c spaceecho.c
-FX_HDR  := fxmath.h tapedelay.h mbcomp.h flanger.h spaceecho.h
+FX_HDR  := fxmath.h tapedelay.h mbcomp.h flanger.h flanger_unit.h spaceecho.h
 
 all: $(BIN)/fxrender $(BIN)/fxgen $(BIN)/fxtest
 

@@ -428,6 +428,9 @@ def main():
             if len(sched) > 1:
                 settings += f"; {len(sched) - 1} timed changes (as the new render)"
             stitle = f"Stock chorus: DPTH {first['DPTH']}, SPD {first['SPD']}"
+        elif r["fx"] in ("flgunit1", "flgunit2"):
+            print(f"  {rid}: the flanger on the unit's knobs (T5.6); no stock pair")
+            continue
         else:
             tl = knob_timeline(r, MB_DEFAULTS, nblocks)
             if len(tl) > 1:

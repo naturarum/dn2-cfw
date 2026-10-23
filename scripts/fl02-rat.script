@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# FL02: the LOW band page's RAT (knob E) stepped through its nine values, 1.00 .. 20.00, from the warm 800M
+# snapshot: the glyph at each (notes/FL02.md). scripts/fl02-emu.sh run fl02_live scripts/fl02-rat.script
+wait-emu 0.5
+down space
+wait-emu 0.1
+tap semicolon      # FUNC+MOD: MIXER, Compressor Low (1/7)
+wait-emu 0.1
+up space
+wait-emu 0.8
+png 00-low
+tap shift+5        # E: RAT down
+wait-emu 0.3
+tap shift+5        # E: RAT down
+wait-emu 0.3
+tap shift+5        # E: RAT down
+wait-emu 0.3
+tap shift+5        # E: RAT down
+wait-emu 0.3
+tap shift+5        # E: RAT down
+wait-emu 0.3
+tap shift+5        # E: RAT down
+wait-emu 0.3
+tap shift+5        # E: RAT down
+wait-emu 0.3
+tap shift+5        # E: RAT down
+wait-emu 0.3
+tap shift+5        # E: RAT down
+wait-emu 0.3
+wait-emu 0.6
+png rat0
+tap 5              # E: RAT up
+wait-emu 0.6
+png rat1
+tap 5              # E: RAT up
+wait-emu 0.6
+png rat2
+tap 5              # E: RAT up
+wait-emu 0.6
+png rat3
+tap 5              # E: RAT up
+wait-emu 0.6
+png rat4
+tap 5              # E: RAT up
+wait-emu 0.6
+png rat5
+tap 5              # E: RAT up
+wait-emu 0.6
+png rat6
+tap 5              # E: RAT up
+wait-emu 0.6
+png rat7
+tap 5              # E: RAT up
+wait-emu 0.6
+png rat8
+tap 5              # past the top: stays at 20.00
+wait-emu 0.6
+png rat8-again

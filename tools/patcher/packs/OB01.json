@@ -1,0 +1,14 @@
+{
+ "title": "Compressor and flanger, Overbridge works",
+ "description": "CMP4 with the Overbridge fix: Overbridge and Transfer connect as with OS 1.12.",
+ "tested_on_unit": "22 Oct 2026",
+ "effects": [
+  "cmp3",
+  "flng"
+ ],
+ "dsp": {
+  "code_bytes": null,
+  "state_bytes": null,
+  "load_percent": null
+ }
+}

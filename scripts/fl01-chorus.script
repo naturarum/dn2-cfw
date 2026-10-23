@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# FL01: the chorus page (SEND FX 3, the flanger) from the warm 800M snapshot: knob C's label (TIME), its long name in
+# the header while it turns, and FUNC+PLAY (clear page), which sets the page's knobs to their rows' defaults: C to 32.
+# Run with scripts/t63b_live.py (the drawn texts at every png): scripts/fl01-emu.sh run t63b_live scripts/fl01-chorus.script
+wait-emu 0.5
+down space           # FUNC held
+wait-emu 0.1
+tap l                # + FX: SEND FX 1 (delay)
+wait-emu 0.1
+up space
+wait-emu 0.5
+tap Down
+wait-emu 0.4
+tap Down
+wait-emu 0.6
+png 01-chorus
+tap 3                # encoder C, one detent up
+wait-emu 0.4
+png 02-chorus-C-up
+tap shift+3          # and back
+wait-emu 0.4
+png 03-chorus-C-back
+down space
+wait-emu 0.1
+tap minus            # FUNC+PLAY: clear the page (the rows' defaults)
+wait-emu 0.1
+up space
+wait-emu 0.8
+png 04-chorus-cleared
+tap 3                # encoder C, one detent up from the default
+wait-emu 0.4
+png 05-cleared-C-up
+tap shift+3          # and back to the default
+wait-emu 0.4
+png 06-cleared-C-back
+tap 1                # encoder A (DPTH), one detent up: its default 127 stays 127
+wait-emu 0.4
+png 07-cleared-A-up
+tap shift+4          # encoder D (WDTH), one detent down from its default 127
+wait-emu 0.4
+png 08-cleared-D-down

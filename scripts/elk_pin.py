@@ -18,7 +18,11 @@ REV_0_1, the fork's commit that holds the 0.1 sources (pushed: naturarum/elekloa
 CMP3 moved param-rows-dn2 to 0.3, comp-ui-dn2 to 0.2 and comp-link-dn2 to 0.2 in place, so CMP1's and CMP2's
 main OS (scripts/t63b_build.py without --stage, --stage CMP2) build every mod from REV_CMP2 (e10bb05, the
 fork's commit of comp-link 0.1). SC01 moved comp-link-dn2 to 0.3 in place, so CMP3's main OS (--stage CMP3) builds
-from REV_CMP3 (4b1384b, the fork's commit of comp-link 0.2).
+from REV_CMP3 (4b1384b, the fork's commit of comp-link 0.2). FL01 moved flanger-names-dn2 to 0.2 in place, so
+CMP4's main OS (scripts/cmp4_build.py) builds flanger-names from REV_CMP4 (6d9b653, the fork's commit of 0.1). FL02 moved
+param-rows-dn2 to 0.4 and comp-ui-dn2 to 0.3 in place, so CMP4's and SC01's main OS (scripts/cmp4_build.py,
+scripts/sc01_build.py) build those two from REV_CMP4 as well (it holds param-rows 0.3 and comp-ui 0.2). OB01 and FL01
+link CMP4's .elemod files (sha256-checked), so they do not depend on the tree.
 `git archive` of `mods/` and `examples/` at that commit goes to out/pinned/elekloader-REV/ (git
 ignored), fresh on every call; the SDK and the patcher still run from vendor/elekloader (their
 Python did not change). The .elemod files the SDK builds from there are the 0.1 files byte for
@@ -38,6 +42,9 @@ REV_CMP2 = 'e10bb05f700954f55f8d6f9f41771e372df2a135'
 # SC01 (2026-10-21) moved comp-link-dn2 to 0.3 in place (the CMP3 storage review's two fixes); CMP3's main OS (on the
 # unit) builds every mod from this commit (core 0.2, comp-ui 0.2, param-rows 0.3, comp-link 0.2, fx-rename 0.1)
 REV_CMP3 = '4b1384b3a2d903ac1553ce8ef28ce3cfc3daa7a1'
+# FL01 (2026-10-22) moved flanger-names-dn2 to 0.2 in place (knob C of the chorus page named TIME, its new-kit default
+# 32); CMP4's main OS (on the unit, and OB01's) builds flanger-names from this commit (the fork's commit of 0.1)
+REV_CMP4 = '6d9b6537505af51a901b8e004290b3e047199b71'
 
 
 def tree(rev=REV_0_1):

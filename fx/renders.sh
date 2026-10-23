@@ -13,7 +13,7 @@ mkdir -p "$W"
 : > "$M"
 # the new effects' renders are all made again below: drop the old ones, so renamed or removed
 # renders do not linger (stock_* files belong to stock_renders.py, which tidies its own)
-rm -f "$W"/td_*.wav "$W"/mb_*.wav "$W"/fl_*.wav "$W"/se_*.wav "$W"/ftd_*.wav
+rm -f "$W"/td_*.wav "$W"/mb_*.wav "$W"/fl_*.wav "$W"/fl[cu]*_*.wav "$W"/se_*.wav "$W"/ftd_*.wav
 
 # group header: g GROUP DRYFILE "group title" "group description"
 g() {
@@ -23,7 +23,7 @@ g() {
 r() {
     grp=$1; id=$2; title=$3; desc=$4; shift 4
     "$R" "$@" -o "$W/$id.wav" 2>&1 | sed 's/^/  /'
-    args=$(echo "$*" | sed -e "s|$D/||g" -e 's|-i [^ ]* ||' -e 's|-key [^ ]* ||' -e 's|-fx [a-z]* ||')
+    args=$(echo "$*" | sed -e "s|$D/||g" -e 's|-i [^ ]* ||' -e 's|-key [^ ]* ||' -e 's|-fx [a-z0-9]* ||')
     # column 7: the full fxrender arguments (dry paths relative to OUTDIR), read by stock_renders.py
     full=$(echo "$*" | sed -e "s|$D/|dry/|g")
     printf '%s\t%s\twav/%s.wav\t%s\t%s\t%s\t%s\n' "${KIND:-render}" "$grp" "$id" "$title" "$args" "$desc" "$full" >> "$M"
@@ -32,6 +32,8 @@ r() {
 tp() { KIND=tape r "$@"; }
 # SC01: the same render with SE01's Space Echo (tools/dspsplice/src/se01/spaceecho.c: INTENSITY 1.1 (INT/127)^1.5)
 rse01() { R="$OUT/bin/fxrender_se01" KIND=se01 r "$@"; }
+# T5.6: the same unit knobs on CMP4's map (C = HPF, the centre fixed at 0.9 ms): -fx flgunit1
+rc4() { KIND=cmp4 r "$@"; }
 # SC02: the same render with SC01's Space Echo (tools/dspsplice/src/sc01/spaceecho.c: FDBK/64 per head)
 rsc01() { R="$OUT/bin/fxrender_sc01" KIND=sc01 r "$@"; }
 
@@ -226,6 +228,30 @@ r flslap fl_chorus "Chorus range" "MAN 100 (16 ms), DPTH 10, SPD 70 (0.6 Hz), FD
   $FL -i $D/pluck.wav -p MAN=100 -p DPTH=10 -p SPD=70 -p FDBK=64 -p WDTH=90 -p OFS=30
 r flslap fl_slap "Slapback" "MAN 122 (58 ms), DPTH 0, FDBK 74 (+16 %), OFS 80 (2 ms: the right repeat a little later), DAMP 50 (about 2.5 kHz)." \
   $FL -i $D/pluck.wav -p MAN=122 -p DPTH=0 -p FDBK=74 -p OFS=80 -p DAMP=50
+
+echo "flanger on the unit's knobs (T5.6)"
+FU2="-fx flgunit2 -tail 3 -bpm 120 -vol 127 -gain -12"
+FU1="-fx flgunit1 -tail 3 -bpm 120 -vol 127 -gain -12"
+g flunit chords.wav "Flanger retune (T5.6): one knob from phaser-like to chorus" "On the unit the flanger gets only the chorus page's four knobs: A DPTH, B SPD, C, D WDTH. On CMP4 C is HPF and the centre delay is fixed at 0.9 ms with +68 % feedback, so neither end is reachable. Retuned, C is TIME: the centre delay from 0.05 ms (phaser-like) through 0.9 ms (TIME 32, exactly CMP4's flanger) to 26 ms (chorus); from TIME 64 to 100 the feedback fades to 0 and the depth range to a tenth. The input high-pass is fixed at 64 Hz. Each render has CMP4 at the same four knobs next to it (row CMP4). Send mix, VOL 127, input -12 dB."
+for c in "phaser 8 45 50 64 Phaser-like:_TIME_8_(0.1_ms)" "jet 20 100 30 48 Jet:_TIME_20_(0.3_ms)" "flanger 32 96 30 48 Flanger:_TIME_32_(0.9_ms,_CMP4's_own)" "deep 56 70 40 90 Long_flanger:_TIME_56_(2.1_ms)" "blend 82 60 60 100 Flange-chorus:_TIME_82_(5.3_ms,_halfway_through_the_fade)" "chorus 110 50 70 127 Chorus:_TIME_110_(14_ms)" "wide 127 100 80 127 Wide_chorus:_TIME_127_(26_ms)"; do
+    set -- $c
+    t=$(echo "$6" | tr _ ' ')
+    r flunit flu_$1 "$t" "TIME $2, DPTH $3, SPD $4, WDTH $5." $FU2 -i $D/chords.wav -p TIME=$2 -p DPTH=$3 -p SPD=$4 -p WDTH=$5
+    rc4 flunit flc4_$1 "CMP4 at the same knobs" "HPF $2, DPTH $3, SPD $4, WDTH $5 on CMP4: MAN 0.9 ms, +68 %." $FU1 -i $D/chords.wav -p HPF=$2 -p DPTH=$3 -p SPD=$4 -p WDTH=$5
+done
+g flunitd drums.wav "Flanger retune (T5.6) on drums" "As above, on drums. Row CMP4: the same four knobs on CMP4."
+for c in "phaser 6 50 45 64 Phaser-like:_TIME_6" "jet 24 110 25 48 Jet:_TIME_24" "flanger 32 96 30 48 Flanger:_TIME_32_(CMP4's_own)" "chorus 105 60 75 127 Chorus:_TIME_105"; do
+    set -- $c
+    t=$(echo "$6" | tr _ ' ')
+    r flunitd flud_$1 "$t" "TIME $2, DPTH $3, SPD $4, WDTH $5." $FU2 -i $D/drums.wav -p TIME=$2 -p DPTH=$3 -p SPD=$4 -p WDTH=$5
+    rc4 flunitd flc4d_$1 "CMP4 at the same knobs" "HPF $2, DPTH $3, SPD $4, WDTH $5 on CMP4." $FU1 -i $D/drums.wav -p HPF=$2 -p DPTH=$3 -p SPD=$4 -p WDTH=$5
+done
+g flunitk pluck.wav "Flanger retune (T5.6): a new kit and the WDTH 127 fix" "A new kit's stock chorus knobs: DPTH 127, SPD 32, C 0, WDTH 127. On CMP4 that is the 0.9 ms flanger, but WDTH 127 plays both sides in phase there: selcc converts the half-cycle LFO offset with a signed TRUNC that overflows to about 0 on the DSP (fx/flanger_unit.h). Retuned, C 0 is the shortest, phaser-like end (if new kits should start as the flanger instead, C's default can be 32: one number in the main OS) and WDTH 127 is 180 degrees. Also TIME 32 with WDTH 126 and 127 on both."
+r flunitk fluk_new "New kit, retuned" "DPTH 127, SPD 32, TIME 0, WDTH 127 (180 degrees)." $FU2 -i $D/pluck.wav -p DPTH=127 -p SPD=32 -p TIME=0 -p WDTH=127
+rc4 flunitk flc4k_new "New kit on CMP4" "DPTH 127, SPD 32, HPF 0, WDTH 127: as the unit plays it, both sides in phase." $FU1 -i $D/pluck.wav -p DPTH=127 -p SPD=32 -p HPF=0 -p WDTH=127
+r flunitk fluk_w127 "TIME 32, WDTH 127, retuned" "The classic flanger with the two sides 180 degrees apart." $FU2 -i $D/pluck.wav -p DPTH=96 -p SPD=30 -p TIME=32 -p WDTH=127
+rc4 flunitk flc4k_w127 "HPF 32, WDTH 127 on CMP4" "As the unit plays it: in phase." $FU1 -i $D/pluck.wav -p DPTH=96 -p SPD=30 -p HPF=32 -p WDTH=127
+r flunitk fluk_w126 "TIME 32, WDTH 126, retuned" "177 degrees: the same on CMP4 and retuned." $FU2 -i $D/pluck.wav -p DPTH=96 -p SPD=30 -p TIME=32 -p WDTH=126
 
 g se_fdbk pluck.wav "Space Echo: FDBK on the stock law (SC01)" "SC01 puts INTENSITY (FDBK) on the stock delay's law: each head feeds back FDBK/64, so the display's 100 % (FDBK 64) repeats for ever and above it the repeats grow until the tape's saturator holds them (and the echo's wet ceiling, 0.7, holds what leaves the slot), as on the stock delay. SE01 had 1.1 (FDBK/127)^1.5: 14 % at 32, 39 % at 64, 77 % at 100, 110 % at 127. The input at the unit's level (13 dB down: a full-scale sound reaches the delay slot at about 0.13, notes/T5.3 10.2), VOL 127, no band (BW 127), AGE 0, MONO, TIME 15. Each FDBK with SE01's law next to it (se01_*). Since SC02 two or three heads share the gain (group se_share). Keep the volume low at 64 and above."
 SEF="-fx spaceecho -tail 8 -bpm 120 -vol 127 -gain -13 -p TIME=15 -p AGE=0 -p BW=127 -p PAN=0 -p WID=0"

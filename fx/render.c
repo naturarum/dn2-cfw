@@ -40,6 +40,7 @@
 #include "tapedelay.h"
 #include "mbcomp.h"
 #include "flanger.h"
+#include "flanger_unit.h"
 #include "spaceecho.h"
 
 typedef struct { const char *name; int id; } PName;
@@ -64,6 +65,22 @@ static const PName FL_NAMES[] = {
     { "DAMP", FL_DAMP }, { "SYNC", FL_SYNC }, { "OFS", FL_OFS }, { "POL", FL_POL }, { 0, 0 }
 };
 
+/* the flanger as the unit plays it (T5.6): the chorus page's four knobs through fx/flanger_unit.h,
+   version 1 (FLG1 to CMP4: C is HPF) or 2 (C is TIME); -fx flgunit1 | flgunit2 */
+static const PName FU_NAMES[] = {
+    { "DPTH", FLU_DPTH }, { "SPD", FLU_SPD }, { "C", FLU_C }, { "TIME", FLU_C }, { "HPF", FLU_C },
+    { "WDTH", FLU_WDTH }, { 0, 0 }
+};
+static int fu_ver;                                          /* 0: the flanger's own twelve knobs */
+static float fu_knob[FLU_N] = { 96.0f, 30.0f, 32.0f, 48.0f };
+static void fl_set(Flanger *fl, int id, float v)
+{
+    if (!fu_ver) { flanger_set(fl, id, v); return; }
+    fu_knob[id] = v;
+    if (fu_ver == 1) flanger_unit_set1(fl, fu_knob);
+    else flanger_unit_set2(fl, fu_knob);
+}
+
 /* the Space Echo (T5.2); the long names are aliases */
 static const PName SE_NAMES[] = {
     { "TIME", SE_TIME }, { "MODE", SE_MODE }, { "INT", SE_INT }, { "INTENSITY", SE_INT },
@@ -77,7 +94,7 @@ enum { FX_TD, FX_MB, FX_FL, FX_SE };
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: fxrender -fx tapedelay|mbcomp|flanger|spaceecho -i in.wav -o out.wav [-p NAME=V] [-at T NAME=V]\n"
+    fprintf(stderr, "usage: fxrender -fx tapedelay|mbcomp|flanger|flgunit1|flgunit2|spaceecho -i in.wav -o out.wav [-p NAME=V] [-at T NAME=V]\n"
                     "       [-ramp T0 T1 NAME V0 V1] [-key key.wav] [-bpm B] [-tail S] [-block N]\n"
                     "       [-mix send|wet|insert] [-vol V] [-gain DB] [-bits 16|24|32] [-meter] | -list\n"
                     "       fxrender -bands -i in.wav [-p XLO=V -p XHI=V]\n");
@@ -155,6 +172,8 @@ int main(int argc, char **argv)
     if (!strcmp(fxname, "tapedelay")) { fx = FX_TD; names = TD_NAMES; }
     else if (!strcmp(fxname, "mbcomp")) { fx = FX_MB; names = MB_NAMES; }
     else if (!strcmp(fxname, "flanger")) { fx = FX_FL; names = FL_NAMES; }
+    else if (!strcmp(fxname, "flgunit1")) { fx = FX_FL; names = FU_NAMES; fu_ver = 1; }
+    else if (!strcmp(fxname, "flgunit2")) { fx = FX_FL; names = FU_NAMES; fu_ver = 2; }
     else if (!strcmp(fxname, "spaceecho")) { fx = FX_SE; names = SE_NAMES; }
     else usage();
     if (list) {
@@ -246,6 +265,8 @@ int main(int argc, char **argv)
         if (!fl) return 1;
         flanger_init(fl);
         flanger_set_bpm(fl, (float)bpm);
+        if (fu_ver == 1) flanger_unit_init1(fl);
+        if (fu_ver) fl_set(fl, FLU_DPTH, fu_knob[FLU_DPTH]);
     } else {
         se = malloc(sizeof *se);
         if (!se) return 1;
@@ -258,7 +279,7 @@ int main(int argc, char **argv)
             float v = (float)ev[i].v0;
             if (fx == FX_TD) tapedelay_set(td, ev[i].id, v);
             else if (fx == FX_MB) mbcomp_set(mb, ev[i].id, v);
-            else if (fx == FX_FL) flanger_set(fl, ev[i].id, v);
+            else if (fx == FX_FL) fl_set(fl, ev[i].id, v);
             else spaceecho_set(se, ev[i].id, v);
         }
     }
@@ -288,7 +309,7 @@ int main(int argc, char **argv)
                 }
                 if (fx == FX_TD) tapedelay_set(td, e->id, (float)v);
                 else if (fx == FX_MB) mbcomp_set(mb, e->id, (float)v);
-                else if (fx == FX_FL) flanger_set(fl, e->id, (float)v);
+                else if (fx == FX_FL) fl_set(fl, e->id, (float)v);
                 else spaceecho_set(se, e->id, (float)v);
             }
             for (j = 0; j < n; j++) {

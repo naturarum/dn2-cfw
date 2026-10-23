@@ -175,7 +175,10 @@ def build(a, sec7, out, mods_dir, build_dir, syx, tmp_syx, link_dir):
     checks = {}
     # fx-echo's mod.json from the stock image (scripts/t53_make_mod.py checks every stock value); unchanged since SE01
     run([sys.executable, os.path.join(ROOT, 'scripts', 't53_make_mod.py')])
-    moddir = lambda m: os.path.join(EL, MODDIRS[m])                          # noqa: E731
+    # FL02 moved param-rows-dn2 to 0.4 and comp-ui-dn2 to 0.3 in the fork's working tree: SC01's 0.3 and 0.2 come from
+    # the fork's commit that holds them (elk_pin.REV_CMP4)
+    pin4 = elk_pin.tree(elk_pin.REV_CMP4)
+    moddir = lambda m: os.path.join(pin4 if m in ('param-rows', 'comp-ui') else EL, MODDIRS[m])   # noqa: E731
     built = {m: sdk_build(moddir(m), mods_dir, env) for m in SET + ['fx-rename']}
     pin2 = elk_pin.tree(elk_pin.REV_CMP2)
     rows02 = sdk_build(os.path.join(pin2, 'examples', 'param-rows-dn2'), os.path.join(mods_dir, 'pinned'), env)

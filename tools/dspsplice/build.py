@@ -14,6 +14,8 @@
     python3 tools/dspsplice/build.py CMP3      # T6.3 CMP3's DSP: CMP3A on CP2F's layout + band GR meters in dB
     python3 tools/dspsplice/build.py SC01      # SC01: CMP3 + the Space Echo (stock FDBK law) + breathing meters
     python3 tools/dspsplice/build.py CMP4      # CMP4: CMP3 with the stock delay back and the breathing meters
+    python3 tools/dspsplice/build.py FL01      # FL01: CMP4 with the retuned flanger glue (knob C is TIME, T5.6)
+    python3 tools/dspsplice/build.py FL02      # FL02: FL01 with the flanger's speed in sync with the tempo
 
 Pipeline (notes/T3.8-dsp-splice.md section 1):
   1. compile the recipe's C with selcc -O1 (as tools/sharcvm/tests/fxcheck.py does), generate the
@@ -490,6 +492,30 @@ RECIPES = {
                                      "nothing of ours, code or data (notes/T6.3-cmp2f.md)")],
         outdir="out/CMP4/CMP4-dsp", syx="CMP4-dsp.syx", version="CM4D"),
 }
+# FL01 (2026-10-22, notes/T5.6-flanger-retune.md): CMP4 with the retuned flanger glue, tools/dspsplice/src/flg_glue2.c
+# (the chorus page's knob C is TIME through fx/flanger_unit.h's version 2; fx/flanger.c unchanged) in place of
+# flg_glue.c, in the same place: block 1 after fx/flanger.c, where CMP4's glue ran. The glue is shorter (1,604 B against
+# 1,636 B), so block 1 ends below CMP4's end; the stubs, the flanger, code3, code4, the data, the fills and the hooks
+# are CMP4's (the stubs' calls follow flg_init and flg_process). The same placement rule (key proven).
+RECIPES["FL01"] = dict(
+    RECIPES["CMP4"],
+    what="FL01: CMP4 with the retuned flanger glue (flg_glue2.c: knob C is TIME, the centre delay from 0.05 ms through "
+         "CMP4's 0.9 ms flanger at 32 to a 25.7 ms chorus; WDTH 127 wide), in the place of CMP4's glue",
+    c=["fx/flanger.c", "tools/dspsplice/src/flg_glue2.c"], h=["fx/flanger_unit.h"],
+    outdir="out/FL01/FL01-dsp", syx="FL01-dsp.syx", version="FL1D")
+# FL02 (2026-10-23, notes/T5.6-flanger-retune.md section 7): FL01 with the flanger's speed in sync with the tempo
+# (FUNC + turn on SPD, main OS: flanger-sync-dn2). tools/dspsplice/src/flg_glue3.c in place of flg_glue2.c (block 1,
+# the same place; SPD goes through flg_spd) and tools/dspsplice/src/flg_sync.c (flg_spd: the frame word whole, the 12
+# synced values, the tempo) in code2 from 0x310000, inside the proven 0x310000-0x315f8c where FTD1 to CMP3's tape delay
+# ran (free on FL01: code2 not loaded there). fx/flanger.c unchanged (its FL_SYNC and flanger_set_bpm, never called
+# on FL01). The same placement rule (key proven), 0x315f8c-0x318000 forbidden.
+RECIPES["FL02"] = dict(
+    {k: v for k, v in RECIPES["FL01"].items() if k != "code2_unused"},
+    what="FL02: FL01 with the flanger's speed in sync with the tempo: flg_glue3.c (FL01's glue, SPD through flg_spd) "
+         "in its place, flg_sync.c (the 12 synced values, FL_SYNC and the tempo) in code2 from 0x310000",
+    c=["fx/flanger.c", "tools/dspsplice/src/flg_glue3.c"], c2=["tools/dspsplice/src/flg_sync.c"],
+    h=["fx/flanger_unit.h", "tools/dspsplice/src/flg_slot3.h"], code2=(0x310000, 0x315f8c),
+    outdir="out/FL02/FL02-dsp", syx="FL02-dsp.syx", version="FL2D")
 
 LDF = """ARCHITECTURE(ADSP-21569)
 $OBJECTS = $COMMAND_LINE_OBJECTS;
@@ -1212,7 +1238,7 @@ def build(name, out_root=ROOT / "out/T3.8", odir=None):
         "placed": placed, "symbols": {k: "%#x" % v for k, v in sorted(sym.items(), key=lambda kv: kv[1])},
         "sources": {src: sha((ROOT / src).read_bytes()) for src in
                     all_c(rec) + [f"tools/dspsplice/src/{h}" for h in ("fxio.h",)]
-                    + ["fx/fxmath.h"] + rec.get("asm2", []) + [str(Path(src).with_suffix(".h")) for src in all_c(rec)
+                    + ["fx/fxmath.h"] + rec.get("asm2", []) + rec.get("h", []) + [str(Path(src).with_suffix(".h")) for src in all_c(rec)
                                          if (ROOT / Path(src).with_suffix(".h")).exists()]},
         "layout_check": {"rows": layout, "problems": problems, "forbidden": [("%#x" % a, "%#x" % b, w) for a, b, w in FORBIDDEN + rec.get("forbid", [])],
                          "slot_sizes_from_image": slot_sizes},
