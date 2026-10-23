@@ -1,0 +1,14 @@
+{
+ "title": "Flanger in time, compressor pictures",
+ "description": "FL01 with the flanger's speed in time with the tempo (FUNC + turn on SPD) and the stock compressor's pictures on the band pages.",
+ "tested_on_unit": "",
+ "effects": [
+  "cmp3",
+  "flng"
+ ],
+ "dsp": {
+  "code_bytes": null,
+  "state_bytes": null,
+  "load_percent": null
+ }
+}

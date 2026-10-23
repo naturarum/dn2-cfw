@@ -66,9 +66,14 @@ def main():
                                                   'the stock row %#x\'s' % LOOK[r] if got[8] == s[8] else '?'),
                                   'func_turn_fn': '%#x' % got[16], 'as_borrowed': okr}
     rep['ok']['band rows: the borrowed stock entries (flags | 8, no randomiser)'] = ok_rows
-    rep['ok']['ratio rows: compui_rat_draw in place'] = all(
-        u32(XDISP + XROW * (r - 0x141) + 0x20) == sym['compui_rat_draw'] for r in RAT_ROWS)
     rep['compui_rat_set'] = u32(sym['compui_rat_set'])
+    inv = [u32(XDISP + XROW * (r - 0x141) + 0x20) for r in RAT_ROWS]
+    rep['ratio_rows_glyph_fn'] = ['%#x' % x for x in inv]
+    # before any band page is drawn the three hold the stock Ratio function; the first draw puts compui_rat_draw in
+    # all three, once (compui_rat_set counts the replacements)
+    rep['ok']['ratio rows: the stock Ratio function before a band page is drawn, compui_rat_draw (set 3 times) after'] = (
+        (rep['compui_rat_set'] == 0 and inv == [RAT_STOCK] * 3)
+        or (rep['compui_rat_set'] == 3 and inv == [sym['compui_rat_draw']] * 3))
     # row 0x6a
     e = struct.unpack('>4I', rd(DISP + XROW * 0x6a + 0x34, 16))
     rep['row_0x6a_func_turn'] = ['%#x' % x for x in e]

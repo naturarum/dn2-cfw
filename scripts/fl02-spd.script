@@ -19,7 +19,7 @@ wait-emu 0.5
 png 02-spd-up
 down space           # FUNC held
 wait-emu 0.3
-tap 2
+tap 2                # (the first click after FUNC goes down does nothing, as on the delay)
 wait-emu 0.5
 png 03-func-1
 tap 2
@@ -80,6 +80,8 @@ wait-emu 0.5
 png 21-normal-down
 down space
 wait-emu 0.3
+tap shift+2          # (the first click after FUNC goes down does nothing, as on the delay)
+wait-emu 0.5
 tap shift+2          # FUNC + left from a free value: the synced value below
 wait-emu 0.5
 png 22-func-left-from-free
