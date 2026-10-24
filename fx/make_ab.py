@@ -8,7 +8,7 @@ Stdlib only. Each group plays all its versions in sync, muted except the selecte
 is instant. "Match loudness" turns the louder versions down to the quietest one's RMS.
 Each group holds three kinds of version: the dry input, "stock DN2 (emulated)" renders (the unit's own
 effect code run in the T3.6 SHARC interpreter, from manifest_stock.tsv, written by stock_renders.py)
-and the new effect's renders; the Space Echo groups (T5.2) add a fourth, the one-head tape delay as it
+and the new effect's renders; the TAPE groups (T5.2) add a fourth, the one-head tape delay as it
 runs on the unit (FTD1), from manifest rows of kind "tape". Stock recordings (T3.5) dropped into OUTDIR/stock/ appear in their own group.
 """
 import html
@@ -196,13 +196,16 @@ h1 { font-size: 22px; margin: 0 0 4px; }
 <h1>FX workbench: A/B</h1>
 <p class="lede">Tape delay, 3-band master compressor and the chorus slot's new flanger (T3.11, revised 2026-10-06 after your listening:
 one-head tape delay with AGE, resonant loop filters and WID; each compressor band now built like the stock compressor, with MUP;
-a flanger/comb in the chorus slot), and since 2026-10-12 the <b>Space Echo</b> for the delay slot (T5.2: three heads, MODE, INTENSITY, AGE,
-a resonant band filter on CENTER and BW, WIDTH and a PAN switch; the groups whose titles start with "Space Echo"),
+a flanger/comb in the chorus slot), and since 2026-10-12 <b>TAPE</b>, the tape echo for the delay slot (T5.2: three heads, MODE, INTENSITY, AGE,
+a resonant band filter on CENTER and BW, WIDTH and a PAN switch; the groups whose titles start with "TAPE"),
+and since 2026-10-23 <b>SPNG</b>, a spring reverb for the reverb slot (T5.5: the groups whose titles start with "SPNG", and
+"TAPE into SPNG" with the parked tape echo; the stock reverb next to each SPNG render at the same PRE, DEC, HPF and LPF knobs
+after <code>make stock</code>; listening guide <code>SPNG-listen.md</code> next to this page),
 rendered on the Mac in 32-sample blocks from synthesised material,
-next to the Digitone II's own effects on the same material. In the Space Echo groups a fourth row,
+next to the Digitone II's own effects on the same material. In the TAPE groups a fourth row,
 <span class="badge tape">FTD1</span>, is the one-head tape delay as it runs on the unit now, at the same head-1 time and feedback per head.
 Each group holds the dry input, <span class="badge stock">STOCK</span> renders and <span class="badge new">NEW</span> renders; the buttons (or keys 1-9) switch while it plays.
-Keys: <b>d</b> dry, <b>s</b> the stock version that matches the selected new one, <b>t</b> the FTD1 version (Space Echo groups), <b>n</b> back to the new one, space play/pause.
+Keys: <b>d</b> dry, <b>s</b> the stock version that matches the selected new one, <b>t</b> the FTD1 version (TAPE groups), <b>n</b> back to the new one, space play/pause.
 "Match loudness" turns louder versions down to the quietest one (by RMS), so louder does not win by default; it starts on in the compressor and flanger groups.</p>
 <p class="note"><b>Multiband compression and EQ.</b> /*BANDNOTE*/</p>
 <p class="note"><b>"Stock" here is an emulation, not a recording.</b> It is the DN2's own DSP code (OS 1.12: delay, master compressor, chorus, reverb)
@@ -211,7 +214,7 @@ running in the SHARC interpreter from T3.6 (<code>tools/sharcvm</code>), at the 
 ways nobody has heard. Recordings dropped into <code>stock/</code> appear as their own group after <code>make renders</code>.</p>
 <p class="help" id="mode"></p>
 <div id="groups"></div>
-<p class="help">Files: <code>dry/</code> (24-bit sources), <code>wav/</code> (new: 16-bit renders; <code>stock_*</code>: 24-bit emulator renders; <code>se_*</code> Space Echo, <code>ftd_*</code> FTD1). Built by <code>fx/renders.sh</code>, <code>fx/stock_renders.py</code> (<code>make stock</code>) and <code>fx/make_ab.py</code>. Notes: <code>notes/T3.11-fx-workbench.md</code>, section 12; <code>notes/T5.2-space-echo.md</code>.</p>
+<p class="help">Files: <code>dry/</code> (24-bit sources), <code>wav/</code> (new: 16-bit renders; <code>stock_*</code>: 24-bit emulator renders; <code>se_*</code> TAPE, <code>ftd_*</code> FTD1). Built by <code>fx/renders.sh</code>, <code>fx/stock_renders.py</code> (<code>make stock</code>) and <code>fx/make_ab.py</code>. Notes: <code>notes/T3.11-fx-workbench.md</code>, section 12; <code>notes/T5.2-space-echo.md</code>.</p>
 </main>
 <script>
 const DATA = /*DATA*/;

@@ -45,6 +45,8 @@ FL_DEFAULTS = dict(DPTH=96, SPD=30, HPF=32, WDTH=48, FDBK=107, MAN=50, SHP=0, SL
 SE_DEFAULTS = dict(TIME=31, MODE=3, INT=50, AGE=40, CTR=64, BW=127, WID=96, PAN=1)
 SE_ALIAS = {"INTENSITY": "INT", "CENTER": "CTR", "WIDTH": "WID"}
 SE_HEADS = [1, 2, 4, 3, 6, 5, 7]          # MODE index -> heads (bit 0 = head 1)
+# SPNG, the spring reverb (T5.5, fx/spring.c: spring_init)
+SP_DEFAULTS = dict(PRE=0, DEC=64, DRIP=64, DWEL=64, HPF=0, TONE=127, WDTH=96, TENS=64)
 
 
 def parse_fxrender(argstr):
@@ -156,14 +158,19 @@ def se_macro(k, name):
         k[SE_ALIAS[name]] = k[name]
 
 
-def map_spaceecho(k):
+def map_spaceecho(k, shared=True):
     """Space Echo knobs -> stock delay knobs (one head: the shortest active one), plus what the stock
-    delay cannot do. Laws as in fx/spaceecho.c."""
+    delay cannot do. Laws as in fx/spaceecho.c. shared: the FDBK law of the binary that made the render
+    (manifest kind): True for fxrender (fx/spaceecho.c since SC02: the active heads share FDBK/64, so
+    the one stock head gets FDBK/n), False for fxrender_sc01 and fxrender_se01 (each head FDBK/64, as
+    their stock pairs in se_fdbk were made; SE01's own law is shown by its renders, not its pairs)."""
     c01 = lambda v: min(max(v, 0.0), 127.0) / 127.0
     hm = SE_HEADS[int(min(max(k["MODE"], 0), 6) + 0.5)]
     heads = [h for h in (1, 2, 3) if hm & (1 << (h - 1))]
     h = heads[0]
     g = min(max(k["INT"], 0.0), 127.0) / 64.0         # loop gain per head: the stock FDBK law (SC01; SE01: 1.1 x^1.5)
+    if shared:
+        g /= len(heads)                                # SC02: the heads share it
     a = c01(k["AGE"])
     bw = min(max(k["BW"], 0.0), 127.0)
     if bw >= 127:
@@ -264,6 +271,34 @@ def map_flanger(k, bpm):
     if k["OFS"] > 0 or int(k["POL"] + 0.5):
         missing.append("time offset, polarity")
     return s, missing, hz
+
+
+# SPNG's MODE (2026-10-24, fx/spring.c spring_mode_map): per anchor DEC, DRIP, DWEL, HPF, TONE, TENS, spread
+SP_MODE_POS = [0.0, 64.0, 85.0, 106.0, 127.0]
+SP_MODE_VAL = [[24, 40, 64, 50, 127, 110, 0.85], [64, 64, 64, 0, 127, 64, 1.0], [72, 96, 127, 0, 127, 64, 1.0],
+               [80, 112, 100, 24, 110, 48, 1.1], [112, 72, 64, 0, 24, 28, 1.25]]
+
+
+def spring_mode_map(m):
+    m = min(max(m, 0.0), 127.0)
+    j = 3 if m > 106 else 2 if m > 85 else 1 if m > 64 else 0
+    f = (m - SP_MODE_POS[j]) / (SP_MODE_POS[j + 1] - SP_MODE_POS[j])
+    return [a + (b - a) * f for a, b in zip(SP_MODE_VAL[j], SP_MODE_VAL[j + 1])]
+
+
+def map_spring(k):
+    """SPNG knobs -> the stock reverb (the slot's stock effect) at the same page knobs A, B, E, F (PRE, DEC, HPF,
+    and LPF = TONE); C and D are FREQ and GAIN on the stock page (DRIP/MODE and DWEL on SPNG's), left neutral at 64.
+    That is what the same kit plays on the stock firmware, not a match of the sound. With MODE (2026-10-24) its
+    base for DEC, HPF and TONE is added, as SPNG adds it: the closest stock reverb to the character."""
+    dec, hpf, tone = k["DEC"], k["HPF"], k["TONE"]
+    if "MODE" in k:
+        v = spring_mode_map(k["MODE"])
+        c = lambda x: min(max(x, 0.0), 127.0)   # noqa: E731
+        dec, hpf, tone = c(dec + v[0] - 64), c(hpf + v[3]), c(tone + v[4] - 127)
+    s = dict(PRE=round(k["PRE"]), DEC=round(dec), FREQ=64, GAIN=64, HPF=round(hpf), LPF=round(tone))
+    missing = ["dispersion (DRIP), tension (TENS), dwell drive (DWEL), width (WDTH): a spring tank's sound"]
+    return s, missing
 
 
 def describe_comp(s):
@@ -374,7 +409,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("out", nargs="?", default=str(ROOT / "out/T3.11"))
     ap.add_argument("--force", action="store_true")
-    ap.add_argument("--jobs", type=int, default=os.cpu_count())
+    ap.add_argument("--jobs", type=int, default=min(4, os.cpu_count() or 1))   # at most 4 (memory machine-memory-safety)
     a = ap.parse_args()
     out = Path(a.out).resolve()
     rows = [l.rstrip("\n").split("\t") for l in open(out / "manifest.tsv")]
@@ -400,7 +435,7 @@ def main():
                 tl = knob_timeline(r, SE_DEFAULTS, nblocks, se_macro)
             sched, missing = [], set()
             for b, kn in tl:
-                s, miss = map_tapedelay(kn) if r["fx"] == "tapedelay" else map_spaceecho(kn)
+                s, miss = map_tapedelay(kn) if r["fx"] == "tapedelay" else map_spaceecho(kn, f[0] == "render")
                 missing.update(miss)
                 if not sched or sched[-1][1] != s:
                     sched.append((b, s))
@@ -431,6 +466,24 @@ def main():
         elif r["fx"] in ("flgunit1", "flgunit2"):
             print(f"  {rid}: the flanger on the unit's knobs (T5.6); no stock pair")
             continue
+        elif r["fx"] == "tapespring":
+            print(f"  {rid}: TAPE into SPNG (T5.5); no stock pair")
+            continue
+        elif r["fx"] == "spring":
+            tl = knob_timeline(r, SP_DEFAULTS, nblocks)
+            sched, missing = [], set()
+            for b, kn in tl:
+                s, miss = map_spring(kn)
+                missing.update(miss)
+                if not sched or sched[-1][1] != s:
+                    sched.append((b, s))
+            effect, uses_key = "reverb", False
+            first = sched[0][1]
+            notes = ["no " + "; ".join(sorted(missing))]
+            settings = ", ".join(f"{a} {v}" for a, v in first.items())
+            if len(sched) > 1:
+                settings += f"; {len(sched) - 1} timed changes (as the new render)"
+            stitle = f"Stock reverb: DEC {first['DEC']}, LPF {first['LPF']}"
         else:
             tl = knob_timeline(r, MB_DEFAULTS, nblocks)
             if len(tl) > 1:
@@ -447,6 +500,9 @@ def main():
             settings = describe_comp(s) + f" ({actual})"
             stitle = f"Stock comp: {SM.RATIOS[s['RAT']]:g}:1 at THR {s['THR']}" + (", keyed" if uses_key else "")
         key = (effect, r["i"], r["key"] if uses_key else None, r["tail"], r["vol"], r["mix"], r["gain"], json.dumps(sched))
+        if effect == "reverb":
+            key += (gid,)        # SPNG (2026-10-24): every group its own stock row, so a MODE group pairs each render
+                                 # even where sp_range's or sp_drums' renders already have the same stock settings
         if key in by_key:
             by_key[key]["pairs"].append(rid)
             by_key[key]["ptitles"].append(title)

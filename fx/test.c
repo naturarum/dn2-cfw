@@ -22,6 +22,7 @@
 #include "flanger.c"
 #include "flanger_unit.h"
 #include "spaceecho.c"
+#include "spring.c"
 
 static int fails = 0, checks = 0;
 
@@ -1658,6 +1659,7 @@ static void test_smoothing(void)
 
 /* the Space Echo's tests (T5.2) use the helpers above */
 #include "test_spaceecho.c"
+#include "test_spring.c"
 
 /* ---------- bench ---------- */
 
@@ -1704,6 +1706,17 @@ static void bench(void)
         printf("spaceecho (3 heads, AGE, band, ALT): %.1f ns/sample, %.0fx real time\n", t / N * 1e9, 20.0 / t);
         free(se);
     }
+    {
+        Spring *sp = malloc(sizeof *sp);
+        spring_init(sp);
+        spring_set(sp, SP_DEC, 100); spring_set(sp, SP_DRIP, 100); spring_set(sp, SP_TONE, 80);
+        spring_snap(sp);
+        t0 = clock();
+        for (i = 0; i < N; i += 32) spring_process(sp, x + i, x + i, yl + i, yr + i, 32);
+        t = (double)(clock() - t0) / CLOCKS_PER_SEC;
+        printf("spring (DEC 100, DRIP 100, TONE 80): %.1f ns/sample, %.0fx real time\n", t / N * 1e9, 20.0 / t);
+        free(sp);
+    }
 }
 
 int main(int argc, char **argv)
@@ -1711,7 +1724,8 @@ int main(int argc, char **argv)
     if (argc > 1 && !strcmp(argv[1], "-bench")) { bench(); return 0; }
     printf("sizeof(TapeDelay) = %lu bytes (stock delay state: 4,194,908 bytes of DDR)\n", (unsigned long)sizeof(TapeDelay));
     printf("sizeof(MBComp)    = %lu bytes (stock compressor state: 376 bytes of L1)\n", (unsigned long)sizeof(MBComp));
-    printf("sizeof(Flanger)   = %lu bytes (stock chorus state: 4,928 bytes of DDR)\n\n", (unsigned long)sizeof(Flanger));
+    printf("sizeof(Flanger)   = %lu bytes (stock chorus state: 4,928 bytes of DDR)\n", (unsigned long)sizeof(Flanger));
+    printf("sizeof(Spring)    = %lu bytes (stock reverb state: 364,820 bytes of DDR)\n\n", (unsigned long)sizeof(Spring));
     test_crossover();
     test_comp_laws();
     test_static_curve();
@@ -1736,6 +1750,7 @@ int main(int argc, char **argv)
     test_determinism_blocks();
     test_extremes();
     test_spaceecho();
+    test_spring();
     printf("\n%d checks, %d failed\n", checks, fails);
     return fails ? 1 : 0;
 }

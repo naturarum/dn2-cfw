@@ -10,11 +10,15 @@
  *   fxrender -fx mbcomp -i loop.wav -o comp.wav -p L.THR=60 -p L.RAT=4 ...
  *   fxrender -fx flanger -i pad.wav -o fl.wav -p SPD=30 -p FDBK=110 -vol 127
  *   fxrender -fx spaceecho -i pluck.wav -o se.wav -p TIME=23 -p MODE=6 -p INT=60 -p PAN=1
+ *   fxrender -fx spring -i clave.wav -o sp.wav -p DEC=80 -p DRIP=100 -vol 64       (T5.5, SPNG)
+ *   fxrender -fx tapespring -i pluck.wav -o ts.wav -p T.TIME=23 -p T.INT=40 -p DEC=70 -drev 64
+ *            (T5.5: TAPE, the tape echo of spaceecho.c, into SPNG as the DN2's FX bus runs them:
+ *             out = dry + DVOL x echo + VOL x spring(RSEND x dry + DREV x echo))
  *   fxrender -bands -i any.wav [-p XLO=68 -p XHI=44]   (RMS of the three bands, dB)
  *   fxrender -fx tapedelay -list
  *
  * Options:
- *   -fx NAME          tapedelay | mbcomp | flanger | spaceecho
+ *   -fx NAME          tapedelay | mbcomp | flanger | spaceecho | spring | tapespring
  *   -i FILE, -o FILE  input / output WAV (input must be 48 kHz)
  *   -key FILE         external sidechain input (mbcomp, SCS=1)
  *   -p NAME=V         knob value at t = 0 (0..127, fractional allowed)
@@ -29,6 +33,8 @@
  *   -gain DB          input gain in dB (default 0)
  *   -bits 16|24|32    output format (default 16, dithered)
  *   -meter            print gain-reduction statistics (mbcomp)
+ *   -dvol V, -drev V, -rsend V   tapespring: the echo's VOL (default 64), the delay page's REV (the echo into
+ *                     the spring, default 64) and the reverb send of the input (default 127), each V/127
  *   -bands            no effect, no output: split the input with the compressor's crossover
  *                     (XLO/XHI from -p) and print the RMS of each band in dB (for the A/B page)
  */
@@ -42,6 +48,7 @@
 #include "flanger.h"
 #include "flanger_unit.h"
 #include "spaceecho.h"
+#include "spring.h"
 
 typedef struct { const char *name; int id; } PName;
 
@@ -88,15 +95,33 @@ static const PName SE_NAMES[] = {
     { "WID", SE_WID }, { "WIDTH", SE_WID }, { "PAN", SE_PAN }, { 0, 0 }
 };
 
+/* SPNG, the spring reverb (T5.5): the internal knobs A..H as first proposed, and MODE (2026-10-24, the
+   page's C): setting MODE switches the springs to it (DRIP and TENS are then MODE's) */
+static const PName SP_NAMES[] = {
+    { "PRE", SP_PREDLY }, { "DEC", SP_DEC }, { "DRIP", SP_DRIP }, { "DWEL", SP_DWEL }, { "HPF", SP_HPF },
+    { "TONE", SP_TONE }, { "WDTH", SP_WDTH }, { "TENS", SP_TENS }, { "MODE", SP_MODE }, { 0, 0 }
+};
+/* tapespring: the spring's names, and the tape echo's with "T." (ids from SP_TAPE) */
+#define SP_TAPE 100
+static const PName TS_NAMES[] = {
+    { "PRE", SP_PREDLY }, { "DEC", SP_DEC }, { "DRIP", SP_DRIP }, { "DWEL", SP_DWEL }, { "HPF", SP_HPF },
+    { "TONE", SP_TONE }, { "WDTH", SP_WDTH }, { "TENS", SP_TENS }, { "MODE", SP_MODE },
+    { "T.TIME", SP_TAPE + SE_TIME }, { "T.MODE", SP_TAPE + SE_MODE }, { "T.INT", SP_TAPE + SE_INT },
+    { "T.AGE", SP_TAPE + SE_AGE }, { "T.CTR", SP_TAPE + SE_CTR }, { "T.BW", SP_TAPE + SE_BW },
+    { "T.WID", SP_TAPE + SE_WID }, { "T.PAN", SP_TAPE + SE_PAN }, { 0, 0 }
+};
+
 typedef struct { double t0, t1; int id; double v0, v1; int ramp; } Ev;
 
-enum { FX_TD, FX_MB, FX_FL, FX_SE };
+enum { FX_TD, FX_MB, FX_FL, FX_SE, FX_SP, FX_TS };
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: fxrender -fx tapedelay|mbcomp|flanger|flgunit1|flgunit2|spaceecho -i in.wav -o out.wav [-p NAME=V] [-at T NAME=V]\n"
+    fprintf(stderr, "usage: fxrender -fx tapedelay|mbcomp|flanger|flgunit1|flgunit2|spaceecho|spring|tapespring -i in.wav -o out.wav\n"
+                    "       [-p NAME=V] [-at T NAME=V]\n"
                     "       [-ramp T0 T1 NAME V0 V1] [-key key.wav] [-bpm B] [-tail S] [-block N]\n"
                     "       [-mix send|wet|insert] [-vol V] [-gain DB] [-bits 16|24|32] [-meter] | -list\n"
+                    "       [-dvol V] [-drev V] [-rsend V] (tapespring)\n"
                     "       fxrender -bands -i in.wav [-p XLO=V -p XHI=V]\n");
     exit(2);
 }
@@ -130,6 +155,7 @@ int main(int argc, char **argv)
 {
     const char *fxname = NULL, *in = NULL, *out = NULL, *keyf = NULL, *mixs = NULL;
     double bpm = 120.0, tail = 0.0, vol = 100.0, gain_db = 0.0;
+    double dvol = 64.0, drev = 64.0, rsend = 127.0;
     int block = FX_BLOCK, bits = 16, meter = 0, list = 0, bands = 0, fx, mixmode;
     const PName *names;
     Ev *ev = calloc((size_t)argc + 1, sizeof(Ev));
@@ -139,6 +165,7 @@ int main(int argc, char **argv)
     MBComp *mb = NULL;
     Flanger *fl = NULL;
     SpaceEcho *se = NULL;
+    Spring *sp = NULL;
     long pos, frames;
     float *tl, *tr, *zl;
     double grsum[3] = { 0, 0, 0 }, grmin[3] = { 0, 0, 0 };
@@ -157,6 +184,9 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "-mix") && i + 1 < argc) mixs = argv[++i];
         else if (!strcmp(argv[i], "-vol") && i + 1 < argc) vol = atof(argv[++i]);
         else if (!strcmp(argv[i], "-gain") && i + 1 < argc) gain_db = atof(argv[++i]);
+        else if (!strcmp(argv[i], "-dvol") && i + 1 < argc) dvol = atof(argv[++i]);
+        else if (!strcmp(argv[i], "-drev") && i + 1 < argc) drev = atof(argv[++i]);
+        else if (!strcmp(argv[i], "-rsend") && i + 1 < argc) rsend = atof(argv[++i]);
         else if (!strcmp(argv[i], "-bits") && i + 1 < argc) bits = atoi(argv[++i]);
         else if (!strcmp(argv[i], "-meter")) meter = 1;
         else if (!strcmp(argv[i], "-bands")) { bands = 1; if (!fxname) fxname = "mbcomp"; }
@@ -175,6 +205,8 @@ int main(int argc, char **argv)
     else if (!strcmp(fxname, "flgunit1")) { fx = FX_FL; names = FU_NAMES; fu_ver = 1; }
     else if (!strcmp(fxname, "flgunit2")) { fx = FX_FL; names = FU_NAMES; fu_ver = 2; }
     else if (!strcmp(fxname, "spaceecho")) { fx = FX_SE; names = SE_NAMES; }
+    else if (!strcmp(fxname, "spring")) { fx = FX_SP; names = SP_NAMES; }
+    else if (!strcmp(fxname, "tapespring")) { fx = FX_TS; names = TS_NAMES; }
     else usage();
     if (list) {
         for (i = 0; names[i].name; i++) printf("%s\n", names[i].name);
@@ -200,7 +232,8 @@ int main(int argc, char **argv)
         } else if (!strcmp(argv[i], "-fx") || !strcmp(argv[i], "-i") || !strcmp(argv[i], "-o")
                    || !strcmp(argv[i], "-key") || !strcmp(argv[i], "-bpm") || !strcmp(argv[i], "-tail")
                    || !strcmp(argv[i], "-block") || !strcmp(argv[i], "-mix") || !strcmp(argv[i], "-vol")
-                   || !strcmp(argv[i], "-gain") || !strcmp(argv[i], "-bits")) i++;
+                   || !strcmp(argv[i], "-gain") || !strcmp(argv[i], "-bits") || !strcmp(argv[i], "-dvol")
+                   || !strcmp(argv[i], "-drev") || !strcmp(argv[i], "-rsend")) i++;
     }
 
     mixmode = fx == FX_MB ? 2 : 0;
@@ -248,7 +281,7 @@ int main(int argc, char **argv)
     if (wav_alloc(&o, frames, 48000)) return 1;
     tl = calloc((size_t)block, sizeof(float));
     tr = calloc((size_t)block, sizeof(float));
-    zl = calloc((size_t)block * 4, sizeof(float));
+    zl = calloc((size_t)block * 6, sizeof(float));
     if (!tl || !tr || !zl) return 1;
 
     if (fx == FX_TD) {
@@ -267,11 +300,21 @@ int main(int argc, char **argv)
         flanger_set_bpm(fl, (float)bpm);
         if (fu_ver == 1) flanger_unit_init1(fl);
         if (fu_ver) fl_set(fl, FLU_DPTH, fu_knob[FLU_DPTH]);
-    } else {
+    } else if (fx == FX_SE) {
         se = malloc(sizeof *se);
         if (!se) return 1;
         spaceecho_init(se, 1u);
         spaceecho_set_bpm(se, (float)bpm);
+    } else {
+        sp = malloc(sizeof *sp);
+        if (!sp) return 1;
+        spring_init(sp);
+        if (fx == FX_TS) {
+            se = malloc(sizeof *se);
+            if (!se) return 1;
+            spaceecho_init(se, 1u);
+            spaceecho_set_bpm(se, (float)bpm);
+        }
     }
     /* t = 0 settings, then snap the smoothers so the render starts settled */
     for (i = 0; i < nev; i++) {
@@ -280,13 +323,19 @@ int main(int argc, char **argv)
             if (fx == FX_TD) tapedelay_set(td, ev[i].id, v);
             else if (fx == FX_MB) mbcomp_set(mb, ev[i].id, v);
             else if (fx == FX_FL) fl_set(fl, ev[i].id, v);
-            else spaceecho_set(se, ev[i].id, v);
+            else if (fx == FX_SE) spaceecho_set(se, ev[i].id, v);
+            else if (ev[i].id >= SP_TAPE) spaceecho_set(se, ev[i].id - SP_TAPE, v);
+            else spring_set(sp, ev[i].id, v);
         }
     }
     if (fx == FX_TD) tapedelay_snap(td);
     else if (fx == FX_MB) mbcomp_snap(mb);
     else if (fx == FX_FL) flanger_snap(fl);
-    else spaceecho_snap(se);
+    else if (fx == FX_SE) spaceecho_snap(se);
+    else {
+        spring_snap(sp);
+        if (fx == FX_TS) spaceecho_snap(se);
+    }
 
     {
         double g = pow(10.0, gain_db / 20.0), vg = vol / 127.0;
@@ -310,7 +359,9 @@ int main(int argc, char **argv)
                 if (fx == FX_TD) tapedelay_set(td, e->id, (float)v);
                 else if (fx == FX_MB) mbcomp_set(mb, e->id, (float)v);
                 else if (fx == FX_FL) fl_set(fl, e->id, (float)v);
-                else spaceecho_set(se, e->id, (float)v);
+                else if (fx == FX_SE) spaceecho_set(se, e->id, (float)v);
+                else if (e->id >= SP_TAPE) spaceecho_set(se, e->id - SP_TAPE, (float)v);
+                else spring_set(sp, e->id, (float)v);
             }
             for (j = 0; j < n; j++) {
                 long k = pos + j;
@@ -324,10 +375,26 @@ int main(int argc, char **argv)
             if (fx == FX_TD) tapedelay_process(td, bl, br, tl, tr, n);
             else if (fx == FX_MB) mbcomp_process(mb, bl, br, keyf ? kl : NULL, keyf ? kr : NULL, tl, tr, n);
             else if (fx == FX_FL) flanger_process(fl, bl, br, tl, tr, n);
-            else spaceecho_process(se, bl, br, tl, tr, n);
+            else if (fx == FX_SE) spaceecho_process(se, bl, br, tl, tr, n);
+            else if (fx == FX_SP) spring_process(sp, bl, br, tl, tr, n);
+            else {
+                /* the FX bus: the echo's wet, then the spring on the reverb send plus the echo's REV */
+                float *el = kl, *er = kr, *sl = zl + 4 * block, *sr = zl + 5 * block;
+                float rs = (float)(rsend / 127.0), dr = (float)(drev / 127.0);
+                spaceecho_process(se, bl, br, el, er, n);
+                for (j = 0; j < n; j++) {
+                    sl[j] = rs * bl[j] + dr * el[j];
+                    sr[j] = rs * br[j] + dr * er[j];
+                }
+                spring_process(sp, sl, sr, tl, tr, n);
+            }
             for (j = 0; j < n; j++) {
                 double l, r;
-                if (mixmode == 0) { l = bl[j] + vg * tl[j]; r = br[j] + vg * tr[j]; }
+                if (fx == FX_TS) {
+                    double dg = dvol / 127.0;
+                    l = bl[j] + dg * kl[j] + vg * tl[j];
+                    r = br[j] + dg * kr[j] + vg * tr[j];
+                } else if (mixmode == 0) { l = bl[j] + vg * tl[j]; r = br[j] + vg * tr[j]; }
                 else { l = tl[j]; r = tr[j]; }
                 o.l[pos + j] = (float)l;
                 o.r[pos + j] = (float)r;
