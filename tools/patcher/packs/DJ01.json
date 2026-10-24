@@ -1,0 +1,18 @@
+{
+ "title": "Compressor and flanger, with Déjà vu",
+ "description": "DT01 plus nine Déjà vu LFO waves: random loops, free or retrigged, and seven that snap to a scale.",
+ "tested_on_unit": "24 Oct 2026",
+ "effects": [
+  "cmp3",
+  "flng"
+ ],
+ "base": [
+  "djvu",
+  "overbridge"
+ ],
+ "dsp": {
+  "code_bytes": null,
+  "state_bytes": null,
+  "load_percent": null
+ }
+}

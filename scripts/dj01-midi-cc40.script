@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# DJ01: MIDI CC 106 (LFO 1 WAVE) = 40 on the auto channel (10, status b9), then CC 107 (LFO 1 SPH) = 99; the end
+# snapshot's live kit shows where each value landed (stock: WAVE 6, the row's maximum; DJ01: 15).
+wait-emu 0.5
+tap semicolon        # MOD: LFO 1
+wait-emu 0.5
+midi-in b9 6a 28
+wait-emu 0.5
+midi-in b9 6b 63
+wait-emu 0.5
+png 00-cc40

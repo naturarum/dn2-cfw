@@ -245,15 +245,16 @@ static int run(char *path, int k)
     return 0;
 }
 
-/* the effects of a pack, by name: "3-band compressor, flanger" (mkpatch.py's EFFECTS) */
-static void effects(const char *ids, char *out, size_t n)
+/* a pack's effects or base features, by name: "3-band compressor, flanger" (mkpatch.py's EFFECTS and BASE) */
+static void names(const char *ids, char *out, size_t n)
 {
     static const char *names[][2] = { { "cmp3", "3-band compressor" }, { "flng", "flanger" },
-                                      { "tape", "tape echo" }, { "spng", "spring reverb" } };
-    char id[8];
+                                      { "tape", "tape echo" }, { "spng", "spring reverb" },
+                                      { "djvu", "D\u00e9j\u00e0 vu LFO" }, { "overbridge", "Overbridge works" } };
+    char id[16];
     int at = 0;
     out[0] = 0;
-    for (const char *p = ids; sscanf(p, "%7s", id) == 1; p = strchr(p, ' ') ? strchr(p, ' ') + 1 : p + strlen(p)) {
+    for (const char *p = ids; sscanf(p, "%15s", id) == 1; p = strchr(p, ' ') ? strchr(p, ' ') + 1 : p + strlen(p)) {
         const char *name = id;
         for (size_t i = 0; i < sizeof names / sizeof names[0]; i++)
             if (!strcmp(id, names[i][0]))
@@ -266,12 +267,14 @@ static void effects(const char *ids, char *out, size_t n)
 
 static void list(void)
 {
-    char fx[128];
+    char fx[128], base[128];
     for (int k = 0; k < NPACKS; k++) {
-        effects(info[k].effects, fx, sizeof fx);
+        names(info[k].effects, fx, sizeof fx);
+        names(info[k].base, base, sizeof base);
         printf("  %d. %s \u00b7 %s\n     %s\n", k + 1, info[k].id, info[k].title, info[k].description);
         if (fx[0])
             printf("     effects: %s\n", fx);
+        printf("     base: %s\n", base[0] ? base : "none");
         printf("     %s\n", info[k].record);
     }
 }

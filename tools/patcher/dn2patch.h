@@ -30,6 +30,7 @@ typedef struct {
     char tested_on_unit[32];        /* the date it ran on a unit, or "" */
     char brickcheck[160];           /* e.g. "ACCEPT 12/12 2026-10-22T12:57:21" */
     char effects[64];               /* the effects it carries, by id, space-separated: e.g. "cmp3 flng" */
+    char base[64];                  /* its base features (light, main OS), by id: e.g. "djvu overbridge" */
     char build_sha256[65];          /* the output's sha256, hex */
     char stock_sha256[65];          /* Elektron's 1.12 file's sha256, hex */
     long dsp_code_bytes;            /* for a later check stage (a DSP memory/load adder): -1 when not given */

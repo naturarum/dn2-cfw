@@ -243,10 +243,13 @@ static void se_pan_gains(float p, float *gl, float *gr)
    input to mono on both tracks, feedback on the same track, head k plays (A+B)/2 at its
    random position w x pos_k. Every head is scaled by its MODE gain (0 or 1); into the feedback
    also by its share of the loop gain (1, 1/2 or 1/3 of it with one, two or three heads playing).
-   An if chain, not a table: selcc bug 3 (notes/T3.11 12.7). */
+   An if chain, not a table: selcc bug 3 (notes/T3.11 12.7). DT01 (the code diet): each head's four
+   output coefficients through a pointer to the first (o[0..3] = t[11 + 4k ..]), and g[k] read once:
+   the same products, with fewer address computations. */
 static void se_mix_targets(const SpaceEcho *s, float *t)
 {
     float w = s->t_wid, g[3], al, ar, bl, br, x, sh;
+    float *o2;
     int k, hm = se_heads(s->mode);
     for (k = 0; k < SE_NMIX; k++) t[k] = 0.0f;
     g[0] = 0.0f;
@@ -267,12 +270,14 @@ static void se_mix_targets(const SpaceEcho *s, float *t)
         se_pan_gains(-w, &al, &ar);
         se_pan_gains(w, &bl, &br);
         for (k = 0; k < 3; k++) {
+            float *o = t + 11 + 4 * k;
+            x = g[k];
             if (k == 1) {                       /* head 2: A on the right, B on the left */
-                t[11 + 4 * k] = g[k] * bl; t[12 + 4 * k] = g[k] * al;
-                t[13 + 4 * k] = g[k] * br; t[14 + 4 * k] = g[k] * ar;
+                o[0] = x * bl; o[1] = x * al;
+                o[2] = x * br; o[3] = x * ar;
             } else {
-                t[11 + 4 * k] = g[k] * al; t[12 + 4 * k] = g[k] * bl;
-                t[13 + 4 * k] = g[k] * ar; t[14 + 4 * k] = g[k] * br;
+                o[0] = x * al; o[1] = x * bl;
+                o[2] = x * ar; o[3] = x * br;
             }
         }
     } else if (s->pan == SE_PAN_RND) {
@@ -281,8 +286,9 @@ static void se_mix_targets(const SpaceEcho *s, float *t)
         for (k = 0; k < 3; k++) {
             se_pan_gains(w * s->pos[k], &al, &ar);
             x = 0.5f * g[k];
-            t[11 + 4 * k] = x * al; t[12 + 4 * k] = x * al;
-            t[13 + 4 * k] = x * ar; t[14 + 4 * k] = x * ar;
+            o2 = t + 11 + 4 * k;
+            o2[0] = x * al; o2[1] = x * al;
+            o2[2] = x * ar; o2[3] = x * ar;
         }
     } else {
         t[0] = 1.0f; t[3] = 1.0f;
@@ -290,8 +296,10 @@ static void se_mix_targets(const SpaceEcho *s, float *t)
         al = 0.5f + 0.5f * w;
         bl = 0.5f - 0.5f * w;
         for (k = 0; k < 3; k++) {
-            t[11 + 4 * k] = g[k] * al; t[12 + 4 * k] = g[k] * bl;
-            t[13 + 4 * k] = g[k] * bl; t[14 + 4 * k] = g[k] * al;
+            o2 = t + 11 + 4 * k;
+            x = g[k];
+            o2[0] = x * al; o2[1] = x * bl;
+            o2[2] = x * bl; o2[3] = x * al;
         }
     }
 }
@@ -385,14 +393,27 @@ void spaceecho_init(SpaceEcho *s, uint32_t seed)
 }
 
 /* one step of a control-rate one-pole, snapped to the target when close (tapedelay.c's
-   TD_GLIDE; not "e_ = ..., d_ = e_ - ...": selcc drops e_, notes/T3.11 12.7) */
-#define SE_GLIDE(out, x, target, b) do { \
-        float e_, d_; \
-        e_ = (x) + (b) * ((target) - (x)); \
-        d_ = e_ - (target); \
-        FX_ABS(d_); \
-        if (d_ < 1e-6f) e_ = (target); \
-        (out) = e_; \
+   TD_GLIDE; not "e_ = ..., d_ = e_ - ...": selcc drops e_, notes/T3.11 12.7). DT01 (the code
+   diet): a function, not a macro (selcc inlines nothing: the macro's 9 copies were 9 x the
+   code); the same float operations in the same order, so the same results */
+static float se_glide(float x, float target, float b)
+{
+    float e_, d_;
+    e_ = x + b * (target - x);
+    d_ = e_ - target;
+    FX_ABS(d_);
+    if (d_ < 1e-6f) e_ = target;
+    return e_;
+}
+#define SE_GLIDE(out, x, target, b) do { (out) = se_glide((x), (target), (b)); } while (0)
+
+/* DT01: FX_UNDENORM on a field, read and written once (the same two adds on the value: the same result) */
+#define SE_UNDENORM(lv) do { \
+        float x_; \
+        x_ = (lv); \
+        x_ += 1e-18f; \
+        x_ -= 1e-18f; \
+        (lv) = x_; \
     } while (0)
 
 /* One control update: runs at the start of every 32-sample control block. Every value
@@ -405,6 +426,11 @@ static void se_control(SpaceEcho *s)
     const float cw = 0.0062637f;       /* 1-exp(-2pi*1.5/1500) */
     const float cf = 0.0803287f;       /* 1-exp(-2pi*20/1500) */
     float e, pk, eps, back, fr, tgt, t[SE_NMIX];
+    float pc;
+    float ta;
+    float pt;
+    float po;
+    float *xp;
     int32_t bi, i0, i1;
     int k, recoef = 0, settled, moved = 0, any;
 
@@ -472,18 +498,24 @@ static void se_control(SpaceEcho *s)
     /* random pan: each head jumps to a new place once per its own period; the position
        moves there at most SE_PSLEW per block (runs in every PAN mode, used in RND) */
     for (k = 0; k < 3; k++) {
-        s->pcnt[k] += (float)FX_BLOCK;
-        if (s->pcnt[k] >= s->tau[k]) {
-            s->pcnt[k] -= s->tau[k];
-            if (s->pcnt[k] >= s->tau[k]) s->pcnt[k] = 0.0f;
+        /* DT01 (the code diet): each field read once into a local and written once; the same arithmetic */
+        pc = s->pcnt[k] + (float)FX_BLOCK;
+        ta = s->tau[k];
+        if (pc >= ta) {
+            pc -= ta;
+            if (pc >= ta) pc = 0.0f;
             s->ptgt[k] = fx_rands(&s->prng);
         }
-        e = s->ptgt[k] - s->pos[k];
+        s->pcnt[k] = pc;
+        pt = s->ptgt[k];
+        po = s->pos[k];
+        e = pt - po;
         if (e != 0.0f) {
             moved = 1;
-            if (e > SE_PSLEW) s->pos[k] += SE_PSLEW;
-            else if (e < -SE_PSLEW) s->pos[k] -= SE_PSLEW;
-            else s->pos[k] = s->ptgt[k];
+            if (e > SE_PSLEW) po += SE_PSLEW;
+            else if (e < -SE_PSLEW) po -= SE_PSLEW;
+            else po = pt;
+            s->pos[k] = po;
         }
     }
     if (moved && s->pan == SE_PAN_RND) s->mixdirty = 1;
@@ -526,11 +558,14 @@ static void se_control(SpaceEcho *s)
     eps = s->wowA * (0.8f * fx_sin2pi(s->ph_w) + 0.3f * SE_WOWN_K * s->nw2)
         + s->flutA * (0.7f * fx_sin2pi(s->ph_f) + 0.3f * fx_sin2pi(s->ph_f2) + 0.4f * SE_FLUTN_K * s->nf2);
     s->M = s->M + (float)FX_BLOCK * eps - SE_M_LEAK * s->M;
-    FX_UNDENORM(s->M);
+    SE_UNDENORM(s->M);
     if (++s->hw >= SE_HIST) s->hw = 0;
     s->hist[s->hw] = s->M;
     for (k = 0; k < 3; k++) {
-        back = s->tau[k] * (1.0f / (float)FX_BLOCK);
+        /* DT01: tau, mod and the history entry read once into locals; the same arithmetic */
+        ta = s->tau[k];
+        po = s->mod[k];
+        back = ta * (1.0f / (float)FX_BLOCK);
         if (back < 0.0f) back = 0.0f;
         bi = (int32_t)back;
         fr = back - (float)bi;
@@ -538,15 +573,16 @@ static void se_control(SpaceEcho *s)
         if (i0 < 0) i0 += SE_HIST;
         i1 = i0 - 1;
         if (i1 < 0) i1 += SE_HIST;
-        e = s->hist[i0] + fr * (s->hist[i1] - s->hist[i0]) - s->M;
+        pt = s->hist[i0];
+        e = pt + fr * (s->hist[i1] - pt) - s->M;
         FX_CLAMP(e, -SE_MOD_MAX, SE_MOD_MAX);
-        tgt = -0.5f * s->tau[k];
+        tgt = -0.5f * ta;
         if (e < tgt) e = tgt;
-        tgt = s->mod[k] - SE_MOD_STEP;
+        tgt = po - SE_MOD_STEP;
         if (e < tgt) e = tgt;
-        tgt = s->mod[k] + SE_MOD_STEP;
+        tgt = po + SE_MOD_STEP;
         if (e > tgt) e = tgt;
-        s->mod_i[k] = (e - s->mod[k]) * inv;
+        s->mod_i[k] = (e - po) * inv;
         s->mod_e[k] = e;
     }
 
@@ -557,7 +593,7 @@ static void se_control(SpaceEcho *s)
     if (s->age > 0.0f) {
         if (pk > s->env) s->env += SE_ENV_ATT * (pk - s->env);
         else s->env += SE_ENV_REL * (pk - s->env);
-        FX_UNDENORM(s->env);
+        SE_UNDENORM(s->env);
     } else {
         s->env = 0.0f;
     }
@@ -567,14 +603,17 @@ static void se_control(SpaceEcho *s)
     if (e == 0.0f && pk < 1e-7f) s->hg = 0.0f;
     s->hg_i = (e - s->hg) * inv;
 
-    /* denormal guard on recursive state, once per control block */
+    /* denormal guard on recursive state, once per control block (DT01, the code diet: each value read and
+       written once, SE_UNDENORM; the band filter's states in one loop: hp[2], lp[2] are 8 consecutive floats; each
+       one is flushed on its own, so the order does not matter) */
+    xp = &s->hp[0].ic1;
+    for (k = 0; k < 8; k++)
+        SE_UNDENORM(xp[k]);
     for (k = 0; k < 2; k++) {
-        FX_UNDENORM(s->hp[k].ic1); FX_UNDENORM(s->hp[k].ic2);
-        FX_UNDENORM(s->lp[k].ic1); FX_UNDENORM(s->lp[k].ic2);
-        FX_UNDENORM(s->ck[k].ic1); FX_UNDENORM(s->ck[k].ic2);
-        FX_UNDENORM(s->hz[k]);
-        FX_UNDENORM(s->az[k]);
-        FX_UNDENORM(s->dc[k]);
+        SE_UNDENORM(s->ck[k].ic1); SE_UNDENORM(s->ck[k].ic2);
+        SE_UNDENORM(s->hz[k]);
+        SE_UNDENORM(s->az[k]);
+        SE_UNDENORM(s->dc[k]);
     }
 }
 

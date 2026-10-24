@@ -25,6 +25,9 @@ check(!packs.isEmpty && packs.map(\.id) == index, "\(packs.count) pack(s) loaded
       + packs.map(\.id).joined(separator: ", "))
 check(packs.allSatisfy { $0.effects == ["cmp3", "flng"] }, "every pack lists its effects: "
       + packs.map { "\($0.id) \($0.effects.joined(separator: "+"))" }.joined(separator: ", "))
+let wantBase = ["CMP4": [String](), "DJ01": ["djvu", "overbridge"]]          // the others: ["overbridge"]
+check(packs.allSatisfy { $0.base == (wantBase[$0.id] ?? ["overbridge"]) }, "every pack lists its base: "
+      + packs.map { "\($0.id) [\($0.base.joined(separator: "+"))]" }.joined(separator: ", "))
 let temps = { (try? fm.contentsOfDirectory(atPath: fm.temporaryDirectory.path))?
     .filter { $0.hasPrefix("digiwerk-patcher-") }.count ?? 0 }
 

@@ -121,9 +121,11 @@ struct ContentView: View {
                 + "Digitone II it starts up to the main screen and writes nothing to the unit's memory that it shouldn't.")
             Text("TESTED ON A DIGITONE II: we also ran it on a real unit, on that date. NOT YET TESTED ON A UNIT: only "
                 + "the brick checker has run it so far.")
-            Text("The icons are the effects it carries: "
+            Text("The big icons are its effects: "
                 + (model.pack?.effects.map { (Art.effectNames[$0] ?? $0).lowercased() } ?? [])
-                    .joined(separator: " and ") + ".")
+                    .joined(separator: " and ") + ". BASE is what every build of this release carries in the "
+                + "main OS: " + (model.pack.map { $0.base.isEmpty ? "nothing extra" : $0.base
+                    .map { Art.baseNames[$0] ?? $0 }.joined(separator: " and ") } ?? "") + ".")
         }
         .font(.system(size: 12))
         .foregroundStyle(Palette.grey)
@@ -257,7 +259,7 @@ struct ContentView: View {
 /// One pack as a product card: its effects' icons big on a dark well, a caption bar with its id, title, description
 /// and record line. The chosen one has a white outline and a filled square.
 struct PackCard: View {
-    static let height: CGFloat = 164
+    static let height: CGFloat = 182
     let pack: Pack, on: Bool, width: CGFloat
     let action: () -> Void
     @State private var hover = false
@@ -286,7 +288,7 @@ struct PackCard: View {
                         .frame(width: 9, height: 9)
                         .padding(10)
                 }
-                .frame(height: 74)
+                .frame(height: 70)
                 .background(Palette.well)
                 Palette.line.frame(height: 1)
                 VStack(alignment: .leading, spacing: 3) {
@@ -297,9 +299,10 @@ struct PackCard: View {
                             .foregroundStyle(on ? Palette.text : Palette.grey)
                     }
                     Text(pack.title).font(.system(size: 12.5, weight: .semibold)).lineLimit(1)
-                    Text(pack.description).font(.system(size: 11)).foregroundStyle(Palette.grey)
+                    Text(pack.description).font(.system(size: 10.5)).foregroundStyle(Palette.grey)
                         .lineLimit(2).fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
+                    if !pack.base.isEmpty { BaseLine(base: pack.base) }
                     Text(tested.uppercased()).font(.system(size: 8.5, weight: .bold)).tracking(0.8)
                         .foregroundStyle(Palette.dim).lineLimit(1)
                 }
@@ -317,6 +320,32 @@ struct PackCard: View {
         .help(pack.description)
         .accessibilityLabel("\(pack.id), \(pack.title). \(pack.description) \(pack.record)")
         .accessibilityAddTraits(on ? .isSelected : [])
+    }
+}
+
+/// A pack's base features, small, in its caption bar: an icon where the feature has one (Déjà vu), a pixel glyph
+/// for Overbridge, and their names.
+struct BaseLine: View {
+    let base: [String]
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text("BASE").font(.system(size: 8.5, weight: .bold)).tracking(0.8).foregroundStyle(Palette.dim)
+            ForEach(base, id: \.self) { id in
+                HStack(spacing: 4) {
+                    if Art.baseIcons.contains(id) {
+                        PixelArt(name: id, pt: 1)
+                    } else if id == "overbridge" {
+                        PixelArt(Glyph.link, pt: 1, fg: NSColor(white: 0.75, alpha: 1))
+                    }
+                    Text((Art.baseNames[id] ?? id).uppercased()).font(.system(size: 8.5, weight: .bold)).tracking(0.8)
+                        .foregroundStyle(Palette.grey).lineLimit(1)
+                }
+            }
+        }
+        .frame(height: 16)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Base: " + base.map { Art.baseNames[$0] ?? $0 }.joined(separator: ", "))
     }
 }
 

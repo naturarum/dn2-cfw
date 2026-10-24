@@ -16,6 +16,7 @@
     python3 tools/dspsplice/build.py CMP4      # CMP4: CMP3 with the stock delay back and the breathing meters
     python3 tools/dspsplice/build.py FL01      # FL01: CMP4 with the retuned flanger glue (knob C is TIME, T5.6)
     python3 tools/dspsplice/build.py FL02      # FL02: FL01 with the flanger's speed in sync with the tempo
+    python3 tools/dspsplice/build.py DT01      # DT01: FL02 on a code diet (the same sound, less code)
 
 Pipeline (notes/T3.8-dsp-splice.md section 1):
   1. compile the recipe's C with selcc -O1 (as tools/sharcvm/tests/fxcheck.py does), generate the
@@ -516,6 +517,28 @@ RECIPES["FL02"] = dict(
     c=["fx/flanger.c", "tools/dspsplice/src/flg_glue3.c"], c2=["tools/dspsplice/src/flg_sync.c"],
     h=["fx/flanger_unit.h", "tools/dspsplice/src/flg_slot3.h"], code2=(0x310000, 0x315f8c),
     outdir="out/FL02/FL02-dsp", syx="FL02-dsp.syx", version="FL2D")
+# DT01 (2026-10-23, notes/DT01-code-diet.md): FL02 on a code diet, the same sound. The C sources FL02's but the flanger
+# (tools/dspsplice/src/dt01/: fx/flanger.c with the Flanger struct's rings last, so every other field has a short
+# offset), and the diet on selcc's output (keys drop, share: diet_asm): the flanger's four API functions the DSP never
+# calls and the compressor's two (mbcomp_ratio, mbcomp_gr_db) left out; fxmath.h's helpers in one copy, the flanger's
+# (the compressor's nine copies, the same text, go); the two delay stubs, unreachable since CMP4 (the stock delay's
+# CJUMPs are not patched), not built. Key reach: every function linked is reached from the hooks. The same places as
+# FL02 (key proven), each code section shorter.
+RECIPES["DT01"] = dict(
+    RECIPES["FL02"],
+    what="DT01: FL02 on a code diet (the same sound): the flanger's rings last in its struct (dt01/flanger.c), the "
+         "never-called functions and the two dead delay stubs left out, fxmath.h's helpers in one copy (the flanger's)",
+    c=["tools/dspsplice/src/dt01/flanger.c", "tools/dspsplice/src/flg_glue3.c"],
+    c3=["tools/dspsplice/src/dt01/mbcomp.c"],
+    h=["tools/dspsplice/src/dt01/flanger_unit.h", "tools/dspsplice/src/flg_slot3.h", "fx/mbcomp.h"],
+    inc=["tools/dspsplice/src/dt01", "fx", "tools/dspsplice/src"],
+    stubs=[("fxh_chorus", [("c", "flg_process", ["R8", "R12"])]),
+           ("fxh_chorus_init", [("c", "flg_init", []), ("tail", CHORUS_INIT)])],
+    drop=["flanger_man_ms", "flanger_damp_hz", "flanger_rate_hz", "flanger_delay_at", "mbcomp_ratio", "mbcomp_gr_db"],
+    share={"from": "flanger", "names": ["fx_f2i", "fx_i2f", "fx_clampf", "fx_log2", "fx_exp2", "fx_sin_q", "fx_cos_q",
+                                        "fx_svf_g", "fx_knob01"]},
+    reach=True,
+    outdir="out/DT01/DT01-dsp", syx="DT01-dsp.syx", version="DT1D")
 
 LDF = """ARCHITECTURE(ADSP-21569)
 $OBJECTS = $COMMAND_LINE_OBJECTS;
@@ -677,12 +700,143 @@ def split_asm(text, stem, place, default):
     return "\n".join(out + rest), where
 
 
+def asm_chunks(text, stem):
+    """DT01: a selcc .s file (one code section) as (head, [[name, lines]], tail): head = the lines up to and with the
+    '.SECTION/SW ...;' line, one chunk per function from its label (with the '.GLOBAL name.;' line before it when it
+    is global) to the next function, tail = the code section's '.ENDSEG;' and everything after it"""
+    lines = text.split("\n")
+    i0 = next(i for i, ln in enumerate(lines) if ln.startswith(".SECTION/SW"))
+    i1 = lines.index(".ENDSEG;", i0)
+    if any(ln.startswith(".SECTION/SW") for ln in lines[i1 + 1:]):
+        raise SystemExit(f"{stem}.s: a second code section")
+    chunks, cur = [], None
+    for ln in lines[i0 + 1:i1]:
+        m = FUNC_LABEL.match(ln)
+        if m:
+            pend = []
+            if cur is not None and cur[1] and cur[1][-1] == f".GLOBAL {m.group(1)}.;":
+                pend = [cur[1].pop()]
+            cur = [m.group(1), pend + [ln]]
+            chunks.append(cur)
+        elif cur is None:
+            if ln.strip() and not ln.startswith(".GLOBAL"):
+                raise SystemExit(f"{stem}.s: code before the first function: {ln}")
+            if ln.strip():
+                cur = ["", [ln]]
+                chunks.append(cur)
+        else:
+            cur[1].append(ln)
+    chunks = [c for c in chunks if c[0] or any(x.strip() for x in c[1])]
+    if any(not n for n, _ in chunks):
+        raise SystemExit(f"{stem}.s: a line before the first function label")
+    return lines[:i0 + 1], chunks, lines[i1:]
+
+
+def diet_asm(texts, rec):
+    """DT01 (notes/DT01-code-diet.md): the code diet on selcc's output, before assembly; the C sources stay as they are.
+    texts: {stem: .s text}. Recipe keys:
+      drop:  functions the DSP never calls, left out ('name' or 'stem:name'); the link refuses one something still calls;
+      share: {"from": stem, "names": [...]}: fxmath.h's static helpers in one copy (selcc inlines nothing, so every file
+             that uses one has its own copy): the provider's copies made .GLOBAL; in every other file a copy is removed
+             and declared .EXTERN, so its calls go to the provider's. Each removed copy must be the provider's text line
+             for line (the same code: the same results and the same instruction count), or the build stops.
+    -> (texts, report)"""
+    sh = rec.get("share") or {}
+    names, prov = sh.get("names", []), sh.get("from")
+    drop = set(rec.get("drop", []))
+    parsed = {stem: asm_chunks(t, stem) for stem, t in texts.items()}
+    if names and prov not in parsed:
+        raise SystemExit(f"share: the provider {prov} is not in the recipe")
+    pbody = {}
+    if names:
+        for n, body in parsed[prov][1]:
+            if n in names:
+                if body[0].startswith(".GLOBAL"):
+                    raise SystemExit(f"share: {prov}'s {n} is already global")
+                pbody[n] = body
+        missing = [n for n in names if n not in pbody]
+        if missing:
+            raise SystemExit(f"share: {prov} has no copy of {missing}")
+    rep = {"dropped": [], "shared_from": prov, "shared": [], "removed_copies": []}
+    out = {}
+    for stem, (head, chunks, tail) in parsed.items():
+        keep, ext = [], []
+        for n, body in chunks:
+            if n in drop or f"{stem}:{n}" in drop:
+                rep["dropped"].append(f"{stem}:{n}")
+                continue
+            if n in pbody and stem == prov:
+                body = [f".GLOBAL {n}.;"] + body
+                rep["shared"].append(n)
+            elif n in pbody:
+                if body != pbody[n]:
+                    raise SystemExit(f"share: {stem}'s {n} is not {prov}'s text line for line")
+                rep["removed_copies"].append(f"{stem}:{n}")
+                ext.append(f".EXTERN {n}.;")
+                continue
+            keep.append(body)
+        out[stem] = "\n".join(ext + head + [ln for b in keep for ln in b] + tail)
+    gone = sorted(set(drop) - {d.split(":")[-1] for d in rep["dropped"]} - {d for d in rep["dropped"]})
+    if gone:
+        raise SystemExit(f"drop: no function {gone} in the recipe's files")
+    return out, rep
+
+
+def reach_check(bdir, stems, entries):
+    """DT01: the static call graph of our code (every call is a CJUMP to a function label, as selcc and stub.py emit
+    them): every function reachable from the hook stubs' entries. -> (rows, problems)"""
+    fns, calls = {}, {}
+    for stem in stems:
+        cur = None
+        for ln in (bdir / f"{stem}.s").read_text().split("\n"):
+            m = FUNC_LABEL.match(ln)
+            if m:
+                cur = m.group(1)
+                fns.setdefault(cur, stem)
+                calls.setdefault(cur, set())
+                continue
+            for t in re.findall(r"\b(?:CJUMP|CALL|JUMP)\s+([A-Za-z_][A-Za-z0-9_]*)\.", ln):
+                if cur:
+                    calls[cur].add(t)
+    seen, todo = set(), [e for e in entries if e in fns]
+    while todo:
+        f = todo.pop()
+        if f in seen:
+            continue
+        seen.add(f)
+        todo += [t for t in calls.get(f, ()) if t in fns]
+    rows = [{"function": f, "file": s, "reached": f in seen} for f, s in fns.items()]
+    return rows, [f"{r['file']}:{r['function']} is never reached from the hooks" for r in rows if not r["reached"]]
+
+
 def compile_link(name, rec, bdir, log):
     bdir.mkdir(parents=True, exist_ok=True)
     flags = ["-proc", "ADSP-21569", "-char-size-8", "-O1"] + [f"-I{ROOT / i}" for i in rec["inc"]]
     objs = []
     rec["_placed_funcs"] = {}
-    for src in all_c(rec):
+    if rec.get("drop") or rec.get("share"):
+        # DT01: every file compiled (and its section renamed) first, the diet applied over all of them, then assembled
+        texts = {}
+        for src in all_c(rec):
+            stem = Path(src).stem
+            if src in rec.get("split", []):
+                raise SystemExit("a diet recipe has no split files")
+            run([SEL / "selcc", *flags, "-S", "-o", bdir / f"{stem}.s", ROOT / src], log)
+            seg = "seg_t38c2" if src in rec.get("c2", []) else ("seg_t38c3" if src in rec.get("c3", []) else
+                                                               ("seg_t38c4" if src in rec.get("c4", []) else None))
+            s = (bdir / f"{stem}.s").read_text()
+            (bdir / f"{stem}.sel.s").write_text(s)          # selcc's own output, kept for review
+            if s.count(".SECTION/SW seg_swco;") != 1 or ".SECTION/" in s.replace(".SECTION/SW seg_swco;", "").replace(
+                    ".SECTION/DOUBLE32 seg_dmda;", ""):
+                raise SystemExit(f"{stem}.s: unexpected sections")
+            texts[stem] = s.replace(".SECTION/SW seg_swco;", f".SECTION/SW {seg};") if seg else s
+        texts, rec["_diet"] = diet_asm(texts, rec)
+        for src in all_c(rec):
+            stem = Path(src).stem
+            (bdir / f"{stem}.s").write_text(texts[stem])
+            run([SEL / "selas", "-proc", "ADSP-21569", "-o", bdir / f"{stem}.doj", bdir / f"{stem}.s"], log)
+            objs.append(bdir / f"{stem}.doj")
+    for src in ([] if rec.get("drop") or rec.get("share") else all_c(rec)):
         stem = Path(src).stem
         run([SEL / "selcc", *flags, "-S", "-o", bdir / f"{stem}.s", ROOT / src], log)
         seg = "seg_t38c2" if src in rec.get("c2", []) else ("seg_t38c3" if src in rec.get("c3", []) else
@@ -1167,6 +1321,13 @@ def build(name, out_root=ROOT / "out/T3.8", odir=None):
     if rec.get("proven"):
         proven_rows, pp = proven_check(rec, e)
         problems += pp
+    reach_rows = None
+    if rec.get("reach"):
+        # DT01: no function of ours that nothing calls (from the hook stubs) is linked
+        reach_rows, pp = reach_check(bdir, [Path(s).stem for s in all_c(rec)] + ["stubs"]
+                                     + (["stubs3"] if rec.get("stubs3") else []),
+                                     [n for n, _ in rec["stubs"] + rec.get("stubs3", [])])
+        problems += pp
     if problems:
         raise SystemExit("layout check failed:\n  " + "\n  ".join(problems))
     stream = st.to_bytes()
@@ -1255,8 +1416,37 @@ def build(name, out_root=ROOT / "out/T3.8", odir=None):
         "save_area": {"core": "%#x" % SAVE, "bytes": stub.SAVE_BYTES, "regs": stub.SAVE_REGS},
         "log": log,
     }
+    if rec.get("drop") or rec.get("share"):
+        # DT01: what the diet did, the reachability, and every function's size per code region
+        info["diet"] = rec["_diet"]
+        info["reach"] = reach_rows
+        info["function_table"] = function_table(rec, bdir, e)
     (odir / "build.json").write_text(json.dumps(info, indent=1))
     return info
+
+
+def function_table(rec, bdir, e):
+    """DT01: every function of ours as linked, per code section: (section, function, file, core address, bytes), from
+    sc01_funcmap (each region's .s files re-assembled with every label global and linked alone at the section's
+    address, in the link's order, calls out of the region to stand-ins); each region's size checked against the build's"""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("sc01_funcmap", str(HERE / "sc01_funcmap.py"))
+    fm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fm)
+    stem = lambda xs: [bdir / f"{Path(s).stem}.s" for s in xs]   # noqa: E731
+    order = {"t38_code": [bdir / "stubs.s"] + stem(rec["c"]), "t38_code2": stem(rec.get("c2", [])),
+             "t38_code3": stem(rec.get("c3", [])) + ([bdir / "stubs3.s"] if rec.get("stubs3") else []),
+             "t38_code4": stem(rec.get("c4", []))}
+    rows = []
+    for s in e.sections:
+        if s.kind != "sw_code" or not s.data:
+            continue
+        got, sec = fm.funcmap(bdir / f"funcmap-{s.name}", E.sw_to_byte(s.addr), order[s.name])
+        if sec.addr != s.addr or len(sec.data) != len(s.data):
+            raise SystemExit(f"function table: {s.name} re-linked alone is not the build's size")
+        rows += [{"section": s.name, "function": n, "file": f[:-2], "core": "%#x" % E.sw_to_byte(a), "bytes": 2 * (b - a)}
+                 for n, f, a, b in got]
+    return rows
 
 
 def main():

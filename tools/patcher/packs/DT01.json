@@ -1,0 +1,17 @@
+{
+ "title": "Compressor and flanger, slimmer code",
+ "description": "Sounds exactly like FL02: the same effects in 6.5 KB less DSP code, room for more later.",
+ "tested_on_unit": "24 Oct 2026",
+ "effects": [
+  "cmp3",
+  "flng"
+ ],
+ "base": [
+  "overbridge"
+ ],
+ "dsp": {
+  "code_bytes": null,
+  "state_bytes": null,
+  "load_percent": null
+ }
+}

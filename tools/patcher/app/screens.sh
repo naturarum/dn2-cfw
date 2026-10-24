@@ -1,15 +1,15 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-2.0-or-later
 # app/screens.sh: PNGs of the window (Tests/snap/main.swift renders ContentView offscreen after real runs of the
-# Model) for a one-pack set (OB01) and a three-pack set (CMP4, OB01, FL01) -> out/patcher/screens/. No screen
+# Model) for a one-pack set (DJ01) and a three-pack set (FL02, DT01, DJ01) -> out/patcher/screens/. No screen
 # capture permission needed.
 set -eu
 cd "$(dirname "$0")"
 ROOT=$(cd ../../.. && pwd)
 T="$ROOT/out/patcher/test/screens"
 mkdir -p "$T"
-make -s -C .. PACKS="CMP4 OB01 FL01" >/dev/null
-for SET in "OB01" "CMP4 OB01 FL01"; do
+make -s -C .. PACKS="FL02 DT01 DJ01" >/dev/null
+for SET in "DJ01" "FL02 DT01 DJ01"; do
     P="$T/packs-$(echo $SET | tr ' ' '+')"
     rm -rf "$P"; mkdir -p "$P"
     for b in $SET; do cp "$ROOT/out/patcher/$b/patch.bin" "$P/$b.dn2p"; echo "$b" >>"$P/index.txt"; done
@@ -20,5 +20,5 @@ swiftc -O -swift-version 5 -import-objc-header Sources/Bridging.h -Xcc -I.. Sour
     Sources/Art.swift Sources/ContentView.swift Tests/snap/main.swift "$T/dn2patch.o" -o "$T/snap"
 rm -rf "$ROOT/out/patcher/screens"
 "$T/snap" "$ROOT/out/patcher/screens" "$ROOT/elektron-firmware/Digitone_II_OS1.12_dist.zip" \
-    "$ROOT/out/firmware/Digitone_II_OS1.11_dist/Digitone_II_OS1.11.syx" "$T/work" "$T/packs-OB01" "$T/packs-CMP4+OB01+FL01" \
+    "$ROOT/out/firmware/Digitone_II_OS1.11_dist/Digitone_II_OS1.11.syx" "$T/work" "$T/packs-DJ01" "$T/packs-FL02+DT01+DJ01" \
     "$T/identity"

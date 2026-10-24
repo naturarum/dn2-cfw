@@ -13,6 +13,8 @@ enum Art {
     static let effectNames = ["cmp3": "3-band compressor", "flng": "Flanger", "tape": "Tape echo",
                               "spng": "Spring reverb"]                 // mkpatch.py's EFFECTS
     static let effectLabels = ["cmp3": "COMPRESSOR", "flng": "FLANGER", "tape": "TAPE ECHO", "spng": "SPRING"]
+    static let baseNames = ["djvu": "D\u{E9}j\u{E0} vu LFO", "overbridge": "Overbridge works"]   // mkpatch.py's BASE
+    static let baseIcons: Set<String> = ["djvu"]             // the base features with an icon in docs/identity
     static let white = NSColor(white: 0.95, alpha: 1)
     private static var cache: [String: Grid] = [:]
 
@@ -89,6 +91,7 @@ enum Glyph {
                                 "#######"])
     static let help = Art.Grid([".###.", "#...#", "....#", "..##.", "..#..", ".....", "..#.."])
     static let back = Art.Grid(["..#....", ".#.....", "#######", ".#.....", "..#...."])
+    static let link = Art.Grid(["###...###", "#.#####.#", "###...###"])        // Overbridge: two boxes, linked
 }
 
 /// One piece of pixel art, about `pt` points per art pixel (rounded to whole device pixels), white on bg.

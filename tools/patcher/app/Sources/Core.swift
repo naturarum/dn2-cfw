@@ -9,6 +9,7 @@ import Foundation
 struct Pack {
     let id, title, description, record, buildSHA256: String
     let effects: [String]                                    // effect ids, e.g. ["cmp3", "flng"] (Art's icons)
+    let base: [String]                                       // base feature ids, e.g. ["djvu", "overbridge"]
     let data: Data
 
     /// the packs in dir, in index.txt's order; a file the core can't read is left out
@@ -22,7 +23,8 @@ struct Pack {
             guard ok == 0 else { return nil }
             return Pack(id: str(info.id), title: str(info.title), description: str(info.description),
                         record: str(info.record), buildSHA256: str(info.build_sha256),
-                        effects: str(info.effects).split(separator: " ").map(String.init), data: data)
+                        effects: str(info.effects).split(separator: " ").map(String.init),
+                        base: str(info.base).split(separator: " ").map(String.init), data: data)
         }
     }
 }

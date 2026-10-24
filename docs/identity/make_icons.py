@@ -39,6 +39,8 @@ FONT = {
     'N': ['#...#', '##..#', '#.#.#', '#.#.#', '#..##', '#...#', '#...#'],
     'S': ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'],
     '3': ['####.', '....#', '....#', '.###.', '....#', '....#', '####.'],
+    'J': ['..###', '...#.', '...#.', '...#.', '...#.', '#..#.', '.##..'],
+    'V': ['#...#', '#...#', '#...#', '#...#', '#...#', '.#.#.', '..#..'],
     ' ': ['...', '...', '...', '...', '...', '...', '...'],
 }
 
@@ -131,6 +133,24 @@ def spng():
     return g
 
 
+def djvu():
+    """The Deja vu LFO: a stepped random pattern, then the same pattern again (a loop that remembers);
+    the ticks above and below mark the loop point."""
+    g = blank(W, H)
+    steps = (11, 4, 13, 7)                          # the four held values (rows from the top)
+    prev = None
+    for copy in (0, 1):
+        for i, y in enumerate(steps):
+            x0 = copy * 12 + i * 3
+            line(g, x0, y, x0 + 2, y)
+            if prev is not None:
+                line(g, x0, prev, x0, y)
+            prev = y
+    for y in (0, 1, 14, 15):
+        g[y][12] = 1
+    return g
+
+
 def mark():
     """Digiwerk's mark: a cog ("werk") with a pixel in its hub."""
     n, g = 16, blank(16, 16)
@@ -145,9 +165,9 @@ def mark():
     return g
 
 
-ICONS = {'cmp3': cmp3, 'flng': flng, 'tape': tape, 'spng': spng, 'mark': mark}
+ICONS = {'cmp3': cmp3, 'flng': flng, 'tape': tape, 'spng': spng, 'djvu': djvu, 'mark': mark}
 LABELS = {'cmp3': '3-band compressor', 'flng': 'flanger: phaser to chorus', 'tape': 'tape echo',
-          'spng': 'spring reverb', 'mark': 'Digiwerk'}
+          'spng': 'spring reverb', 'djvu': 'Deja vu LFO', 'mark': 'Digiwerk'}
 
 
 # --- output -----------------------------------------------------------------
@@ -178,7 +198,7 @@ def png(g, s=8, gap=1, pad=1):
 
 def sheet(grids):
     s, gap, cell_w, cell_h = 8, 1, 34 * 8, 32 * 8
-    names = ['cmp3', 'flng', 'tape', 'spng']
+    names = ['cmp3', 'flng', 'tape', 'spng', 'djvu']
     img = Image.new('RGB', (len(names) * cell_w, cell_h + 26 * 8), BG)
     word = text('DIGIWERK')
     paint(img, grids['mark'], 4 * s, 4 * s, s, gap)

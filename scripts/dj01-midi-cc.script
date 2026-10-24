@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# DJ01: MIDI CC 106 (LFO 1 WAVE) on the auto channel (10, status b9: the active track, track 1) with the values
+# 0, 3, 6, 7, 8, 9, 12, 15, 16, 40, 127 and back to 1, a screen after each (MOD page, LFO 1). The CC value is the
+# parameter value (ParameterSet::vslot27: v << 8), clamped to the row's range: stock 0..6, DJ01 0..15.
+wait-emu 0.5
+tap semicolon        # MOD: LFO 1
+wait-emu 0.5
+png 00-lfo1
+midi-in b9 6a 00
+wait-emu 0.4
+png cc000
+midi-in b9 6a 03
+wait-emu 0.4
+png cc003
+midi-in b9 6a 06
+wait-emu 0.4
+png cc006
+midi-in b9 6a 07
+wait-emu 0.4
+png cc007
+midi-in b9 6a 08
+wait-emu 0.4
+png cc008
+midi-in b9 6a 09
+wait-emu 0.4
+png cc009
+midi-in b9 6a 0c
+wait-emu 0.4
+png cc012
+midi-in b9 6a 0f
+wait-emu 0.4
+png cc015
+midi-in b9 6a 10
+wait-emu 0.4
+png cc016
+midi-in b9 6a 28
+wait-emu 0.4
+png cc040
+midi-in b9 6a 7f
+wait-emu 0.4
+png cc127
+midi-in b9 6a 01
+wait-emu 0.4
+png cc001

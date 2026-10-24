@@ -6,6 +6,9 @@
   "cmp3",
   "flng"
  ],
+ "base": [
+  "overbridge"
+ ],
  "dsp": {
   "code_bytes": null,
   "state_bytes": null,

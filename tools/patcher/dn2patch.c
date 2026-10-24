@@ -423,6 +423,7 @@ static void meta_read(const uint8_t *m, size_t n, dn2p_info *f)
         { "tested_on_unit", offsetof(dn2p_info, tested_on_unit), sizeof f->tested_on_unit },
         { "brickcheck", offsetof(dn2p_info, brickcheck), sizeof f->brickcheck },
         { "effects", offsetof(dn2p_info, effects), sizeof f->effects },
+        { "base", offsetof(dn2p_info, base), sizeof f->base },
     };
     char line[256], *eq;
     f->dsp_code_bytes = f->dsp_state_bytes = -1;

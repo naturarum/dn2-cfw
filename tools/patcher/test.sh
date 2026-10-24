@@ -1,18 +1,20 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-2.0-or-later
 # tools/patcher/test.sh (make test): the packs and digiwerk-patch end to end, on the developer's machine.
-#   - CMP4, OB01, FL01: mkpatch.py makes each pack (pinned to the build's sha256; its pack JSON and brickcheck ACCEPT
-#     report); stockcheck.py passes all three;
-#   - the three-pack tool: every pack (--pack ID) byte for byte from a copy of the stock file, a pack chosen by its
-#     number, --list, an unknown --pack and no choice refused; universal, and the x86_64 slice runs (Rosetta);
+#   - CMP4, OB01, FL01, FL02, DT01, DJ01: mkpatch.py makes each pack (pinned to the build's sha256; its pack JSON
+#     and brickcheck ACCEPT report); stockcheck.py passes them all;
+#   - the six-pack tool: every pack (--pack ID) byte for byte from a copy of the stock file, a pack chosen by its
+#     number, --list (with each pack's base line), an unknown --pack and no choice refused; universal, and the
+#     x86_64 slice runs (Rosetta);
 #   - the one-pack tool (OB01): the build byte for byte, the input untouched; the paths Terminal pastes when a file is
 #     dropped on it (escaped, quoted, trailing space; the unzipped folder); Elektron's .zip itself;
 #   - refusals, with no file written: the 1.11 .syx, a truncated 1.12, a .zip without the stock file, a missing file,
 #     a build as input, an existing different output file; a pack corrupted in its literal data and in its skeleton;
 #   - mkpatch refuses: a file that is not a build of 1.12, a pack with no brickcheck ACCEPT report, a report for
-#     another file, a pack with no pack JSON, an unknown effect id; stockcheck fails a pack with 16 stock bytes;
+#     another file, a pack with no pack JSON, an unknown effect id, an unknown base id; stockcheck fails a pack with
+#     16 stock bytes;
 #   - the check stage (dn2p_check): a failing stage withholds the output, a passing one hands it over;
-#   - the app's path into the core (app/test.sh: its Swift Core with the three-pack and one-pack sets).
+#   - the app's path into the core (app/test.sh: its Swift Core with the six-pack and one-pack sets).
 set -u
 cd "$(dirname "$0")"
 ROOT=$(cd ../.. && pwd)
@@ -24,8 +26,12 @@ PY=${PYTHON:-python3}
 CFLAGS="-std=c99 -O2 -Wall -Wextra -arch arm64 -arch x86_64 -mmacosx-version-min=11.0"
 BUILDS="CMP4:c1df74aaa36f987c0dbdfb43486fe059952c413fccf95272966064cec42c3b88
 OB01:bfb886237377555aea6778ba49d0b48b48e7ce46a04bd9be77365f36cb0b62dd
-FL01:a2179c0cc5dc02d7d3816ee13aeb0cdf6a1908aef4e06aaf0322a973c8d75daf"
-C3="$ROOT/out/patcher/cli/CMP4+OB01+FL01/digiwerk-patch"
+FL01:a2179c0cc5dc02d7d3816ee13aeb0cdf6a1908aef4e06aaf0322a973c8d75daf
+FL02:82bfd32db4294413bcd0b62e7c8faf77f650dc9f3262ea678e2f94c3245c92f1
+DT01:5999998c6ca63f70b6c91372891df77472b8c4e32f59e6795a82d708ffce3749
+DJ01:7edf7c59e2aeabd61ebca132a9f031f776475794e04ea37f1635ec8e5a17aed8"
+ALL="CMP4 OB01 FL01 FL02 DT01 DJ01"
+C3="$ROOT/out/patcher/cli/CMP4+OB01+FL01+FL02+DT01+DJ01/digiwerk-patch"
 C1="$ROOT/out/patcher/cli/OB01/digiwerk-patch"
 pass=0; fail=0
 ok()  { pass=$((pass + 1)); echo "PASS  $1"; }
@@ -53,41 +59,45 @@ for b in $BUILDS; do
         ok "$B: pack made ($(sed 's/.*rebuilds [0-9a-f]*; //; s/; stockcheck.*//' "$T/mkpatch-$B.log"))"
     else bad "$B: mkpatch: $(cat "$T/mkpatch-$B.log")"; fi
 done
-make -s PACKS="CMP4 OB01 FL01" >"$T/make-3.log" 2>&1 && make -s PACKS=OB01 >"$T/make-1.log" 2>&1 \
+make -s PACKS="$ALL" >"$T/make-3.log" 2>&1 && make -s PACKS=OB01 >"$T/make-1.log" 2>&1 \
     || bad "make: $(cat "$T/make-3.log" "$T/make-1.log")"
-$PY stockcheck.py "$ROOT"/out/patcher/CMP4/patch.bin "$ROOT"/out/patcher/OB01/patch.bin "$ROOT"/out/patcher/FL01/patch.bin \
-    --brief >"$T/stockcheck.log" 2>&1 && ok "stockcheck: no 16-byte run of any of the three packs in the stock file" \
+# shellcheck disable=SC2046
+$PY stockcheck.py $(for b in $ALL; do echo "$ROOT/out/patcher/$b/patch.bin"; done) \
+    --brief >"$T/stockcheck.log" 2>&1 && ok "stockcheck: no 16-byte run of any of the six packs in the stock file" \
     || bad "stockcheck: $(cat "$T/stockcheck.log")"
 
-# the three-pack tool
+# the six-pack tool
 for b in $BUILDS; do
     B=${b%%:*} H=${b#*:}
     fresh "$T/run3-$B"
     "$C3" --pack $B "$T/run3-$B/Digitone_II_OS1.12.syx" </dev/null >"$T/run3-$B.log" 2>&1
     if [ $? = 0 ] && cmp -s "$T/run3-$B/$B.syx" "$ROOT/out/$B/$B.syx" && [ "$(sha "$T/run3-$B/$B.syx")" = "$H" ]; then
-        ok "three-pack tool, --pack $B: byte for byte out/$B/$B.syx (sha256 $H)"
-    else bad "three-pack $B: $(cat "$T/run3-$B.log")"; fi
+        ok "six-pack tool, --pack $B: byte for byte out/$B/$B.syx (sha256 $H)"
+    else bad "six-pack $B: $(cat "$T/run3-$B.log")"; fi
 done
 fresh "$T/run3-num"
 printf '3\n' | "$C3" "$T/run3-num/Digitone_II_OS1.12.syx" >"$T/run3-num.log" 2>&1
 cmp -s "$T/run3-num/FL01.syx" "$ROOT/out/FL01/FL01.syx" && grep -q "Which one?" "$T/run3-num.log" \
-    && ok "three-pack tool: asks which one; number 3 makes FL01.syx, byte for byte" || bad "number: $(cat "$T/run3-num.log")"
+    && ok "six-pack tool: asks which one; number 3 makes FL01.syx, byte for byte" || bad "number: $(cat "$T/run3-num.log")"
 out=$("$C3" --list 2>&1)
-[ "$(echo "$out" | grep -c '^  [123]\. \(CMP4\|OB01\|FL01\) ')" = 3 ] && echo "$out" | grep -q "Brick check 12 of 12 · tested on a Digitone II, 2[0-9] Oct 2026" \
-    && ok "three-pack tool: --list shows the three packs with their record lines" || bad "--list: $out"
+[ "$(echo "$out" | grep -c '^  [1-6]\. \(CMP4\|OB01\|FL01\|FL02\|DT01\|DJ01\) ')" = 6 ] \
+    && echo "$out" | grep -q "Brick check 12 of 12 · tested on a Digitone II, 2[0-9] Oct 2026" \
+    && echo "$out" | grep -q "not yet tested on a unit" && [ "$(echo "$out" | grep -c '     base: ')" = 6 ] \
+    && echo "$out" | grep -q "base: D.*vu LFO, Overbridge works" && echo "$out" | grep -q "base: none" \
+    && ok "six-pack tool: --list shows the six packs with their base and record lines" || bad "--list: $out"
 fresh "$T/run3-bad"
 out=$("$C3" --pack ZZ99 "$T/run3-bad/Digitone_II_OS1.12.syx" </dev/null 2>&1); got=$?
 [ $got = 1 ] && none "$T/run3-bad" && echo "$out" | grep -q "no build called ZZ99" \
-    && ok "three-pack tool: an unknown --pack is refused, no file" || bad "unknown pack: $out"
+    && ok "six-pack tool: an unknown --pack is refused, no file" || bad "unknown pack: $out"
 out=$("$C3" "$T/run3-bad/Digitone_II_OS1.12.syx" </dev/null 2>&1); got=$?
-[ $got = 1 ] && none "$T/run3-bad" && ok "three-pack tool: no choice (stdin empty): refused, no file" || bad "no choice: $out"
-lipo -info "$C3" | grep -q 'x86_64 arm64\|arm64 x86_64' && ok "three-pack tool: universal binary ($(stat -f %z "$C3") bytes)" \
-    || bad "three-pack: not universal"
+[ $got = 1 ] && none "$T/run3-bad" && ok "six-pack tool: no choice (stdin empty): refused, no file" || bad "no choice: $out"
+lipo -info "$C3" | grep -q 'x86_64 arm64\|arm64 x86_64' && ok "six-pack tool: universal binary ($(stat -f %z "$C3") bytes)" \
+    || bad "six-pack: not universal"
 if arch -x86_64 /usr/bin/true 2>/dev/null; then
     fresh "$T/run3-x86"
-    arch -x86_64 "$C3" --pack FL01 "$T/run3-x86/Digitone_II_OS1.12.syx" </dev/null >/dev/null 2>&1
-    cmp -s "$T/run3-x86/FL01.syx" "$ROOT/out/FL01/FL01.syx" && ok "three-pack tool: the x86_64 slice too (Rosetta)" \
-        || bad "three-pack x86_64"
+    arch -x86_64 "$C3" --pack DJ01 "$T/run3-x86/Digitone_II_OS1.12.syx" </dev/null >/dev/null 2>&1
+    cmp -s "$T/run3-x86/DJ01.syx" "$ROOT/out/DJ01/DJ01.syx" && ok "six-pack tool: the x86_64 slice too (Rosetta, DJ01)" \
+        || bad "six-pack x86_64"
 fi
 
 # the one-pack tool (OB01): as the three-pack app and tool look with one pack
@@ -162,10 +172,15 @@ $PY mkpatch.py "$ROOT/out/FL01/FL01.syx" --name OB01 --out "$T/wrongbc" >"$T/wro
 $PY mkpatch.py "$ROOT/out/OB01/OB01.syx" --name ZZ01 --out "$T/nojson" >"$T/nojson.log" 2>&1
 [ $? != 0 ] && grep -q "no pack JSON for ZZ01" "$T/nojson.log" && [ ! -e "$T/nojson" ] \
     && ok "mkpatch refuses a pack with no pack JSON" || bad "mkpatch no json: $(cat "$T/nojson.log")"
-printf '{"title": "x", "description": "x", "tested_on_unit": "", "effects": ["cmp3", "zzzz"]}\n' >"$T/badfx.json"
+printf '{"title": "x", "description": "x", "tested_on_unit": "", "effects": ["cmp3", "zzzz"], "base": []}\n' >"$T/badfx.json"
 $PY mkpatch.py "$ROOT/out/OB01/OB01.syx" --name OB01 --pack-json "$T/badfx.json" --out "$T/badfx" >"$T/badfx.log" 2>&1
 [ $? != 0 ] && grep -q '"effects" must list effect ids' "$T/badfx.log" && [ ! -e "$T/badfx" ] \
     && ok "mkpatch refuses a pack with an unknown effect id" || bad "mkpatch bad effects: $(cat "$T/badfx.log")"
+printf '{"title": "x", "description": "x", "tested_on_unit": "", "effects": ["cmp3"], "base": ["overbridge", "zzzz"]}\n' \
+    >"$T/badbase.json"
+$PY mkpatch.py "$ROOT/out/OB01/OB01.syx" --name OB01 --pack-json "$T/badbase.json" --out "$T/badbase" >"$T/badbase.log" 2>&1
+[ $? != 0 ] && grep -q '"base" must list base ids' "$T/badbase.log" && [ ! -e "$T/badbase" ] \
+    && ok "mkpatch refuses a pack with an unknown base id" || bad "mkpatch bad base: $(cat "$T/badbase.log")"
 $PY - "$ROOT/out/patcher/OB01/patch.bin" "$STOCK" "$T/tampered.bin" <<'EOF'
 import sys; sys.path.insert(0, '.')
 import mkpatch
@@ -230,7 +245,7 @@ cc -std=c99 -O2 -Wall -Wextra -I. "$T/hook.c" dn2patch.c -o "$T/hook" 2>"$T/hook
     && ok "check stage: $(cat "$T/hook.log")" || bad "check stage: $(cat "$T/hook-cc.log" "$T/hook.log" 2>/dev/null)"
 
 if command -v swiftc >/dev/null; then
-    sh app/test.sh >"$T/app-test.log" 2>&1 && ok "app/test.sh: the app's Core, $(grep -c '^PASS' "$T/app-test.log") checks over the three-pack and one-pack sets" \
+    sh app/test.sh >"$T/app-test.log" 2>&1 && ok "app/test.sh: the app's Core, $(grep -c '^PASS' "$T/app-test.log") checks over the six-pack and one-pack sets" \
         || bad "app/test.sh: $(grep FAIL "$T/app-test.log" | head -5; tail -3 "$T/app-test.log")"
 fi
 

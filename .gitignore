@@ -26,3 +26,6 @@ photos/
 
 # Private work that must never be published (local git repo inside, no remote)
 private/
+
+# The owner's offline PB01 sub-research (holds Elektron's firmware and third-party PDFs): never committed
+PB01-Sub-Research/

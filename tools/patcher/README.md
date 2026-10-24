@@ -6,6 +6,12 @@ Digiwerk is custom firmware for the Elektron Digitone II. It is not made or supp
 to share Elektron's firmware, so you download it from Elektron and the patcher turns it into ours. It saves one new
 file next to Elektron's file. Elektron's file stays as it was, and nothing is sent to your Digitone.
 
+**What's in a build: a base plus a pack.** Every Digiwerk build has both. The *base* is the light features in the
+main OS that a release's builds share: today the Déjà vu LFO (nine new LFO waves) and the fix that lets Overbridge
+connect. The *pack* is what differs from build to build: the memory-heavy effects in the sound engine, such as the
+3-band compressor and the flanger. On each card, the big icons are the pack's effects, and the small BASE line
+lists the base features.
+
 A copy of the patcher carries one or more tested builds. The window lists them if there are several, and says which
 one it makes if there is one. The examples below use **OB01**.
 
@@ -99,8 +105,9 @@ there, it asks before replacing it (type `y` and press Return).
 ## For the maintainer
 
 - A pack is one tested build. To add one, write `packs/ID.json` (or `out/ID/pack.json`), with `title`,
-  `description`, `tested_on_unit` (a date like "23 Oct 2026", or "" until it ran on a unit) and `effects` (ids from
-  `cmp3`, `flng`, `tape`, `spng`; each needs its icon in `docs/identity/`). The DSP fields
+  `description`, `tested_on_unit` (a date like "23 Oct 2026", or "" until it ran on a unit), `effects` (the pack:
+  ids from `cmp3`, `flng`, `tape`, `spng`, each with its icon in `docs/identity/`) and `base` (ids from `djvu`,
+  which needs `docs/identity/djvu.svg`, and `overbridge`; `[]` for none). mkpatch.py refuses an unknown id. The DSP fields
   (`dsp`: `code_bytes`, `state_bytes`, `load_percent`) are for a later check stage and may be null. Then run the
   brick checker on `out/ID/ID.syx`. mkpatch.py refuses a pack without an ACCEPT report for exactly that file
   under `out/brickcheck/ID-*/`. It fills in the hashes and the record line (`out/patcher/ID/pack.json`).

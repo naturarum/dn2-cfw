@@ -67,11 +67,8 @@ enum {
 enum { SE_PAN_MONO = 0, SE_PAN_ALT = 1, SE_PAN_RND = 2 };
 
 typedef struct {
-    /* the tape: interleaved A, B frames */
-    float ring[2 * SE_RING];
     int32_t w;                  /* next write frame */
-    float hist[SE_HIST];        /* tape speed integral M (samples) at the end of each control block */
-    int32_t hw;                 /* index of the newest entry */
+    int32_t hw;                 /* index of the newest entry of hist */
 
     /* knob values (0..127) and tempo */
     float knob[SE_NPARAMS];
@@ -143,6 +140,13 @@ typedef struct {
     int32_t ev_count0, ev_count;
 
     int ctl_left;               /* samples left in the current control block */
+
+    /* DT01 (the code diet): the history and the tape last, so that every field above has a short offset (selcc
+       loads an offset above 32767 in a 48-bit instruction, one below it in a 32-bit one); SC02 and before had them
+       first (tools/dspsplice/src/sc01/spaceecho.h) */
+    float hist[SE_HIST];        /* tape speed integral M (samples) at the end of each control block */
+    /* the tape: interleaved A, B frames */
+    float ring[2 * SE_RING];
 } SpaceEcho;
 
 void spaceecho_init(SpaceEcho *s, uint32_t seed);

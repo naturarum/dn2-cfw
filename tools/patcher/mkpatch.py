@@ -11,9 +11,10 @@ Writes OUT/patch.bin (the pack), OUT/patch.json (the summary) and OUT/pack.json 
 fields with the hashes and the brickcheck facts filled in). Nothing is written unless every check holds:
   - the stock file is 1.12 (sha256); the build is stock but for the parts below;
   - the pack's hand-written JSON exists: out/NAME/pack.json, else tools/patcher/packs/NAME.json (or --pack-json):
-    {"title", "description", "tested_on_unit": "23 Oct 2026" or "", "effects": ["cmp3", "flng"] (the effect ids
-    the build carries: EFFECTS; each has its pixel icon in docs/identity/ID.svg), "dsp": {"code_bytes",
-    "state_bytes", "load_percent"} (optional; null when not known)};
+    {"title", "description", "tested_on_unit": "23 Oct 2026" or "", "effects": ["cmp3", "flng"] (the pack's
+    memory-heavy DSP effects: EFFECTS, each with its pixel icon in docs/identity/ID.svg), "base": ["djvu",
+    "overbridge"] (the light main-OS features of the release's base: BASE; those in BASE_ICONS have an icon too),
+    "dsp": {"code_bytes", "state_bytes", "load_percent"} (optional; null when not known)};
   - a brickcheck report under out/brickcheck/NAME-*/ (or --brickcheck DIR) says ACCEPT, every check PASS, for exactly
     this .syx (its sha256); the record line says so: "Brick check 12 of 12 · tested on a Digitone II, 23 Oct 2026",
     or "... · not yet tested on a unit";
@@ -76,9 +77,11 @@ K = 16                                   # the checker's run length; the shortes
 R = 4                                    # the shortest copy taken at the cursor or at the section's own place
 HDR = 104
 META = (('title', 63), ('description', 159), ('record', 159), ('tested_on_unit', 31), ('brickcheck', 159),
-        ('effects', 63), ('dsp_code_bytes', 15), ('dsp_state_bytes', 15), ('dsp_load_percent', 15))
+        ('effects', 63), ('base', 63), ('dsp_code_bytes', 15), ('dsp_state_bytes', 15), ('dsp_load_percent', 15))
 # key, most bytes (dn2patch.h's dn2p_info)
 EFFECTS = {'cmp3': '3-band compressor', 'flng': 'flanger', 'tape': 'tape echo', 'spng': 'spring reverb'}
+BASE = {'djvu': 'D\u00e9j\u00e0 vu LFO', 'overbridge': 'Overbridge works'}   # the base: light main-OS features
+BASE_ICONS = ('djvu',)
 IDENTITY = os.path.join(ROOT, 'docs', 'identity')         # the effects' pixel icons (make_icons.py)
 BRICKCHECK = os.path.join(ROOT, 'out', 'brickcheck')
 SEC = struct.Struct('>9I')               # sid, stored_len, stream_len, image_len, skel_len, iops, ilit, sops, slit
@@ -549,7 +552,11 @@ def pack_record(name, build_sha, pack_json=None, bc_root=BRICKCHECK):
     fx = j.get('effects')
     if not isinstance(fx, list) or any(e not in EFFECTS for e in fx) or len(set(fx)) != len(fx):
         raise PatchError('%s: "effects" must list effect ids, each once, from %s' % (src, ', '.join(EFFECTS)))
-    missing = [e for e in fx if not os.path.exists(os.path.join(IDENTITY, e + '.svg'))]
+    base = j.get('base')
+    if not isinstance(base, list) or any(b not in BASE for b in base) or len(set(base)) != len(base):
+        raise PatchError('%s: "base" must list base ids, each once, from %s' % (src, ', '.join(BASE)))
+    missing = [e for e in fx + [b for b in base if b in BASE_ICONS]
+               if not os.path.exists(os.path.join(IDENTITY, e + '.svg'))]
     if missing:
         raise PatchError('%s: no icon for %s in %s' % (src, ', '.join(missing), os.path.relpath(IDENTITY, ROOT)))
     bc = brickcheck(name, build_sha, bc_root)
@@ -559,12 +566,13 @@ def pack_record(name, build_sha, pack_json=None, bc_root=BRICKCHECK):
                record='Brick check %d of %d \u00b7 %s' % (
                    bc['passed'], bc['total'], 'tested on a Digitone II, ' + tested if tested
                    else 'not yet tested on a unit'),
-               effects=fx, brickcheck=bc, dsp={k: dsp.get(k) for k in ('code_bytes', 'state_bytes', 'load_percent')},
+               effects=fx, base=base, brickcheck=bc, dsp={k: dsp.get(k) for k in ('code_bytes', 'state_bytes', 'load_percent')},
                pack_json=os.path.relpath(src, ROOT))
     rec['meta'] = {'title': rec['title'], 'description': rec['description'], 'record': rec['record'],
                    'tested_on_unit': tested,
                    'brickcheck': 'ACCEPT %d/%d %s' % (bc['passed'], bc['total'], bc['date']),
                    'effects': ' '.join(fx),
+                   'base': ' '.join(base),
                    'dsp_code_bytes': '' if rec['dsp']['code_bytes'] is None else int(rec['dsp']['code_bytes']),
                    'dsp_state_bytes': '' if rec['dsp']['state_bytes'] is None else int(rec['dsp']['state_bytes']),
                    'dsp_load_percent': '' if rec['dsp']['load_percent'] is None else float(rec['dsp']['load_percent'])}
