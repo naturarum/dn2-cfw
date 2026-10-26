@@ -86,6 +86,28 @@ static const float SP_AP[32] = {
     0.71f, 0.67f, 0.79f, 0.60f, 0.69f, 0.64f, 0.78f, 0.58f
 };
 /* v2 prototype knobs (compile time) */
+#ifndef SPV2_DWEL
+#define SPV2_DWEL 0       /* DWEL: 0 the v1 law (-24..+24 dB, half made up), 1 0..+23.6 dB with SPV2_DPA of it made up,
+                             2 SPV2_DLO..SPV2_DHI dB, made up (1/drive, or measured: SPV2_DAGC) */
+#endif
+#ifndef SPV2_DLO
+#define SPV2_DLO 0.0f
+#endif
+#ifndef SPV2_DHI
+#define SPV2_DHI 23.6f
+#endif
+#ifndef SPV2_DAGC
+#define SPV2_DAGC 0       /* SPV2_DWEL 2: 1 the make-up follows the measured loss (power in / out, SPV2_DATC), up to SPV2_DAMX */
+#endif
+#ifndef SPV2_DATC
+#define SPV2_DATC 0.0001f /* the power meters' one-pole coefficient at 12 kHz: about 0.8 s (0.0004, 0.2 s, pumps on drums) */
+#endif
+#ifndef SPV2_DAMX
+#define SPV2_DAMX 2.0f    /* log2 of the most the make-up adds over 1/drive (2 = +12 dB) */
+#endif
+#ifndef SPV2_DPA
+#define SPV2_DPA 1.0f
+#endif
 #ifndef SPV2_COUPLE
 #define SPV2_COUPLE 0     /* 0 none, 1 Householder (full mix), 2 a rotation (partial) */
 #endif
@@ -186,7 +208,13 @@ static void sp_targets(Spring *s)
     t[SP_PREDLY] = (float)(int32_t)(x + 0.5f);                        /* whole samples: no interpolation at rest */
     t[SP_DEC] = -1.7369656f + 5.7370f * fx_knob01(k[SP_DEC]);        /* log2 0.3 s .. log2 16 s */
     t[SP_DRIP] = spring_drip(k[SP_DRIP]);
+#if SPV2_DWEL == 2
+    t[SP_DWEL] = (SPV2_DLO + k[SP_DWEL] * ((SPV2_DHI - SPV2_DLO) / 127.0f)) * 0.16609640f;
+#elif SPV2_DWEL
+    t[SP_DWEL] = k[SP_DWEL] * 0.031003937f;                            /* log2 of the drive: 0 dB at 0 .. +23.6 dB at 127 */
+#else
     t[SP_DWEL] = (k[SP_DWEL] - 64.0f) * 0.0625f;                       /* log2 of the drive */
+#endif
     t[SP_HPF] = 5.3219281f + 4.6438562f * fx_knob01(k[SP_HPF]);       /* log2 40 Hz .. log2 1 kHz */
     t[SP_TONE] = 9.2288187f + 4.0f * fx_knob01(k[SP_TONE]);           /* log2 600 Hz .. log2 9.6 kHz */
     t[SP_WDTH] = fx_knob01(k[SP_WDTH]);
@@ -219,6 +247,16 @@ static float sp_tpt(float lf)
 }
 
 /* everything that follows from cur[]: called when a smoothed value moved */
+#if SPV2_DWEL == 2 && SPV2_DAGC
+/* DWEL's make-up: 1/drive plus the loss the saturator made over the last 0.8 s (half log2 of power in / out) */
+static void sp_makeup(Spring *s)
+{
+    float l = 0.5f * (fx_log2(s->ein + 1e-9f) - fx_log2(s->eout + 1e-9f));
+    l = fx_clampf(l, 0.0f, SPV2_DAMX);
+    s->post = fx_exp2(l - s->cur[SP_DWEL]);
+}
+#endif
+
 static void sp_coefs(Spring *s)
 {
     const float *c = s->cur;
@@ -230,7 +268,15 @@ static void sp_coefs(Spring *s)
     s->hpc = sp_tpt(c[SP_HPF]);
     s->lpc = sp_onepole(c[SP_TONE]);
     s->drive = fx_exp2(c[SP_DWEL]);
+#if SPV2_DWEL == 2 && SPV2_DAGC
+    sp_makeup(s);
+#elif SPV2_DWEL == 2
+    s->post = fx_exp2(-c[SP_DWEL]);
+#elif SPV2_DWEL
+    s->post = fx_exp2(-SPV2_DPA * c[SP_DWEL]);
+#else
     s->post = fx_exp2(-0.5f * c[SP_DWEL]);
+#endif
     for (k = 0; k < SP_NS; k++) {
         SpLine *L = &s->sp[k];
         float r, dt, sc, p, x;
@@ -350,6 +396,9 @@ static void sp_control(Spring *s)
         s->spr = e;
     }
     if (moved) sp_coefs(s);
+#if SPV2_DWEL == 2 && SPV2_DAGC
+    else sp_makeup(s);
+#endif
     k = s->tick;
     s->tick = (k + 1) & 15;
     if (k == 0) sp_flush(s->sp[0].ap, 4 * SP_M);
@@ -528,9 +577,22 @@ void sp_input(Spring *s, const float *inL, const float *inR)
         }
         dr += dri;
         po += poi;
+#if SPV2_DWEL == 2
+        y = y * dr;
+#if SPV2_DAGC
+        s->ein += SPV2_DATC * (y * y - s->ein);
+#endif
+        FX_CLAMP(y, -1.5f, 1.5f);
+        y = y - 0.14814815f * y * y * y;
+#if SPV2_DAGC
+        s->eout += SPV2_DATC * (y * y - s->eout);
+#endif
+        y *= po;
+#else
         y *= dr;
         FX_CLAMP(y, -1.5f, 1.5f);
         y = (y - 0.14814815f * y * y * y) * po;
+#endif
         SP_FLUSH(y);
         s->pring[(w0 + m) & SP_PMASK] = y;
     }

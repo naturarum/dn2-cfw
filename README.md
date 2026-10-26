@@ -76,7 +76,9 @@ You need a Digitone II, a Mac with macOS 13 or later, a USB cable and Elektron T
    checked it (it's notarized). The first time, macOS asks whether to open an app from the internet: click **Open**.
 3. **Get Elektron's OS 1.12.** On [Elektron's download page](https://elektron.se/support-downloads/digitone-ii),
    download **Digitone II OS 1.12**. It arrives as `Digitone_II_OS1.12_dist.zip`. You don't need to unzip it.
-4. **Choose a pack and drop the file.** Click the pack's card in the patcher, then drop the .zip on the window. The
+   **Keep this .zip:** Elektron's page lists only the current OS, and you need this file to go back or to make
+   another build.
+4. **Drop the file** on the patcher's window (if it offers more than one pack, click one first). The
    patcher checks that it's Elektron's original file, makes the build and saves it next to the .zip, for example
    `DJ01.syx`.
 5. **Send it to the Digitone.** Connect it over USB, open Transfer, drag `DJ01.syx` onto **Drop files here**, answer

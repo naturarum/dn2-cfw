@@ -139,6 +139,7 @@ typedef struct {
     SpLine sp[SP_NS];
     float pring[SP_PRE];
     float ring[SP_NS][SP_RING];
+    float ein, eout;          /* v2 prototype: DWEL's power in and out (SPV2_DAGC) */
 } Spring;
 
 void spring_init(Spring *s);

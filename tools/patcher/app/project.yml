@@ -11,7 +11,7 @@ options:
     macOS: "13.0"
 settings:
   base:
-    MARKETING_VERSION: "1.0"
+    MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     MACOSX_DEPLOYMENT_TARGET: "13.0"
     ARCHS: "arm64 x86_64"
@@ -50,6 +50,8 @@ targets:
       path: Info.plist
       properties:
         CFBundleDisplayName: Digiwerk Patcher
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSApplicationCategoryType: public.app-category.utilities
         NSHumanReadableCopyright: "Digiwerk, GPL-2.0-or-later. Not made or supported by Elektron."
         CFBundleDocumentTypes:          # a .syx (or the .zip, to say "unzip it first") dropped on the icon
