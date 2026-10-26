@@ -88,7 +88,17 @@ static const float SP_AP[32] = {
 /* v2 prototype knobs (compile time) */
 #ifndef SPV2_DWEL
 #define SPV2_DWEL 0       /* DWEL: 0 the v1 law (-24..+24 dB, half made up), 1 0..+23.6 dB with SPV2_DPA of it made up,
-                             2 SPV2_DLO..SPV2_DHI dB, made up (1/drive, or measured: SPV2_DAGC) */
+                             2 SPV2_DLO..SPV2_DHI dB, made up (1/drive, or measured: SPV2_DAGC),
+                             3 DIRT: the springs' input stays clean (v1's DWEL 64), the drive goes on the wet output */
+#endif
+#ifndef SPV2_RHI
+#define SPV2_RHI 30.0f    /* DIRT: the drive at 127, dB (0 dB at 0) */
+#endif
+#ifndef SPV2_RCRV
+#define SPV2_RCRV 0.8f    /* DIRT: the drive in dB follows (knob/127)^SPV2_RCRV */
+#endif
+#ifndef SPV2_RATC
+#define SPV2_RATC 0.0008f /* DIRT: the power meters' one-pole coefficient per block (32 samples at 48 kHz): about 0.8 s */
 #endif
 #ifndef SPV2_DLO
 #define SPV2_DLO 0.0f
@@ -208,7 +218,10 @@ static void sp_targets(Spring *s)
     t[SP_PREDLY] = (float)(int32_t)(x + 0.5f);                        /* whole samples: no interpolation at rest */
     t[SP_DEC] = -1.7369656f + 5.7370f * fx_knob01(k[SP_DEC]);        /* log2 0.3 s .. log2 16 s */
     t[SP_DRIP] = spring_drip(k[SP_DRIP]);
-#if SPV2_DWEL == 2
+#if SPV2_DWEL == 3
+    x = k[SP_DWEL] * (1.0f / 127.0f);                                  /* log2 of DIRT's drive: RHI dB x (knob/127)^RCRV */
+    t[SP_DWEL] = x > 0.0f ? SPV2_RHI * 0.16609640f * fx_exp2(SPV2_RCRV * fx_log2(x)) : 0.0f;
+#elif SPV2_DWEL == 2
     t[SP_DWEL] = (SPV2_DLO + k[SP_DWEL] * ((SPV2_DHI - SPV2_DLO) / 127.0f)) * 0.16609640f;
 #elif SPV2_DWEL
     t[SP_DWEL] = k[SP_DWEL] * 0.031003937f;                            /* log2 of the drive: 0 dB at 0 .. +23.6 dB at 127 */
@@ -257,6 +270,16 @@ static void sp_makeup(Spring *s)
 }
 #endif
 
+#if SPV2_DWEL == 3
+/* DIRT's make-up: 1/drive plus the loss the soft clip made over the last 0.8 s (half log2 of power in / out) */
+static void sp_dirt_makeup(Spring *s)
+{
+    float l = 0.5f * (fx_log2(s->rein + 1e-12f) - fx_log2(s->reout + 1e-12f));
+    l = fx_clampf(l, 0.0f, SPV2_DAMX);
+    s->rpost = fx_exp2(l - s->cur[SP_DWEL]);
+}
+#endif
+
 static void sp_coefs(Spring *s)
 {
     const float *c = s->cur;
@@ -268,7 +291,12 @@ static void sp_coefs(Spring *s)
     s->hpc = sp_tpt(c[SP_HPF]);
     s->lpc = sp_onepole(c[SP_TONE]);
     s->drive = fx_exp2(c[SP_DWEL]);
-#if SPV2_DWEL == 2 && SPV2_DAGC
+#if SPV2_DWEL == 3
+    s->drive = 1.0f;
+    s->post = 1.0f;
+    s->rdrive = fx_exp2(c[SP_DWEL]);
+    sp_dirt_makeup(s);
+#elif SPV2_DWEL == 2 && SPV2_DAGC
     sp_makeup(s);
 #elif SPV2_DWEL == 2
     s->post = fx_exp2(-c[SP_DWEL]);
@@ -340,6 +368,10 @@ void spring_snap(Spring *s)
     s->pd = s->cur[SP_PREDLY];
     s->dr0 = s->drive;
     s->po0 = s->post;
+#if SPV2_DWEL == 3
+    s->rdr0 = s->rdrive;
+    s->rpo0 = s->rpost;
+#endif
 }
 
 void spring_init(Spring *s)
@@ -384,6 +416,10 @@ static void sp_control(Spring *s)
     if (s->dirty) sp_targets(s);
     s->dr0 = s->drive;
     s->po0 = s->post;
+#if SPV2_DWEL == 3
+    s->rdr0 = s->rdrive;
+    s->rpo0 = s->rpost;
+#endif
     s->pd = sp_slew(s->pd, c[SP_PREDLY], SP_PSLEW);   /* where the last block's ramp ended */
     for (p = 0; p < SP_NINT; p++) {
         e = sp_glide(c[p], t[p], SP_SM);
@@ -398,6 +434,8 @@ static void sp_control(Spring *s)
     if (moved) sp_coefs(s);
 #if SPV2_DWEL == 2 && SPV2_DAGC
     else sp_makeup(s);
+#elif SPV2_DWEL == 3
+    else sp_dirt_makeup(s);
 #endif
     k = s->tick;
     s->tick = (k + 1) & 15;
@@ -525,6 +563,32 @@ void sp_interp(Spring *s, float *outL, float *outR)
         }
         sp_ap2(out, 2 * SP_LB, SP_HBW0, SP_HBW1, s->uw[c], SP_HW);
     }
+#if SPV2_DWEL == 3
+    if (s->cur[SP_DWEL] == 0.0f && s->rdr0 == s->rdrive) {
+        s->rein = s->reout = 0.0f;   /* DIRT 0: out of the way (the output as it is), the meters reset */
+    } else {   /* DIRT: the wet output into the soft clip, both channels with one gain; power in and out for the make-up */
+        float dr = s->rdr0, dri = (s->rdrive - s->rdr0) * (1.0f / FX_BLOCK);
+        float po = s->rpo0, poi = (s->rpost - s->rpo0) * (1.0f / FX_BLOCK);
+        float pin = 0.0f, pout = 0.0f;
+        for (m = 0; m < FX_BLOCK; m++) {
+            float a, b;
+            dr += dri;
+            po += poi;
+            a = outL[m] * dr;
+            b = outR[m] * dr;
+            pin += a * a + b * b;
+            FX_CLAMP(a, -1.5f, 1.5f);
+            FX_CLAMP(b, -1.5f, 1.5f);
+            a = a - 0.14814815f * a * a * a;
+            b = b - 0.14814815f * b * b * b;
+            pout += a * a + b * b;
+            outL[m] = a * po;
+            outR[m] = b * po;
+        }
+        s->rein += SPV2_RATC * (pin - s->rein);
+        s->reout += SPV2_RATC * (pout - s->reout);
+    }
+#endif
 }
 
 /* one block of input (32 samples at 48 kHz) -> the tank -> lo[cur_lo] */

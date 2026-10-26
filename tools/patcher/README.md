@@ -6,11 +6,10 @@ Digiwerk is custom firmware for the Elektron Digitone II. It is not made or supp
 to share Elektron's firmware, so you download it from Elektron and the patcher turns it into ours. It saves one new
 file next to Elektron's file. Elektron's file stays as it was, and nothing is sent to your Digitone.
 
-**What's in a build: a base plus a pack.** Every Digiwerk build has both. The *base* is the light features in the
-main OS that a release's builds share: today the Déjà vu LFO (nine new LFO waves) and the fix that lets Overbridge
-connect. The *pack* is what differs from build to build: the memory-heavy effects in the sound engine, such as the
-3-band compressor and the flanger. On each card, the big icons are the pack's effects, and the small BASE line
-lists the base features.
+**What's in a build: a base plus a pack.** Every Digiwerk build has both. The *base* is the light features in the main
+OS that a release's builds share: today the Déjà vu LFO (nine new LFO waves). The *pack* is what differs from build to
+build: the memory-heavy effects in the sound engine, such as the 3-band compressor and the flanger. On each card, the
+big icons are the pack's effects, and the small BASE line lists the base features.
 
 A copy of the patcher carries one or more tested builds. The window lists them if there are several, and says which
 one it makes if there is one. The examples below use **OB01**.

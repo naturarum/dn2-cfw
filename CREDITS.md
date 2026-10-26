@@ -116,23 +116,26 @@ below. For each one: who made it, its licence, and what we use from it.
 ### Kári Garðarsson
 
 - **What:** the "Musical WAVE / Déjà Vu" LFO for the Digitakt II, <https://github.com/karigardarsson/digitakt-ii-research>
+- **Digiwerk's Déjà vu LFO is Kári's design:** the nine waves, their names and how they behave. We wrote the code anew for
+  the Digitone II's LFOs.
 - **Licence:** the Digitakt II All-in-One v0.3.0-beta release, where the Déjà vu LFO lives, is AGPL-3.0-or-later (its
   release notes, 2026-10-23); the earlier research in the same repository is MIT.
 - **Facts only.** Digiwerk's Déjà vu LFO takes its names and behaviour from that project's user guide. None of its
   source was read or copied: ours is our own code for the Digitone II's LFOs.
-- **Idea only.** His bring-your-own-`.syx` Windows builder (in the same repo) and the one of
+- **Idea only.** The bring-your-own-`.syx` Windows builder in the same repo and the one of
   [Synthack-OS](https://github.com/karigardarsson/Synthack-OS) (MIT, Angelo-politek and Syntakt+ contributors) were the
   model for Digiwerk Patcher.
 
 ### Bezronczek
 
-- **What:** the [Syntakt Firmware Workbench](https://github.com/Bezronczek/syntakt-firmware-workbench) (MIT), which
-  Kári Garðarsson's release credits as its reference for the DV-F and DV-T behaviour. We didn't use it directly.
+- **What:** the [Syntakt Firmware Workbench](https://github.com/Bezronczek/syntakt-firmware-workbench) (MIT), home of
+  the original Déjà vu LFO, DV-F and DV-T on the Syntakt. Kári Garðarsson's release credits it as its reference for
+  the DV-F and DV-T behaviour. We didn't use it directly.
 
 ### Émilie Gillet
 
-- **What:** the déjà vu random loop of Marbles, her design. The idea of the Déjà vu LFO comes from it.
-- **Facts only.** The one detail we took from it is the squared curve of its déjà vu knob, for SPH. Her code (MIT,
+- **What:** the déjà vu random loop of Marbles, Émilie Gillet's design. The idea of the Déjà vu LFO comes from it.
+- **Facts only.** The one detail we took from it is the squared curve of its déjà vu knob, for SPH. The Marbles code (MIT,
   <https://github.com/pichenettes/eurorack>) is not in Digiwerk.
 
 ### Elektron

@@ -17,7 +17,8 @@ Everything: this is the first release. The build is the base plus one pack.
 - **DJVU, the Déjà vu LFO.** Nine new LFO waves after RAND: DV-F (a loop of random values), DV-T (the same loop,
   restarted by each trig), and seven that snap the loop to a scale when DEST is the machine's tuning (PMAJ PMIN HIRA
   WTON DORI LYDI OCTA). On these waves MODE sets the loop's length and SPH how much it changes.
-- **Overbridge works.** Overbridge connects as with Elektron's OS 1.12.
+  **This is Kári Garðarsson's Déjà vu LFO from the Digitakt II** ([digitakt-ii-research](https://github.com/karigardarsson/digitakt-ii-research)), written anew for the Digitone II. Kári's
+  DV-F and DV-T follow the original, Bezronczek's on the Syntakt ([Syntakt Firmware Workbench](https://github.com/Bezronczek/syntakt-firmware-workbench)).
 
 **The pack**
 

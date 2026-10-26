@@ -140,6 +140,7 @@ typedef struct {
     float pring[SP_PRE];
     float ring[SP_NS][SP_RING];
     float ein, eout;          /* v2 prototype: DWEL's power in and out (SPV2_DAGC) */
+    float rdrive, rpost, rdr0, rpo0, rein, reout;   /* v2 prototype: DIRT (SPV2_DWEL 3): gains, block-start gains, power in and out */
 } Spring;
 
 void spring_init(Spring *s);

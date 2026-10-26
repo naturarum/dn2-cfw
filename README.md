@@ -6,9 +6,9 @@
 
 **Digiwerk** is custom firmware for the Elektron Digitone II, for OS 1.12. It adds a 3-band master compressor, a
 flanger that reaches from a phaser-like sweep to a chorus and can follow the tempo, and LFO waves that play looping
-random melodies, which can change as they repeat. Overbridge connects to it as it does to Elektron's OS. You make it
-yourself: Digiwerk Patcher turns Elektron's own OS 1.12 file into a Digiwerk build on your Mac, and you send that build
-to the Digitone with Elektron Transfer. No Elektron firmware is shared here.
+random melodies, which can change as they repeat. You make it yourself: Digiwerk Patcher turns Elektron's own OS 1.12
+file into a Digiwerk build on your Mac, and you send that build to the Digitone with Elektron Transfer. No Elektron
+firmware is shared here.
 
 Digiwerk is part of the [Modwerk](https://modwerk.app) effort, the community hub for Elektron firmware mods.
 
@@ -33,8 +33,7 @@ one pack, and you choose it in the patcher.
 
 | | | |
 |---|---|---|
-| <img src="docs/identity/djvu.svg" width="104" alt="DJVU icon"> | **DJVU**<br>Déjà vu LFO | Nine new LFO waves after RAND. **DV-F** is a loop of random values. **DV-T** is the same loop, started again from its first value by every trig with LFO.T on. **PMAJ PMIN HIRA WTON DORI LYDI OCTA** play the DV-F loop, and when DEST is the machine's tuning they snap it to a scale: major and minor pentatonic, hirajoshi, whole-tone, dorian, lydian, octatonic. On these waves **MODE** (G) sets the loop's length (FREE 2, TRIG 4, HOLD 8, ONE 16, HALF 32 values) and **SPH** (F) how much it changes: 0 gives a new value at every step, 64 repeats the loop exactly, above 64 values swap places, and 127 swaps at every step. SPD, MULT, FADE and DEP work as always. |
-| | **Overbridge fix** | Overbridge refused custom builds with "incompatible OS version". Digiwerk tells the computer it runs OS 1.12, so Overbridge connects as with Elektron's OS. The power-on screen still shows the build's name, for example **DJ01**. |
+| <img src="docs/identity/djvu.svg" width="104" alt="DJVU icon"> | **DJVU**<br>Déjà vu LFO | Nine new LFO waves after RAND. **DV-F** is a loop of random values. **DV-T** is the same loop, started again from its first value by every trig with LFO.T on. **PMAJ PMIN HIRA WTON DORI LYDI OCTA** play the DV-F loop, and when DEST is the machine's tuning they snap it to a scale: major and minor pentatonic, hirajoshi, whole-tone, dorian, lydian, octatonic. On these waves **MODE** (G) sets the loop's length (FREE 2, TRIG 4, HOLD 8, ONE 16, HALF 32 values) and **SPH** (F) how much it changes: 0 gives a new value at every step, 64 repeats the loop exactly, above 64 values swap places, and 127 swaps at every step. SPD, MULT, FADE and DEP work as always.<br><br>**Credit:** this is **Kári Garðarsson's Déjà vu LFO** from the Digitakt II ([digitakt-ii-research](https://github.com/karigardarsson/digitakt-ii-research)), brought to the Digitone II. The waves, their names and how they behave are Kári's design; Digiwerk's code is written anew for the Digitone II's LFOs. Kári's DV-F and DV-T follow the original Déjà vu LFO, **Bezronczek's** on the Syntakt ([Syntakt Firmware Workbench](https://github.com/Bezronczek/syntakt-firmware-workbench)). |
 
 ### Pack: Compressor + Flanger
 
