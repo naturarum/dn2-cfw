@@ -31,9 +31,9 @@
  *   (half and a quarter sample per sample), so a fast turn bends the pitch of the
  *   tail (in the loop at most an octave down or 0.6 octave up) instead of clicking
  *   or reading backwards.
- * - MODE (2026-10-24) is a layer over the knobs: it sets DRIP, TENS and the
- *   springs' spread, and DEC, DWEL, HPF and TONE trim its base for them
- *   (spring_mode_map). Until MODE is set the springs run as before, bit for bit.
+ * - MODE (2026-10-24) is a layer over the knobs: the spring's character (DRIP,
+ *   TENS and the springs' spread, spring_mode_map); DEC, TONE, DWEL, HPF, PRE and
+ *   WDTH stay direct. Until MODE is set the springs run as before, bit for bit.
  * - selcc: per-sample work in a few loops over 8 to 32 samples with the state in
  *   locals; two allpass kernels (one and two stages per pass) for the springs and
  *   the resampler; the helpers called at control rate only. No shift by an
@@ -77,17 +77,14 @@ static const float SP_AP[16] = {
     0.74f, 0.64f, 0.70f, 0.56f, 0.79f, 0.63f, 0.68f, 0.61f
 };
 /* MODE's characters (2026-10-24, the owner: "i like all the modes, can they live on a continuous
-   knob?"): the sp_range renders as knob values, at MODE 0, 64, 85, 106 and 127, linear in between
-   (DEC, HPF, TONE and TENS are log laws, so that is log in time and frequency). Per anchor: DEC,
-   DRIP, DWEL, HPF, TONE, TENS (knob values) and the springs' spread. Decay and darkness rise all the
-   way; tension falls; the drip peaks at surf; the drive at heavy dwell. No negative numbers (the
-   selcc initialiser bug): the biases are worked out in code. */
-static const float SP_MV[5 * SP_NMODE] = {
-    24.0f, 40.0f, 64.0f, 50.0f, 127.0f, 110.0f, 0.85f,     /*   0: short and bright, a small tight tank */
-    64.0f, 64.0f, 64.0f, 0.0f, 127.0f, 64.0f, 1.0f,        /*  64: the classic tank (the init patch) */
-    72.0f, 96.0f, 127.0f, 0.0f, 127.0f, 64.0f, 1.0f,       /*  85: heavy dwell */
-    80.0f, 112.0f, 100.0f, 24.0f, 110.0f, 48.0f, 1.1f,     /* 106: classic surf drip */
-    112.0f, 72.0f, 64.0f, 0.0f, 24.0f, 28.0f, 1.25f        /* 127: long and dark */
+   knob?", then "size and dark should be separate from the continuous knob"): the spring's own
+   character only, per anchor DRIP and TENS (knob values) and the springs' spread; DEC (size), TONE
+   (dark), DWEL and HPF stay the knobs' own. Linear in between (TENS is a log law: log in time).
+   Tension falls, the drip and the spread rise, all the way. No negative numbers (selcc). */
+static const float SP_MV[3 * SP_NMODE] = {
+    30.0f, 110.0f, 0.85f,      /*   0: taut short springs, little drip: a fast, bright boing */
+    64.0f, 64.0f, 1.0f,        /*  64: the classic tank (the init patch) */
+    127.0f, 16.0f, 1.2f        /* 127: slack long springs, the deepest drip: surf */
 };
 
 /* polyphase allpass half-bands, H(z) = (A0(z^2) + z^-1 A1(z^2)) / 2, A0 and A1 cascades of
@@ -110,32 +107,31 @@ float spring_tone_hz(float knob) { return 600.0f * fx_exp2(4.0f * fx_knob01(knob
 float spring_width(float knob)   { return fx_knob01(knob); }
 float spring_tens_ms(float knob) { return 50.4f * fx_exp2(-1.8f * fx_knob01(knob)); }
 
-/* MODE -> its character, v[0..6] (spring.h). The segment by an if chain, not a table read with a
-   fresh index (selcc bug 3), and no division: the anchors' spacing as constants. At an anchor the
-   values are the anchor's exactly (MODE 64 is the init patch bit for bit). */
+/* MODE -> its character, v[0..2] (spring.h): two segments, no division, no table read with a fresh
+   index (selcc bug 3). Exact at the anchors: MODE 64 is the init patch bit for bit (the lower segment
+   reaches it with f = 1 exactly; the upper one is written from 127 down, so 127 is exact too). */
 void spring_mode_map(float mode, float *v)
 {
     const float *a;
     float f;
     int i;
     mode = fx_clampf(mode, 0.0f, 127.0f);
-    if (mode > 106.0f) {
-        a = SP_MV + 3 * SP_NMODE;
-        f = (mode - 106.0f) * 0.04761905f;
-    } else if (mode > 85.0f) {
-        a = SP_MV + 2 * SP_NMODE;
-        f = (mode - 85.0f) * 0.04761905f;
-    } else if (mode > 64.0f) {
-        a = SP_MV + SP_NMODE;
-        f = (mode - 64.0f) * 0.04761905f;
+    if (mode > 64.0f) {
+        a = SP_MV + SP_NMODE;                      /* from the top anchor down to the middle one */
+        f = (127.0f - mode) * 0.015873017f;        /* 1/63 */
+        for (i = 0; i < SP_NMODE; i++) {
+            float x = a[i + SP_NMODE];
+            float y = a[i];
+            v[i] = x + (y - x) * f;
+        }
     } else {
         a = SP_MV;
         f = mode * 0.015625f;
-    }
-    for (i = 0; i < SP_NMODE; i++) {
-        float x = a[i];
-        float y = a[i + SP_NMODE];
-        v[i] = x + (y - x) * f;
+        for (i = 0; i < SP_NMODE; i++) {
+            float x = a[i];
+            float y = a[i + SP_NMODE];
+            v[i] = x + (y - x) * f;
+        }
     }
 }
 
@@ -148,17 +144,12 @@ static void sp_targets(Spring *s)
     int i;
     for (i = 0; i < SP_NINT; i++) k[i] = s->knob[i];
     if (s->mode_on) {
-        /* MODE's character; DEC, DWEL, HPF and TONE add their offsets from their defaults to it
-           (in knob values, so in the knobs' own log laws), clamped to the knobs' range */
+        /* MODE's character: the drip, the tension and the spread; every other knob is its own */
         float v[SP_NMODE];
         spring_mode_map(s->knob[SP_MODE], v);
-        k[SP_DEC] = fx_clampf(k[SP_DEC] + (v[0] - 64.0f), 0.0f, 127.0f);
-        k[SP_DRIP] = v[1];
-        k[SP_DWEL] = fx_clampf(k[SP_DWEL] + (v[2] - 64.0f), 0.0f, 127.0f);
-        k[SP_HPF] = fx_clampf(k[SP_HPF] + v[3], 0.0f, 127.0f);
-        k[SP_TONE] = fx_clampf(k[SP_TONE] + (v[4] - 127.0f), 0.0f, 127.0f);
-        k[SP_TENS] = v[5];
-        s->t_spr = v[6];
+        k[SP_DRIP] = v[0];
+        k[SP_TENS] = v[1];
+        s->t_spr = v[2];
     }
     x = fx_knob01(k[SP_PREDLY]);
     x = SP_PREMAX * x * x;

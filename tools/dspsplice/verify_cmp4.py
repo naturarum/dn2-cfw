@@ -229,7 +229,7 @@ def proof_d(imgs, q):
 # ---------------------------------------------------------------- (x) kits saved on SC01: X up to 6
 
 def proof_x(imgs, q):
-    """SC01 stored the Space Echo's MODE (0..6) in the delay's X (k 33, stock range 0..1) and AGE in k 40 (Delay FX
+    """SC01 stored the tape echo's MODE (0..6) in the delay's X (k 33, stock range 0..1) and AGE in k 40 (Delay FX
     Routing, never read by the stock DSP: notes/T3.4). A kit saved on SC01 with MODE 2..7 reaches the stock delay with X
     1..6 if the ColdFire passes the stored value on unclamped [not known]. Here the worst case on the DSP: X 0..6 at
     FDBK 64 and 100, CMP4 and the stock image on the same blocks (the delay's output identical, so CMP4 = stock there

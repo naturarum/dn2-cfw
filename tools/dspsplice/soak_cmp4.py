@@ -3,7 +3,7 @@
 """CMP4 soak (2026-10-22; notes/T6.3-cmp4.md): CMP4's built DSP image, out/CMP4/CMP4-dsp/section7.bin, in sharcvm for
 minutes of audio with a hand on every knob: the band knobs and MIX through the frame tail, MUP mangles, the flanger's
 knobs, the stock delay's knobs (FDBK up to 127, X toggled) and tempo changes. soak_sc01.py's harness (its Hand, Source,
-probed and Fault) without the Space Echo's checks: the delay slot is Elektron's own delay again.
+probed and Fault) without the tape echo's checks: the delay slot is Elektron's own delay again.
 
     python3 tools/dspsplice/soak_cmp4.py run [--scale 1.0] [--workers 3] [--only K1,K2]
     python3 tools/dspsplice/soak_cmp4.py run --dsp out/FL01/FL01-dsp --out out/FL01/soak --only K1,K2,K3,F1 --scale 0.5
@@ -12,6 +12,10 @@ probed and Fault) without the Space Echo's checks: the delay slot is Elektron's 
     python3 tools/dspsplice/soak_cmp4.py run --dsp out/FL02/FL02-dsp --out out/FL02/soak --only K1,K2,K3,F1,S1 --scale 0.5
                                                   FL02 (notes/T5.6 7): FL01's recipes on FL02's image and S1: SPD
                                                   between synced and free values as FUNC + turn makes them
+    python3 tools/dspsplice/soak_cmp4.py run --dsp out/SP01/SP01-dsp --out out/SP01/soak --rev --only K1,K2,K3,F1,S1,R1
+                                                  SP01 (notes/SP01-spring-pack.md): DT01's recipes on SP01's image (the
+                                                  spring in the reverb slot), R1: every reverb knob (MODE and WDTH, k 48,
+                                                  among them) spun hard; --rev adds the reverb call's checks
 
 Every block (1,500 blocks = 1 s): the whole handler under a cap of CAP instructions (a block over it = a runaway, with
 where it loops); any sharcvm trap; the instructions of the block and of the delay call; the outputs finite and under
@@ -19,6 +23,9 @@ the master ceiling (0.6931); the compressor's guard counters (trips, re-inits) a
 hardware stacks back to their depth; one of four ranges watched for stores, in turn (L1 block 1 code, code4, block 2's
 compressor code, and 0x30ff76-0x318000: the rest of block 2's code area with 0x315f8c-0x318000, where nothing of ours
 is). Every 100 blocks the C stack's high-water mark (painted). Results: out/CMP4/soak/<recipe>.json and .log.
+With --rev (SP01): also the reverb call's instructions and its wet output (finite, its peak), a fifth watched range in
+turn, the spring's DDR state (0x80000018-0x8005912c), whose stores must all come from our code2, and at the end the
+spring glue's slot (magic "SPN1", fresh 0, the knobs last applied, the spring's state finite).
 """
 import argparse
 import gc
@@ -46,6 +53,13 @@ WATCH = [(0x2dd600, 0x2e1c40, "L1 block 1 code (stubs, flanger)"),
          (0x2e2900, 0x2e4f46, "code4 (glue, cmp_tail)"),
          (0x308400, 0x30ff76, "L1 block 2: the compressor's code"),
          (0x30ff76, 0x318000, "L1 block 2: the rest of the code area, with 0x315f8c-0x318000")]
+# SP01 (--rev): the reverb's call (T3.4) and the spring's DDR state (tools/dspsplice/src/spng_glue.c)
+REV_CALL, REV_RET = 0x1c1d11, 0x1c1d18
+REV_OUT = (0x25b368, 0x25b3e8)
+SPG = (0x80000018, 0x8005912c, "the spring's DDR state (stores from our code2 only)")
+SPG_MAGIC = 0x53504e31
+REV_KEYS = ("REV_PRE", "REV_DEC", "REV_FREQ", "REV_GAIN", "REV_HPF", "REV_LPF")
+K48 = 0xa28
 
 
 def setup(cmp_off, dsp=DSP):
@@ -82,6 +96,12 @@ def recipes(scale):
                         "free values a turn without FUNC leaves (through the unit's smoother), every 0.2-3 s; the tempo "
                         "walking 40..240", seconds=m(240), seed=605, src="mixed", fb=(0, 127),
                    flg=dict(period=(0.1, 1.5), jump=0.5), spd_sync=True, extra=True),
+        # SP01 (only with --only): the reverb page spun hard: PRE, DEC, MODE (FREQ's word), DWEL (GAIN's), HPF, TONE
+        # (LPF's) and WDTH (k 48, frame word 0xa28) moved every 0.1-1.5 s, half of the moves a jump to anywhere in
+        # 0..127, each through the ColdFire's glide; the reverb's sends and VOL up; the rest as K1
+        "R1": dict(what="as K1, other seed, the reverb's seven knobs (MODE and WDTH among them) moved every 0.1-1.5 s, "
+                        "half of the moves a jump to anywhere in 0..127, the reverb's sends and VOL up", seconds=m(240),
+                   seed=606, src="mixed", fb=(0, 127), rev=dict(period=(0.1, 1.5), jump=0.5), extra=True),
     }
 
 SYNC_WORDS = [(a << 8) | i for i, a in enumerate((9, 23, 37, 52, 66, 80, 86, 94, 100, 108, 122, 126), 1)]
@@ -119,6 +139,13 @@ class Control:
         fh = cfg.get("flg", dict(period=(0.5, 6), jump=0.15))
         for k_ in FLG_KEYS:
             h[k_] = SK.Hand(r, FL.KNOBS[k_], 0, 127, sty, **fh)
+        if cfg.get("rev"):
+            # R1: the reverb page's knobs from the spring's init patch, the sends and VOL up
+            self.words.update(IN_REV_L=100, IN_REV_R=100, CHR_REV=80, DEL_REV=90, REV_VOL=110)
+            for k_, v in zip(REV_KEYS, (0, 64, 64, 64, 0, 127)):
+                h[k_] = SK.Hand(r, v, 0, 127, sty, **cfg["rev"])
+        self.k48 = SK.Hand(r, 96, 0, 127, sty, **cfg["rev"]) if cfg.get("rev") else None
+        self.k48_s = 256.0 * 96
         self.h = h
         self.bpm = SK.Hand(r, 120, 40, 240, "hold" if idle else "walk", period=(6, 20), jump=0.4)
         self.x, self.x_next = 0, 0
@@ -171,6 +198,15 @@ class Control:
                 moved.append(kk)
             self.s[kk] = ns
             struct.pack_into("<H", fr, FB.FRAME_WORDS[kk], int(round(ns)) & 0xffff)
+        if self.k48 is not None:
+            t = 256.0 * self.k48.step(b)
+            ns = self.k48_s + GLIDE * (t - self.k48_s)
+            if abs(ns - t) < 0.5:
+                ns = t
+            if int(round(ns)) != int(round(self.k48_s)):
+                moved.append("K48")
+            self.k48_s = ns
+            struct.pack_into("<H", fr, K48, int(round(ns)) & 0xffff)
         struct.pack_into("<H", fr, FB.FRAME_WORDS["TEMPO"], int(round(120 * self.bpm.step(b))) & 0xffff)
         if self.band is not None:
             tg = [hh.step(b) for hh in self.band] + [hh.step(b) for hh in self.mixh]
@@ -250,6 +286,22 @@ def run_recipe(args):
         dl["n"] = vm.icount - dl["n0"]
         dl["wet"] = vm.rdf(V.DEL_OUT[0], 32) + vm.rdf(V.DEL_OUT[1], 32)
     probes = [(V.DEL_CALL, at_del_call), (V.DEL_RET, at_del_ret)]
+    rev = cfg.get("rev_probe")
+    rv = {}
+    rev_max, rev_hist, code2 = 0, {}, None
+    if rev:
+        res.update(rev_call_insns={}, rev_peak=0.0)
+        c2 = [p for p in G["info"]["placed"] if p["section"] == "t38_code2"][0]
+        code2 = (int(c2["sw"], 16), int(c2["sw"], 16) + c2["bytes"] // 2)
+
+        def at_rev_call():
+            rv["n0"] = vm.icount
+
+        def at_rev_ret():
+            rv["n"] = vm.icount - rv["n0"]
+            rv["wet"] = vm.rdf(REV_OUT[0], 32) + vm.rdf(REV_OUT[1], 32)
+        probes += [(REV_CALL, at_rev_call), (REV_RET, at_rev_ret)]
+    watch = WATCH + ([SPG] if rev else [])
     paint_word = V.PAINT.to_bytes(4, "little")
     b = 0
     was_mangle = False
@@ -269,7 +321,7 @@ def run_recipe(args):
             if paint:
                 i7 = vm.reg("I7")
                 vm.write(V.STACK_LO, paint_word * ((i7 - V.STACK_LO) // 4))
-            wlo, whi, wname = WATCH[b % 4]
+            wlo, whi, wname = watch[b % len(watch)]
             W(vm, wlo, whi)
             try:
                 n = SK.probed(vm, probes, CAP)
@@ -278,6 +330,8 @@ def run_recipe(args):
                                            "function": func_of(vm.pc)}))
             wl = watch_log(vm)
             W(vm, 0, 0)
+            if rev and wlo == SPG[0]:
+                wl = [w_ for w_ in wl if not code2[0] <= w_[0] < code2[1]]     # the spring's own stores
             if wl:
                 note("store_into_watched_range", b, {"range": wname, "count": len(wl),
                                                      "stores": ["%#x@pc %#x (%s)" % (ad, pc, func_of(pc))
@@ -307,6 +361,15 @@ def run_recipe(args):
                 peak["out"] = max(peak["out"], abs(x))
             if peak["out"] > 0.6931 and "output_over_ceiling" not in anom:
                 note("output_over_ceiling", b, {"peak": peak["out"]})
+            if rev:
+                rn = rv.get("n", 0)
+                rev_max = max(rev_max, rn)
+                rev_hist[rn // 5000] = rev_hist.get(rn // 5000, 0) + 1
+                for x in rv.get("wet", ()):
+                    if not SK.finite(x):
+                        note("reverb_out_nan_inf", b, {})
+                        break
+                    res["rev_peak"] = max(res["rev_peak"], abs(x))
             for x in dl.get("wet", ()):
                 if not SK.finite(x):
                     note("delay_out_nan_inf", b, {})
@@ -348,6 +411,20 @@ def run_recipe(args):
             note("flg_slot", b, res["flg_slot"])
     except Exception as e:
         note("flg_slot_unreadable", b, {"error": repr(e)[:200]})
+    if rev:     # the spring's slot (spng_glue.c SpgSlot): magic, fresh, the knobs last applied, every float finite
+        try:
+            raw = vm.read(SPG[0], 43072)
+            fl = struct.unpack("<%df" % (len(raw) // 4), raw)
+            res["spg_slot"] = {"magic": "%#x" % vm.rd32(SPG[0]), "fresh": vm.rd32(SPG[0] + 4),
+                               "last": [round(x, 3) for x in vm.rdf(SPG[0] + 8, 7)],
+                               "nonfinite_words": sum(1 for x in fl[2:] if not SK.finite(x)),
+                               "max_abs_ring": round(max(abs(x) for x in fl[-3 * 2048 - 4096:]), 5)}
+            if vm.rd32(SPG[0]) != SPG_MAGIC or res["spg_slot"]["fresh"] != 0 or res["spg_slot"]["nonfinite_words"]:
+                note("spg_slot", b, res["spg_slot"])
+        except Exception as e:
+            note("spg_slot_unreadable", b, {"error": repr(e)[:200]})
+        res["rev_call_insns"] = {"max": rev_max, "hist_5k": {str(k * 5): c for k, c in sorted(rev_hist.items())}}
+        res["rev_peak"] = round(res["rev_peak"], 5)
     blocks = max(1, res["blocks_run"])
     res["insns"] = {"max": ins_max, "mean_est": round(sum((k * 10000 + 5000) * c for k, c in ins_hist.items()) / blocks),
                     "est_load_max_pct": round(100 * VC.LOAD(ins_max), 1),
@@ -380,11 +457,15 @@ def main():
     ap.add_argument("--only")
     ap.add_argument("--dsp", default=str(DSP), help="the DSP build directory (section7.bin, build.json)")
     ap.add_argument("--out", default=str(OUTD), help="where the results go")
+    ap.add_argument("--rev", action="store_true", help="SP01: the reverb call's checks (the spring in the reverb slot)")
     a = ap.parse_args()
     outd = Path(a.out).resolve()
     outd.mkdir(parents=True, exist_ok=True)
     off = cmp_offsets()
     rs = recipes(a.scale)
+    if a.rev:
+        for c_ in rs.values():
+            c_["rev_probe"] = True
     names = a.only.split(",") if a.only else [n for n in rs if not rs[n].get("extra")]
     names.sort(key=lambda n: -rs[n]["seconds"])
     total = sum(rs[n]["seconds"] for n in names)

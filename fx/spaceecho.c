@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
- * spaceecho.c - Roland Space Echo (RE-201) style tape echo for the Digitone II
+ * spaceecho.c - Roland RE-201 style tape echo for the Digitone II
  * delay slot (T5.2). See spaceecho.h for the signal flow and
- * notes/T5.2-space-echo.md for the knob laws and the reasoning behind the
+ * notes/T5.2-tape-echo.md for the knob laws and the reasoning behind the
  * constants marked [guess].
  *
  * Reused from tapedelay.c (FTD1, on the unit): the tape ring and its 4-point

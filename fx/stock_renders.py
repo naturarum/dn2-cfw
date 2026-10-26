@@ -7,7 +7,7 @@
 For every render in OUTDIR/manifest.tsv, the same dry file goes through the Digitone II's own
 effect code (OS 1.12, run in the T3.6 SHARC interpreter, tools/sharcvm) at the stock knob values
 closest to the new effect's settings. The mapping is in map_tapedelay(), map_spaceecho() (T5.2),
-map_flanger() and map_mbcomp() and in notes/T3.11-fx-workbench.md section 10 and notes/T5.2-space-echo.md. Renders whose settings map to the same stock knobs share
+map_flanger() and map_mbcomp() and in notes/T3.11-fx-workbench.md section 10 and notes/T5.2-tape-echo.md. Renders whose settings map to the same stock knobs share
 one stock file. Also renders the stock chorus and reverb on two dry files, for reference.
 
 This is an emulation, not a recording: T3.7 checks the emulator against the owner's recordings
@@ -41,7 +41,7 @@ for _b in "LMH":
     MB_DEFAULTS.update({f"{_b}.THR": 85, f"{_b}.ATK": 40, f"{_b}.REL": 44, f"{_b}.MUP": 0, f"{_b}.RAT": 2})
 MB_DEFAULTS.update(XLO=68, XHI=44, SCS=0, MIX=127)   # T6.3 CMP0: LSTN and SCF dropped; crossover laws of T6.4 2.2
 FL_DEFAULTS = dict(DPTH=96, SPD=30, HPF=32, WDTH=48, FDBK=107, MAN=50, SHP=0, SLEW=0, DAMP=12, SYNC=0, OFS=0, POL=0)
-# the Space Echo (T5.2, fx/spaceecho.c: spaceecho_init); fxrender's long names are aliases
+# the tape echo (T5.2, fx/spaceecho.c: spaceecho_init); fxrender's long names are aliases
 SE_DEFAULTS = dict(TIME=31, MODE=3, INT=50, AGE=40, CTR=64, BW=127, WID=96, PAN=1)
 SE_ALIAS = {"INTENSITY": "INT", "CENTER": "CTR", "WIDTH": "WID"}
 SE_HEADS = [1, 2, 4, 3, 6, 5, 7]          # MODE index -> heads (bit 0 = head 1)
@@ -152,14 +152,14 @@ def describe_delay(s):
             f"X {'on' if s['X'] else 'off'}, WID {s['WID'] - 64:+d}")
 
 
-# --- Space Echo -> stock delay ------------------------------------------------------------------------
+# --- TAPE -> stock delay ------------------------------------------------------------------------
 def se_macro(k, name):
     if name in SE_ALIAS:
         k[SE_ALIAS[name]] = k[name]
 
 
 def map_spaceecho(k, shared=True):
-    """Space Echo knobs -> stock delay knobs (one head: the shortest active one), plus what the stock
+    """TAPE knobs -> stock delay knobs (one head: the shortest active one), plus what the stock
     delay cannot do. Laws as in fx/spaceecho.c. shared: the FDBK law of the binary that made the render
     (manifest kind): True for fxrender (fx/spaceecho.c since SC02: the active heads share FDBK/64, so
     the one stock head gets FDBK/n), False for fxrender_sc01 and fxrender_se01 (each head FDBK/64, as
@@ -273,30 +273,12 @@ def map_flanger(k, bpm):
     return s, missing, hz
 
 
-# SPNG's MODE (2026-10-24, fx/spring.c spring_mode_map): per anchor DEC, DRIP, DWEL, HPF, TONE, TENS, spread
-SP_MODE_POS = [0.0, 64.0, 85.0, 106.0, 127.0]
-SP_MODE_VAL = [[24, 40, 64, 50, 127, 110, 0.85], [64, 64, 64, 0, 127, 64, 1.0], [72, 96, 127, 0, 127, 64, 1.0],
-               [80, 112, 100, 24, 110, 48, 1.1], [112, 72, 64, 0, 24, 28, 1.25]]
-
-
-def spring_mode_map(m):
-    m = min(max(m, 0.0), 127.0)
-    j = 3 if m > 106 else 2 if m > 85 else 1 if m > 64 else 0
-    f = (m - SP_MODE_POS[j]) / (SP_MODE_POS[j + 1] - SP_MODE_POS[j])
-    return [a + (b - a) * f for a, b in zip(SP_MODE_VAL[j], SP_MODE_VAL[j + 1])]
-
-
 def map_spring(k):
     """SPNG knobs -> the stock reverb (the slot's stock effect) at the same page knobs A, B, E, F (PRE, DEC, HPF,
     and LPF = TONE); C and D are FREQ and GAIN on the stock page (DRIP/MODE and DWEL on SPNG's), left neutral at 64.
-    That is what the same kit plays on the stock firmware, not a match of the sound. With MODE (2026-10-24) its
-    base for DEC, HPF and TONE is added, as SPNG adds it: the closest stock reverb to the character."""
-    dec, hpf, tone = k["DEC"], k["HPF"], k["TONE"]
-    if "MODE" in k:
-        v = spring_mode_map(k["MODE"])
-        c = lambda x: min(max(x, 0.0), 127.0)   # noqa: E731
-        dec, hpf, tone = c(dec + v[0] - 64), c(hpf + v[3]), c(tone + v[4] - 127)
-    s = dict(PRE=round(k["PRE"]), DEC=round(dec), FREQ=64, GAIN=64, HPF=round(hpf), LPF=round(tone))
+    That is what the same kit plays on the stock firmware, not a match of the sound. MODE (2026-10-24) is the
+    springs' own character and leaves PRE, DEC, HPF and TONE alone, so it maps to nothing here."""
+    s = dict(PRE=round(k["PRE"]), DEC=round(k["DEC"]), FREQ=64, GAIN=64, HPF=round(k["HPF"]), LPF=round(k["TONE"]))
     missing = ["dispersion (DRIP), tension (TENS), dwell drive (DWEL), width (WDTH): a spring tank's sound"]
     return s, missing
 

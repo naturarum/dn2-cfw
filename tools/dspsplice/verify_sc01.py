@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""SC01 (2026-10-21; notes/SC01.md): the DSP proofs of the merged line, CMP3 + the Space Echo (the stock FDBK law) + the
+"""SC01 (2026-10-21; notes/SC01.md): the DSP proofs of the merged line, CMP3 + the tape echo (the stock FDBK law) + the
 flanger, with breathing band meters and the functions placed per region (L1 block 2, code4, L2 over dead stock code).
 
     python3 tools/dspsplice/verify_sc01.py [--quick] [--only a,b,e,w,s]
@@ -8,7 +8,7 @@ flanger, with breathing band meters and the functions placed per region (L1 bloc
 (a) the compressor and the flanger against CMP3 (out/T6.3/CMP3-dsp, on the unit), the two images in lockstep on CMP3's
     own verify settings (verify_cmp3m.py (a): zero tails, invalid tails, the three MIX 0, equal MIX and the relock, one
     band wet, the guard and re-init injections, the cost cases, seeded old kits), with the delay slot silent in both
-    (no send into it, its VOL 0: CMP3's tape delay and SC01's Space Echo then both return 0, so the compressor gets the
+    (no send into it, its VOL 0: CMP3's tape delay and SC01's tape echo then both return 0, so the compressor gets the
     same input): every handler output sample bit for bit, the chorus slot's output (the flanger) every block, each
     band's gain reduction every block, both reply pages every block but word 0 and half-words 8..10 (the meters;
     half-word 11 compared), and at the end L1 word for word (CmpSlot but its two meter words, CmpTail, the flanger's
@@ -17,7 +17,7 @@ flanger, with breathing band meters and the functions placed per region (L1 bloc
     band's y2 (the slot's gain-reduction copy): q = round(1310 x clamp(dB, 0, 25)), a NaN or inf 0; on bursts per band at
     ATK 0 and REL 0 / 64 / 127 (how long the bar takes to go, against CMP3's 0.5 s hold + 20 dB/s), on the guide's
     starting point on drums, RAT 1.00 (no bar), and a NaN put into a band's envelope (the bar 0 in that block);
-(e) the Space Echo against SE01 (out/T5.3/SE01-dsp, never flashed): (e1) at FDBK 0 SC01's delay slot output and the
+(e) the tape echo against SE01 (out/T5.3/SE01-dsp, never flashed): (e1) at FDBK 0 SC01's delay slot output and the
     whole SeSlot (tape, state) bit for bit SE01's; (e2) SE01 with only spaceecho_fb replaced by SC01's (SC01's compiled
     function linked at SE01's own address and patched into SE01's stream: SE01') bit for bit SC01 on verify_se.py's
     configurations, the FDBK sweep 32 / 64 / 100 / 127 with one and three heads, every frame word moving, the fuzz and the
@@ -588,7 +588,7 @@ def proof_b(imgs, q):
     return res["ok"], res
 
 
-# ---------------------------------------------------------------- (e) the Space Echo against SE01
+# ---------------------------------------------------------------- (e) the tape echo against SE01
 
 def se01_prime(se01_stream, sc01_bdir, work):
     """SE01's stream with spaceecho_fb replaced by SC01's (SC01's compiled function linked at SE01's own address);

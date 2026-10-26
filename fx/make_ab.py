@@ -214,7 +214,7 @@ running in the SHARC interpreter from T3.6 (<code>tools/sharcvm</code>), at the 
 ways nobody has heard. Recordings dropped into <code>stock/</code> appear as their own group after <code>make renders</code>.</p>
 <p class="help" id="mode"></p>
 <div id="groups"></div>
-<p class="help">Files: <code>dry/</code> (24-bit sources), <code>wav/</code> (new: 16-bit renders; <code>stock_*</code>: 24-bit emulator renders; <code>se_*</code> TAPE, <code>ftd_*</code> FTD1). Built by <code>fx/renders.sh</code>, <code>fx/stock_renders.py</code> (<code>make stock</code>) and <code>fx/make_ab.py</code>. Notes: <code>notes/T3.11-fx-workbench.md</code>, section 12; <code>notes/T5.2-space-echo.md</code>.</p>
+<p class="help">Files: <code>dry/</code> (24-bit sources), <code>wav/</code> (new: 16-bit renders; <code>stock_*</code>: 24-bit emulator renders; <code>se_*</code> TAPE, <code>ftd_*</code> FTD1). Built by <code>fx/renders.sh</code>, <code>fx/stock_renders.py</code> (<code>make stock</code>) and <code>fx/make_ab.py</code>. Notes: <code>notes/T3.11-fx-workbench.md</code>, section 12; <code>notes/T5.2-tape-echo.md</code>.</p>
 </main>
 <script>
 const DATA = /*DATA*/;

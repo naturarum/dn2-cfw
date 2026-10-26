@@ -88,7 +88,7 @@ static void fl_set(Flanger *fl, int id, float v)
     else flanger_unit_set2(fl, fu_knob);
 }
 
-/* the Space Echo (T5.2); the long names are aliases */
+/* the tape echo (T5.2); the long names are aliases */
 static const PName SE_NAMES[] = {
     { "TIME", SE_TIME }, { "MODE", SE_MODE }, { "INT", SE_INT }, { "INTENSITY", SE_INT },
     { "AGE", SE_AGE }, { "CTR", SE_CTR }, { "CENTER", SE_CTR }, { "BW", SE_BW },

@@ -1153,9 +1153,9 @@ GPL-2.0+ adaptations and some bad wording. Fixed with the user's go:
 - Kept, by the user's call: `analysis/rtti_classes.json` (class names and addresses, for interoperability).
 - Checked: every .py compiles, every shell script parses, `fx` `make test` 155/155.
 
-# 2026-10-12: T5.2, the Space Echo in C (background agent)
+# 2026-10-12: T5.2, the tape echo in C (background agent)
 
-Full note: `notes/T5.2-space-echo.md`. The owner changed the delay's direction: an RE-201 style echo with 3 heads
+Full note: `notes/T5.2-tape-echo.md`. The owner changed the delay's direction: an RE-201 style echo with 3 heads
 picked by MODE, 8 controls (TIME, MODE, INTENSITY, AGE, CENTER, BW, WIDTH, PAN). `fx/spaceecho.c/.h`, reusing the
 tape engine; `fx/tapedelay.c` (FTD1) unchanged and its renders bit-identical.
 - Heads 1:2:3 (Roland GX-1/RE-202 manuals), MODE order 1, 2, 3, 1+2, 2+3, 1+3, 1+2+3 (RE-202; RE-201 [inferred]).
@@ -1168,7 +1168,7 @@ tape engine; `fx/tapedelay.c` (FTD1) unchanged and its renders bit-identical.
 - A fifth selcc bug: the preprocessor substitutes macro parameters inside number literals (`1.0f` -> `1.0x`);
   worked around, repro in the note 6.2.
 - Page: 6 stock rows map (TIME, X->PAN, WID->WIDTH, FDBK->INTENSITY, HPF->CENTER, LPF->BW); MODE and AGE need 2 more.
-  Open questions for the owner in the note's last section (vault: `Space Echo questions.md`).
+  Open questions for the owner in the note's last section (vault: `TAPE questions.md`).
 
 # 2026-10-12: T6.1, can the parameter table grow? (background agent)
 
@@ -1223,7 +1223,7 @@ pushed on `naturarum/elekloader` `dn2-1.12`). Brickcheck **ACCEPT 12/12** with b
 
 The user flashed FTD1 (flanger + one-head tape delay) over USB: it works. Their verdict on the delay: "sounds not
 amazing, but that's not an issue"; the repitch on TIME changes is "very interesting" (the delay-time glide, tau
-0.12 s, playback speed held within 0.5x..1.5x). The Space Echo (T5.2) is the delay's next design. Next on the unit:
+0.12 s, playback speed held within 0.5x..1.5x). The tape echo (T5.2) is the delay's next design. Next on the unit:
 DH01, then FTN1.
 
 # 2026-10-12: T6.5, the parameter table grows (background agent)
@@ -1297,7 +1297,7 @@ which is safe only while every new row keeps k <= 100.
 Full note: `notes/T6.0c-frame-census-dnfw.md`. dn2_firmware_explore re-ran our frame census on 1.11 with a stricter
 rule (a word counts only if flipping it changes DSP memory). Our check in sharcvm, with that rule, agrees [verified]:
 the 30 tail words, `0x2a`, `0xa18` and slot +0x50/+0x6e change no DSP memory, MMR store or instruction count (48
-valid scenarios, 12 with random voices, a separate re-run; controls detect one-word changes). So the Space Echo's AGE
+valid scenarios, 12 with random voices, a separate re-run; controls detect one-word changes). So the tape echo's AGE
 in `0xa18` and the compressor's values in the tail are safe. Two words to avoid: `0xa28` (k 48) is kept as a flag byte
 `0x2579d4 = (value != 0)`, so T6.1's "k 48 on reverb G" needs a range that never sends 0; `0x9a8` is row 15 slot +0x40
 (k 57), a real dependence for machine type 0. Their open questions answered: I0 comes from the owner word `0xa5a+2r`
@@ -1316,17 +1316,17 @@ overdrive), rows `0x96`-`0x9f` (group 0x14, never lockable), sidechain sources, 
 are GT01's k 70-86; SCS, MIX and VOL shared; SCF to the FX Mixer page's empty knob D; one gain-reduction meter per band
 from DSP reply half-words 8-10 (11 = deepest band, for Overbridge); a page-record collection in core-dn2 0.2 so all
 new page ids have one owner. Stages CMP0-CMP3, each flashable. Risks: a NaN latching the master silent (guard and
-reset mandatory), the Space Echo competing for the same DSP memory block, no load meter on the unit yet (G6).
+reset mandatory), the tape echo competing for the same DSP memory block, no load meter on the unit yet (G6).
 Owner questions in the note's 6.3 (vault: `Compressor questions.md`).
 - 2026-10-13, owner answers to T6.4's questions: SCF dropped (each band's detector sees its own band; detectors at
   neutral SCF 64; FX Mixer page stays stock; old full-band kits let slightly more bass into the detector than stock's
   default SCF 80); crossover ranges OK; ratio 1.00 per band added; old projects open full-band. Reply to dnfw #49
   (census answers + table news + apology for our README's "first") posted with the owner's go.
 
-# 2026-10-13: T5.3, SE01 (the Space Echo for the unit) built (workflow)
+# 2026-10-13: T5.3, SE01 (the tape echo for the unit) built (workflow)
 
-Full note: `notes/T5.3-space-echo-on-the-unit.md`. **SE01** (`out/T5.3/SE01.syx`, `760ff3f8...c538`) = GT01's main OS +
-`fx-echo-dn2` (elekloader fork, pushed) + section 7 = FLG1's flanger + the Space Echo in the delay slot (recipe SE01 in
+Full note: `notes/T5.3-tape-echo-on-the-unit.md`. **SE01** (`out/T5.3/SE01.syx`, `760ff3f8...c538`) = GT01's main OS +
+`fx-echo-dn2` (elekloader fork, pushed) + section 7 = FLG1's flanger + the tape echo in the delay slot (recipe SE01 in
 `tools/dspsplice/build.py`; glue `src/se_glue.c`; `verify_se.py` PASS). Brickcheck ACCEPT 12/12
 (`out/brickcheck/SE01b-2026-10-13`). Built in parallel (DSP, ColdFire), combined, reviewed by two adversarial reviewers,
 then fixed:
@@ -1335,7 +1335,7 @@ then fixed:
   bit-identical to the first build. `make test` 287/287.
 - Knob mapping verified in sharcvm: X arrives as 256 x index; AGE from frame word 0xa18 (low half of DM 0x25cea4),
   k40 <= 1 = clean (old kits); WID fold with a +-1 dead zone (64 exactly mono).
-- Memory: Space Echo state 4,163,304 B in the stock delay's DDR; code `0x308400-0x311c3e` (L1 block 2).
+- Memory: TAPE state 4,163,304 B in the stock delay's DDR; code `0x308400-0x311c3e` (L1 block 2).
 - Cost: 355k instructions/block mean (stock 320k, FTD1 341k), worst 391k: est. ~71 % typical, ~78 % worst, above the
   owner's 2026-10-13 budget in the worst case. Stack 1,672 B of 4,000.
 - **A sixth selcc miscompile:** `t->last[k] = v` after a call, k a parameter, forms the address from the wrong
@@ -1379,8 +1379,10 @@ slot; CPU judged by ear; the weekly usage limit is tight (one agent + one review
 
 **2026-10-18, CMP2 stops the DSP (paused until Tuesday 2026-10-20).** LOW MUP (sometimes LOW ATK/REL) stops the DSP for good on the unit. Diagnostic builds CP2D (load meter: ~50-60 %, so not CPU) and CP2E (heartbeat, breadcrumbs, probe switch) showed: the stop is in `cmp_tail_apply`, only when the LOW MUP block runs, and that block differs from MID/HIGH only by address (~0x3166a6 in L1 block 2, first used for code by CMP2). Next: CMP2F (move cmp_tail to code4, watermark free L1, per-page code checks), started in `tools/dspsplice/src/cmp2f/` and unfinished; notes/T6.3-cmp2d.md, notes/T6.3-cmp2e.md. CMP3 is on hold (same code layout question; re-check its placement). The sharcvm leak that froze the Mac is fixed (`VM.__del__`, tools/sharcvm/memguard.py); `tools/memwatch.py` is a repo-only memory watchdog for unattended runs.
 
-**2026-10-21, the compressor is done: CMP3 on the unit.** CP2F (cmp_tail moved to code4) fixed CMP2's LOW MUP stop; its watermark scanner stayed empty, so nothing writes `0x315f8c-0x318000`: code there fails on the chip (cause unknown); build.py's `forbid` key refuses it. CMP3 (`out/T6.3/CMP3.syx` `28f10cba...`, 12/12) = CMP3A's features (storage per kit, per-band MIX, seeding) on CP2F's layout + GR meters (2 px/dB, 0.5 s hold, 20 dB/s fall). Owner 2026-10-21: works well, LOW MUP fine, old projects sound about the same; wants the meter to **breathe like the stock one** (follow the gain at the band's REL, keep dB), next build. Storage review (notes/T6.3-cmp3-review.md): OK; fix in comp-link 0.3: read `live` before the stock call in `compl_update`, restore id 0 unless k 0..24 named. Next: the merged line CMP3 + Space Echo (FDBK stock law, T5.4), a layout study first (block 2 is tight). Owner idea: a spring reverb as an optional reverb (a build-time choice).
+**2026-10-21, the compressor is done: CMP3 on the unit.** CP2F (cmp_tail moved to code4) fixed CMP2's LOW MUP stop; its watermark scanner stayed empty, so nothing writes `0x315f8c-0x318000`: code there fails on the chip (cause unknown); build.py's `forbid` key refuses it. CMP3 (`out/T6.3/CMP3.syx` `28f10cba...`, 12/12) = CMP3A's features (storage per kit, per-band MIX, seeding) on CP2F's layout + GR meters (2 px/dB, 0.5 s hold, 20 dB/s fall). Owner 2026-10-21: works well, LOW MUP fine, old projects sound about the same; wants the meter to **breathe like the stock one** (follow the gain at the band's REL, keep dB), next build. Storage review (notes/T6.3-cmp3-review.md): OK; fix in comp-link 0.3: read `live` before the stock call in `compl_update`, restore id 0 unless k 0..24 named. Next: the merged line CMP3 + TAPE (FDBK stock law, T5.4), a layout study first (block 2 is tight). Owner idea: a spring reverb as an optional reverb (a build-time choice).
 
-**2026-10-21/22, SC01 stops the DSP; CMP4 is the stable base.** SC01 (CMP3 + Space Echo, notes/SC01.md) on the unit: DSP stops on echo knob turns (most with CNTR/BW), on FDBK, and at random while idle; UI fine. Every echo knob turn and every crackle/RND jump runs code SC01 placed in L2 (A: the echo's knob code and its fxmath copies; B: crackle, mb_restart), where none of our code had run. sharcvm soak (`tools/dspsplice/soak_sc01.py`, notes/SC01-soak.md): 74.4 min of audio on the crash recipes, 0 faults, so the code itself is unlikely. SC02 plan (notes/SC02-plan.md): the proven code map is 83,838 B; with the flanger kept, SC02 is 13,054 B short (5,752 B of same-sound savings measured; selcc ignores -O). Owner 2026-10-22: park the echo, stock delay back, keep the compressor and flanger. **CMP4** (`out/CMP4/CMP4.syx` `c1df74aa...`, 12/12, notes/T6.3-cmp4.md): CMP3 + stock delay (hooks restored, code2 not loaded) + breathing meters + comp-link 0.3 + flanger-names-dn2 0.1; lockstep with CMP3 8.87M/8.87M samples (meters aside), delay bit-exact to stock on 9 cases, soak 990k blocks clean; build.py checks every code section against the proven map. **Owner 2026-10-22: "cmp4 looking very stable!"** Rule from now on (memory dsp-code-placement-rule): our DSP code only where ours already ran on the unit; probe new places first. FDBK normalised by the number of heads is done in `fx/` (SC01's echo frozen in `src/sc01/`). Next: Overbridge fix, flanger retune (same memory and load, no new code), terminal macOS patcher, release candidate.
+**2026-10-21/22, SC01 stops the DSP; CMP4 is the stable base.** SC01 (CMP3 + TAPE, notes/SC01.md) on the unit: DSP stops on echo knob turns (most with CNTR/BW), on FDBK, and at random while idle; UI fine. Every echo knob turn and every crackle/RND jump runs code SC01 placed in L2 (A: the echo's knob code and its fxmath copies; B: crackle, mb_restart), where none of our code had run. sharcvm soak (`tools/dspsplice/soak_sc01.py`, notes/SC01-soak.md): 74.4 min of audio on the crash recipes, 0 faults, so the code itself is unlikely. SC02 plan (notes/SC02-plan.md): the proven code map is 83,838 B; with the flanger kept, SC02 is 13,054 B short (5,752 B of same-sound savings measured; selcc ignores -O). Owner 2026-10-22: park the echo, stock delay back, keep the compressor and flanger. **CMP4** (`out/CMP4/CMP4.syx` `c1df74aa...`, 12/12, notes/T6.3-cmp4.md): CMP3 + stock delay (hooks restored, code2 not loaded) + breathing meters + comp-link 0.3 + flanger-names-dn2 0.1; lockstep with CMP3 8.87M/8.87M samples (meters aside), delay bit-exact to stock on 9 cases, soak 990k blocks clean; build.py checks every code section against the proven map. **Owner 2026-10-22: "cmp4 looking very stable!"** Rule from now on (memory dsp-code-placement-rule): our DSP code only where ours already ran on the unit; probe new places first. FDBK normalised by the number of heads is done in `fx/` (SC01's echo frozen in `src/sc01/`). Next: Overbridge fix, flanger retune (same memory and load, no new code), terminal macOS patcher, release candidate.
 
-**2026-10-22/23, Overbridge, the flanger retune, the patcher and Digiwerk.** **OB01** = CMP4 + os-version-dn2 0.1 (the version replies say 1.12; notes/OB01-overbridge.md): owner "overbridge works fine". **FL01** = OB01 + the flanger retune (knob C is TIME, 0.05 ms phaser-like, 32 = CMP4, 127 chorus; WDTH 127 wide; notes/T5.6 6): owner 2026-10-23 "seems to be working very well". **FL02** (built, brick check running at commit time) = FL01 + the stock compressor glyphs on the band rows + flanger tempo sync with FUNC + turn on SPD (notes/FL02.md, notes/T5.6 7). **Digiwerk Patcher** (tools/patcher/, notes/R1.1-patcher.md): macOS app + Terminal tool that rebuilds a tested build from the user's own Elektron 1.12 file (no Elektron bytes shipped, output hash-gated), packs, the pixel identity (docs/identity/: CMP3, FLNG, TAPE, SPNG; never "Space Echo" in public), Elektron-site styling; team naturarum CTWUYGFLF6, not notarized yet. Public name **Digiwerk** (repo stays dn2-cfw). ROADMAP "Release: Digiwerk" R1.1-R1.7. The memory probe PB01 (notes/PB01-findings.md) was halted twice by a safety classifier before writing anything; the owner decides. Ideas: USB class-compliant multitrack (notes/USB01-...), Windows patcher, a bigger patcher with the full brick check.
+**2026-10-22/23, Overbridge, the flanger retune, the patcher and Digiwerk.** **OB01** = CMP4 + os-version-dn2 0.1 (the version replies say 1.12; notes/OB01-overbridge.md): owner "overbridge works fine". **FL01** = OB01 + the flanger retune (knob C is TIME, 0.05 ms phaser-like, 32 = CMP4, 127 chorus; WDTH 127 wide; notes/T5.6 6): owner 2026-10-23 "seems to be working very well". **FL02** (built, brick check running at commit time) = FL01 + the stock compressor glyphs on the band rows + flanger tempo sync with FUNC + turn on SPD (notes/FL02.md, notes/T5.6 7). **Digiwerk Patcher** (tools/patcher/, notes/R1.1-patcher.md): macOS app + Terminal tool that rebuilds a tested build from the user's own Elektron 1.12 file (no Elektron bytes shipped, output hash-gated), packs, the pixel identity (docs/identity/: CMP3, FLNG, TAPE, SPNG; never the tape echo's trademarked name in public), Elektron-site styling; team naturarum CTWUYGFLF6, not notarized yet. Public name **Digiwerk** (repo stays dn2-cfw). ROADMAP "Release: Digiwerk" R1.1-R1.7. The memory probe PB01 (notes/PB01-findings.md) was halted twice by a safety classifier before writing anything; the owner decides. Ideas: USB class-compliant multitrack (notes/USB01-...), Windows patcher, a bigger patcher with the full brick check.
+
+**2026-10-24/26, SP01, the compiler fix, and the docs out.** **SP01** = DJ01 + SPNG in the reverb slot (notes/SP01-spring-pack.md, 12/12): on the unit 2026-10-26 stable, the sound "not there yet, but promising" (the tail cycles: the springs' round trips near 1 : 7/6 : 7/5 pile up every ~380 ms; 1.5-5.5 dB under the stock reverb). **SPNG v2** on the Mac (notes/T5.5 section 9, `fx/proto/spng-v2/`, A/B `out/T3.11/spng-v2.html`): ratios 1 : 1.21 : 1.32, a 30-degree rotation cross-feed, a 0.25 ms random wobble with cubic reads, +4.7 dB; repeat score 0.52 -> 0.12 (stock 0.14). Waits for the owner's listen and their MODE/DWEL redesign; then SP02 = DC02 + v2 (freeze SP01's spring sources first). **DC02** = DJ01 with the peephole pass on selcc's output (tools/dspsplice/peephole.py, -5.3 KB, bit for bit; notes/DC01-compiler-fix.md): on the unit 2026-10-26 "seems stable and sounds identical"; the base for the next packs. The flanger's new-kit TIME is 32 since FL01 (flanger-names-dn2 0.2). Owner 2026-10-26: release without waiting for the spring; README, CREDITS and docs/DEVELOPERS.md published (minimal, nothing promised); docs/release/digiwerk-0.1.0.md stays local until the release.

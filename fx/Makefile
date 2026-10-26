@@ -30,12 +30,12 @@ $(BIN):
 $(BIN)/fxrender: render.c wav.c wav.h $(FX_SRC) $(FX_HDR) | $(BIN)
 	$(CC) $(CFLAGS) -Wno-double-promotion -Wno-float-conversion -o $@ render.c wav.c $(FX_SRC) -lm
 
-# SC01: fxrender with SE01's Space Echo (its INTENSITY law; tools/dspsplice/src/se01/), for the se_fdbk group
+# SC01: fxrender with SE01's tape echo (its INTENSITY law; tools/dspsplice/src/se01/), for the se_fdbk group
 SE01 := ../tools/dspsplice/src/se01
 $(BIN)/fxrender_se01: render.c wav.c wav.h tapedelay.c mbcomp.c flanger.c spring.c $(SE01)/spaceecho.c $(SE01)/spaceecho.h $(FX_HDR) | $(BIN)
 	$(CC) $(CFLAGS) -Wno-double-promotion -Wno-float-conversion -I$(SE01) -I. -o $@ render.c wav.c tapedelay.c mbcomp.c flanger.c spring.c $(SE01)/spaceecho.c -lm
 
-# SC02: fxrender with SC01's Space Echo (FDBK/64 per head; tools/dspsplice/src/sc01/), for the se_share group
+# SC02: fxrender with SC01's tape echo (FDBK/64 per head; tools/dspsplice/src/sc01/), for the se_share group
 SC01 := ../tools/dspsplice/src/sc01
 $(BIN)/fxrender_sc01: render.c wav.c wav.h tapedelay.c mbcomp.c flanger.c spring.c $(SC01)/spaceecho.c $(SC01)/spaceecho.h $(FX_HDR) | $(BIN)
 	$(CC) $(CFLAGS) -Wno-double-promotion -Wno-float-conversion -I$(SC01) -I. -o $@ render.c wav.c tapedelay.c mbcomp.c flanger.c spring.c $(SC01)/spaceecho.c -lm

@@ -10,7 +10,7 @@ proofs of notes/SC01.md ran 2 s per case. It looks for a fault of our code itsel
 Every block (1,500 blocks = 1 s): the whole handler under a cap of CAP instructions (a block over it = a runaway; then
 up to 10^8 more to see whether it ever returns, and where it loops); any sharcvm trap (unmapped access, stack overflow,
 undecodable instruction); the instructions of the block and of the delay call; the outputs and the echo's wet finite
-and under their ceilings (0.6931, 0.7); the Space Echo's state (SeSlot magic and block counter, every float field
+and under their ceilings (0.6931, 0.7); the tape echo's state (SeSlot magic and block counter, every float field
 finite, the write and read indices on the tape, tau within its clamp, the crackle event positions in 0..32) and the
 32 frames the block wrote on the tape (finite, within +-1); the compressor's guard counters (trips, re-inits); the
 hardware stacks back to their depth; and one of four code ranges watched for stores (L1 block 1 code, code4, L1 block
@@ -492,7 +492,7 @@ def run_recipe(args):
                     peak["wet"] = abs(x)
             if peak["wet"] > 0.7000001 and "echo_wet_over_ceiling" not in anom:
                 note("echo_wet_over_ceiling", b, {"peak": peak["wet"]})
-            # the Space Echo
+            # the tape echo
             mg, _, blk = struct.unpack("<3I", vm.read(S.SE_SLOT, 12))
             if mg != SE_MAGIC:
                 note("seslot_magic", b, {"magic": "%#x" % mg})

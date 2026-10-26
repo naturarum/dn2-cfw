@@ -19,7 +19,7 @@ not run. Nothing was flashed.
 - **OB01** = CMP4 + that mod: `out/OB01/OB01.syx` `bfb886237377555aea6778ba49d0b48b48e7ce46a04bd9be77365f36cb0b62dd`.
   DSP section stored byte for byte as CMP4's; main OS = CMP4's six `.elemod` files plus this one.
 
-**On the unit, 2026-10-22: Overbridge works with OB01** (owner: "overbridge works fine"). Transfer not reported yet.
+**On the unit, 2026-10-22: Overbridge works with OB01** (owner: "overbridge works fine"). Transfer: every later build with the fix (FL01, FL02, DT01, DJ01, 2026-10-23/24) was sent to the unit with Transfer, so it connects.
 
 ## 1. Where the version goes [verified]
 

@@ -1657,7 +1657,7 @@ static void test_smoothing(void)
     free(x); free(yl); free(yr); free(td); free(mb); free(fl);
 }
 
-/* the Space Echo's tests (T5.2) use the helpers above */
+/* the tape echo's tests (T5.2) use the helpers above */
 #include "test_spaceecho.c"
 #include "test_spring.c"
 

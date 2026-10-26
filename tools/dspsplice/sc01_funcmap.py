@@ -39,7 +39,7 @@ PROCESSOR p0
       d BW
       {
          INPUT_SECTION_ALIGN(4)
-         INPUT_SECTIONS( $OBJECTS(seg_dmda) )
+         INPUT_SECTIONS( $OBJECTS(seg_dmda seg_t38dd) )
       } > mem_d
       b NO_INIT BW
       {

@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
- * spaceecho.h - a Roland Space Echo (RE-201) style tape echo for the Digitone II
+ * spaceecho.h - a Roland RE-201 style tape echo for the Digitone II
  * delay slot (T5.2). Replaces the one-head tape delay design (tapedelay.c, on the
  * unit as FTD1), whose proven parts it reuses: the tape ring with 4-point Hermite
  * reads and the tape-motor glide of the delay time, wow and flutter, AGE hiss and
  * crackle, the cubic saturator, the resonant state-variable loop filters, the
- * stereo matrix. See notes/T5.2-space-echo.md.
+ * stereo matrix. See notes/T5.2-tape-echo.md.
  *
  * Portable C99, float only, no libc, no malloc. All state lives in one SpaceEcho
  * struct (about 4.16 MB, mostly the tape) that fits the stock delay's DDR area

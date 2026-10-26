@@ -30,18 +30,18 @@ r() {
 }
 # a reference render shown in its own row of the page (T5.2: the one-head tape delay, FTD1)
 tp() { KIND=tape r "$@"; }
-# SC01: the same render with SE01's Space Echo (tools/dspsplice/src/se01/spaceecho.c: INTENSITY 1.1 (INT/127)^1.5)
+# SC01: the same render with SE01's TAPE (tools/dspsplice/src/se01/spaceecho.c: INTENSITY 1.1 (INT/127)^1.5)
 rse01() { R="$OUT/bin/fxrender_se01" KIND=se01 r "$@"; }
 # T5.6: the same unit knobs on CMP4's map (C = HPF, the centre fixed at 0.9 ms): -fx flgunit1
 rc4() { KIND=cmp4 r "$@"; }
-# SC02: the same render with SC01's Space Echo (tools/dspsplice/src/sc01/spaceecho.c: FDBK/64 per head)
+# SC02: the same render with SC01's TAPE (tools/dspsplice/src/sc01/spaceecho.c: FDBK/64 per head)
 rsc01() { R="$OUT/bin/fxrender_sc01" KIND=sc01 r "$@"; }
 
 TD="-fx tapedelay -tail 4 -bpm 120 -vol 64"
 CLEAN="-p WOW=0 -p FLUT=0 -p AGE=0"
 
-echo "space echo (T5.2)"
-# The Space Echo: three heads at 1x, 2x, 3x the head-1 time. Each group also has FTD1 (the one-head tape
+echo "tape echo (T5.2)"
+# The tape echo: three heads at 1x, 2x, 3x the head-1 time. Each group also has FTD1 (the one-head tape
 # delay as it runs on the unit: RES 32, WOW 20, FLUT 20, AGE 24, DRIV 32 fixed, notes/T3.8 section 9) at the
 # same head-1 time and the same feedback per head, and, after make stock, the stock delay at its closest knobs.
 # SC01 (2026-10-21): INTENSITY is on the stock delay's FDBK law, INT/64 per head (64 = 100 %); every INT below was
@@ -325,30 +325,35 @@ r sp_tape ts_par "TAPE and SPNG side by side" "DREV 0, RSEND 127: the tank hears
 r sp_tape ts_dub "Dub: three heads, worn tape, a long dark tank" "TAPE: MODE 7 (heads 1+2+3), INTENSITY 52 (81 % shared), AGE 80, a band (CENTER 64, BW 60). SPNG: DEC 100 (6.9 s), TONE 40 (1.4 kHz), DRIP 96, DWEL 90, TENS 40 (34 ms). DREV 100, RSEND 48." $TS -i $D/pluck.wav -p T.TIME=15 -p T.MODE=6 -p T.INT=52 -p T.AGE=80 -p T.CTR=64 -p T.BW=60 -p T.PAN=1 -p T.WID=100 -p DEC=100 -p TONE=40 -p DRIP=96 -p DWEL=90 -p TENS=40 -drev 100 -rsend 48
 r sp_tape ts_stabs "TAPE into SPNG on chord stabs" "Head 1 (TIME 23: a dotted eighth), INTENSITY 30 (47 %), AGE 40; SPNG surf (DRIP 112, DWEL 100, DEC 72, TENS 48, TONE 110); DREV 64, RSEND 64." $TS -i $D/stabs.wav -p T.TIME=23 -p T.MODE=0 -p T.INT=30 -p T.AGE=40 -p T.BW=127 -p T.PAN=1 -p T.WID=100 -p DRIP=112 -p DWEL=100 -p DEC=72 -p TENS=48 -p TONE=110 -drev 64 -rsend 64
 
-# MODE (2026-10-24): one continuous knob through the characters of sp_range, the page's C (fx/spring.c spring_mode_map).
-# Anchors: 0 short and bright, 64 classic (the init patch), 85 heavy dwell, 106 surf drip, 127 long and dark; linear in
-# between, in the knobs' own (log) laws. The other knobs at their defaults trim nothing; the stock pair takes MODE's DEC,
-# HPF and TONE as the stock reverb's DEC, HPF and LPF.
-SPM="the stock reverb at the DEC, HPF and LPF that MODE puts there is next to each"
-g sp_mode pluck.wav "SPNG MODE: one knob through the characters (plucked melody)" "MODE (C on the page) moves through the characters of the first SPNG group: 0 short and bright, 64 the classic tank (the init patch, bit for bit), 85 heavy dwell, 106 surf drip, 127 long and dark, blended in between. It sets the drip, the tension and the springs' spread, and a base for DEC, DWEL, HPF and TONE that those knobs trim (here they sit at their defaults). Send mix, VOL 64, input -12 dB; $SPM."
-for c in "0 Short_and_bright DEC_0.64_s,_DRIP_40,_HPF_142_Hz,_TENS_17_ms_(tight),_springs_closer_(spread_0.85)" \
-         "24 Small_tank DEC_1_s,_DRIP_49,_HPF_88_Hz,_TENS_20_ms,_spread_0.91" \
-         "48 Almost_classic DEC_1.6_s,_DRIP_58,_HPF_55_Hz,_TENS_24_ms,_spread_0.96" \
-         "64 Classic_tank_(the_init_patch) DEC_2.2_s,_DRIP_64,_HPF_40_Hz,_TENS_27_ms,_spread_1" \
-         "80 Toward_heavy_dwell DEC_2.7_s,_DRIP_88,_DWEL_+18_dB_into_the_saturator,_TENS_27_ms" \
-         "104 Near_surf_drip DEC_3.6_s,_DRIP_110,_DWEL_+14.5_dB,_HPF_69_Hz,_TONE_6.9_kHz,_TENS_31_ms,_spread_1.09" \
-         "127 Long_and_dark DEC_10_s,_DRIP_72,_TONE_1_kHz,_TENS_38_ms_(slack),_springs_spread_wider_(1.25)"; do
+# MODE (2026-10-24, revised the same day: "size and dark should be separate from the continuous knob"): the springs'
+# character on one knob, the page's C (fx/spring.c spring_mode_map): the drip, the tension and the spread between the
+# springs; DEC (size), TONE (dark), DWEL and HPF stay their own knobs. Anchors: 0 taut short springs with little drip,
+# 64 the classic tank (the init patch), 127 slack long springs with the deepest drip; linear in between.
+SPM="the stock reverb at the same PRE, DEC, HPF and LPF (= TONE) knobs is next to them: MODE does not touch those"
+g sp_mode pluck.wav "SPNG MODE: the springs' character on one knob (plucked melody)" "MODE (C on the page) moves the springs themselves: how much they drip, how taut they are (the time to the far end and back, so the flutter's speed and the boing's pitch) and how far apart the three springs are. 0 taut and short with little drip, 64 the classic tank (the init patch, bit for bit), 127 slack and long with the deepest drip. Size (DEC), darkness (TONE), drive (DWEL) and HPF are their own knobs, here at their defaults: heavy dwell and long and dark are DWEL, DEC and TONE now (group SPNG MODE with size and darkness). Send mix, VOL 64, input -12 dB; $SPM."
+for c in "0 Taut_and_short little_drip_(DRIP_30),_17_ms_to_the_far_end_(a_fast,_bright_boing),_the_springs_close_together_(spread_0.85)" \
+         "24 Tight DRIP_43,_20_ms,_spread_0.91" \
+         "48 Nearly_classic DRIP_56,_24_ms,_spread_0.96" \
+         "64 The_classic_tank_(the_init_patch) DRIP_64,_27_ms,_spread_1" \
+         "80 Looser,_more_drip DRIP_80,_30_ms,_spread_1.05" \
+         "104 Surf DRIP_104,_36_ms,_the_springs_further_apart_(1.13)" \
+         "127 Slack_and_deep the_deepest_drip_(DRIP_127),_42_ms_(a_slow_flutter,_a_low_boing),_the_springs_widest_apart_(1.2)"; do
     set -- $c
     r sp_mode sp_m_$1 "MODE $1: $(echo $2 | tr _ ' ')" "$(echo $3 | tr _ ' ')." $SP -i $D/pluck.wav -p MODE=$1
 done
 g sp_mode_drums drums.wav "SPNG MODE on drums" "The same MODE stills on drums. Send mix, VOL 64, input -12 dB; $SPM."
-for c in "0 Short_and_bright" "24 Small_tank" "48 Almost_classic" "64 Classic_tank" "80 Toward_heavy_dwell" "104 Near_surf_drip" "127 Long_and_dark"; do
+for c in "0 Taut_and_short" "24 Tight" "48 Nearly_classic" "64 The_classic_tank" "80 Looser,_more_drip" "104 Surf" "127 Slack_and_deep"; do
     set -- $c
     r sp_mode_drums sp_md_$1 "MODE $1: $(echo $2 | tr _ ' ')" "As in the plucked group." $SP -i $D/drums.wav -p MODE=$1
 done
-g sp_mode_hits clave.wav "SPNG MODE swept slowly (single hits)" "MODE 0 -> 127 over 12 s, one clave hit per bar: each tail is a step further along, from a small bright tank to a long dark one. While MODE moves, the tension changes and the tails bend in pitch (slew-limited, as TENS). Send mix, VOL 64, input -12 dB; $SPM."
+g sp_mode_hits clave.wav "SPNG MODE swept slowly (single hits)" "MODE 0 -> 127 over 12 s, one clave hit per bar: each tail a step further along, from taut springs with a little drip to slack ones with a deep drip; the decay (DEC 64) and the tone stay the same. Send mix, VOL 64, input -12 dB; $SPM."
 r sp_mode_hits sp_ms_hits "MODE sweep 0 -> 127" "Over 12 s." $SP -i $D/clave.wav -p MODE=0 -ramp 0 12 MODE 0 127
 g sp_mode_chords chords.wav "SPNG MODE swept slowly (held chords)" "MODE 0 -> 127 over 16 s on held chords. Send mix, VOL 64, input -12 dB; $SPM."
 r sp_mode_chords sp_ms_chords "MODE sweep 0 -> 127" "Over 16 s." $SP -i $D/chords.wav -p MODE=0 -ramp 0 16 MODE 0 127
+g sp_mode_size pluck.wav "SPNG MODE with size and darkness (DEC and TONE are their own)" "MODE's two ends, each with a short bright setting (DEC 24: 0.64 s, TONE 127: open) and a long dark one (DEC 112: 10 s, TONE 24: 1 kHz in the loops). The springs' character stays MODE's; the size and the darkness come from DEC and TONE alone, the same at either end of MODE. Send mix, VOL 64, input -12 dB; the stock reverb at the same DEC and LPF next to them."
+r sp_mode_size sp_mz_0_small "MODE 0, short and bright" "Taut springs, little drip, in a short bright tank: DEC 24, TONE 127." $SP -i $D/pluck.wav -p MODE=0 -p DEC=24 -p TONE=127
+r sp_mode_size sp_mz_0_big "MODE 0, long and dark" "Taut springs, little drip, in a long dark tank: DEC 112, TONE 24." $SP -i $D/pluck.wav -p MODE=0 -p DEC=112 -p TONE=24
+r sp_mode_size sp_mz_127_small "MODE 127, short and bright" "Slack springs, the deepest drip, short and bright: DEC 24, TONE 127." $SP -i $D/pluck.wav -p MODE=127 -p DEC=24 -p TONE=127
+r sp_mode_size sp_mz_127_big "MODE 127, long and dark" "Slack springs, the deepest drip, long and dark: DEC 112, TONE 24." $SP -i $D/pluck.wav -p MODE=127 -p DEC=112 -p TONE=24
 
 echo "manifest: $M"

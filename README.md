@@ -1,146 +1,173 @@
-# Elektron-CFW
+<p align="center">
+  <img src="docs/identity/mark.svg" width="72" height="72" alt="">
+  &nbsp;&nbsp;
+  <img src="docs/identity/wordmark.svg" width="360" height="72" alt="DIGIWERK">
+</p>
 
-Custom firmware research for the **Elektron Digitone II**, OS 1.12. This is my lab notebook, made public: the notes, the tools, and the new effects I'm building for my own unit.
+**Digiwerk** is custom firmware for the Elektron Digitone II, for OS 1.12. It adds a 3-band master compressor, a
+flanger that reaches from a phaser-like sweep to a chorus and can follow the tempo, and LFO waves that play looping
+random melodies, which can change as they repeat. Overbridge connects to it as it does to Elektron's OS. You make it
+yourself: Digiwerk Patcher turns Elektron's own OS 1.12 file into a Digiwerk build on your Mac, and you send that build
+to the Digitone with Elektron Transfer. No Elektron firmware is shared here.
 
-The goals: swap the send effects for new ones (a tape delay, a flanger, a better reverb), a 3-band master compressor, the arpeggiator on MIDI tracks, more MIDI and synth voices, and a CPU meter. The plan and the state of each task are in [`ROADMAP.md`](ROADMAP.md).
+Digiwerk is part of the [Modwerk](https://modwerk.app) effort, the community hub for Elektron firmware mods.
 
-**No Elektron firmware is stored here.** You download the OS file from Elektron yourself, and the tools check its sha256 before using it. Every build happens on your own machine.
+**Not made or supported by Elektron.**
 
-## Latest: CMP4, a stable base (2026-10-22)
+- [What's in it](#whats-in-it)
+- [Install](#install)
+- [Going back, and recovery](#going-back-and-recovery)
+- [Safety](#safety)
+- [Compatibility](#compatibility)
+- [Known limitations](#known-limitations)
+- [Credits](#credits) and [licence](#licence)
+- For developers: [docs/DEVELOPERS.md](docs/DEVELOPERS.md)
 
-**CMP4** runs on my unit and is the base for a first release. It is CMP3's 3-band compressor and flanger, with Elektron's own delay back in the delay slot, band meters that move like the stock meter, and two small kit-saving fixes.
+## What's in it
 
-**The Space Echo is parked, and it taught me a rule.** SC01 merged the Space Echo with CMP3. The echo and the compressor together didn't fit in the memory where my code had run on the unit, so I put the echo's knob code where Elektron's unused delay code used to be. On the unit the DSP stopped when I turned echo knobs, and sometimes while it sat idle. In the simulator, 74 minutes of the same situations gave no fault at all. It's the same kind of failure as CMP2's: code that is fine in the simulator stops the chip in a place where none of my code has run before. So the rule now is: my DSP code goes only where my code has already run on the unit, the build refuses anything else, and a new place gets tested with a small probe build first. Without the echo's new places the three effects are 13 KB too big, so the echo waits until a probe proves more memory. Write-ups: [`notes/SC01.md`](notes/SC01.md), [`notes/SC01-soak.md`](notes/SC01-soak.md), [`notes/SC02-plan.md`](notes/SC02-plan.md), [`notes/T6.3-cmp4.md`](notes/T6.3-cmp4.md).
+Every Digiwerk build is **the base plus one pack**. The base is a set of small changes to the main OS, the same in
+every build. A pack is a set of effects for the sound engine (the DSP). Effects take DSP memory, so each build carries
+one pack, and you choose it in the patcher.
 
-**Next, before a release:** fix Overbridge (it refuses my builds as an "incompatible OS version"), retune the flanger so it reaches further into chorus and phaser-like sounds within the same memory and DSP load, and a simple terminal patcher for macOS that walks you through getting Elektron's 1.12 file and builds the firmware from it.
+### The base, in every build
 
-## Earlier: the 3-band compressor is done (2026-10-21)
+| | | |
+|---|---|---|
+| <img src="docs/identity/djvu.svg" width="104" alt="DJVU icon"> | **DJVU**<br>Déjà vu LFO | Nine new LFO waves after RAND. **DV-F** is a loop of random values. **DV-T** is the same loop, started again from its first value by every trig with LFO.T on. **PMAJ PMIN HIRA WTON DORI LYDI OCTA** play the DV-F loop, and when DEST is the machine's tuning they snap it to a scale: major and minor pentatonic, hirajoshi, whole-tone, dorian, lydian, octatonic. On these waves **MODE** (G) sets the loop's length (FREE 2, TRIG 4, HOLD 8, ONE 16, HALF 32 values) and **SPH** (F) how much it changes: 0 gives a new value at every step, 64 repeats the loop exactly, above 64 values swap places, and 127 swaps at every step. SPD, MULT, FADE and DEP work as always. |
+| | **Overbridge fix** | Overbridge refused custom builds with "incompatible OS version". Digiwerk tells the computer it runs OS 1.12, so Overbridge connects as with Elektron's OS. The power-on screen still shows the build's name, for example **DJ01**. |
 
-**CMP3** runs on my unit: three compressor bands with their own pages, knobs, meters and dry/wet, saved with each kit.
-- **Every band knob acts on its band** (THR, RAT, ATK, REL, MUP, the two crossovers), sent from the main OS to the DSP in spare words at the end of the frame it sends every 0.67 ms.
-- **A MIX per band** on knob H. Each band's dry part stays in phase with the others, so one band wet and two dry doesn't smear the sound.
-- **Saved per kit**, in 56 bytes of the kit's effect record that the stock OS never reads or writes. A stock OS loads and re-saves these kits unchanged. Kits from before CMP3 open as one full-band compressor with their old settings.
-- **Gain-reduction meters** per band, in dB.
+### Pack: Compressor + Flanger
 
-**A crash only the chip could show.** CMP2 (band knobs live) stopped the DSP for good whenever LOW makeup changed, and the simulator never reproduced it. Three diagnostic builds found it:
-- **CP2D**, a load meter from the DSP's own cycle counter: the real load is about 50-60 %, far below my instruction-count estimate, so it wasn't CPU.
-- **CP2E**, a heartbeat, a "last step reached" marker and a probe switch: the DSP stopped inside the code that applies the LOW makeup value, and only when that code ran. That code is identical to the MID and HIGH versions except for its address.
-- **CP2F** moved it, and filled the old spot and every other free region with a known pattern that the DSP keeps checking. No crash since, and nothing ever wrote to that memory. So code placed in one stretch of L1 block 2 (`0x315f8c-0x318000`) fails on the chip, for reasons I don't know yet. The build now refuses to put anything there.
+The build **DJ01**. Played on a Digitone II on 24 Oct 2026.
 
-Write-ups: [`notes/T6.3-cmp2d.md`](notes/T6.3-cmp2d.md), [`notes/T6.3-cmp2e.md`](notes/T6.3-cmp2e.md), [`notes/T6.3-cmp2f.md`](notes/T6.3-cmp2f.md), [`notes/T6.3-cmp3.md`](notes/T6.3-cmp3.md), and the storage review [`notes/T6.3-cmp3-review.md`](notes/T6.3-cmp3-review.md).
+| | | |
+|---|---|---|
+| <img src="docs/identity/cmp3.svg" width="104" alt="CMP3 icon"> | **CMP3**<br>3-band master compressor | Elektron's master compressor, split into three bands at two crossovers. Each band follows the stock compressor's design (its detector, curve, attack and release, makeup). The MIXER has a page per band, **Compressor Low, Mid and High**: A **THR**, B **ATK**, C **REL**, D **MUP**, E **RAT** (1.00 turns the band off, then the stock ratios 1.50 to 20.00), F the crossover (**Low/Mid** 30 Hz to 1 kHz on the LOW page, **Mid/High** 1 to 16 kHz on the MID page), G **SCS**, the sidechain source shared by the bands, and H the band's own **MIX** (dry/wet). Each page has a meter for its band's gain reduction. The knobs use the stock compressor's pictures (the crossovers a plain dial). The settings are saved with the kit. A new kit starts with every MIX at 0, so you hear no compression until you raise one. |
+| <img src="docs/identity/flng.svg" width="104" alt="FLNG icon"> | **FLNG**<br>flanger | In the chorus slot, on the Flanger page. A **DPTH** sweep depth, B **SPD** sweep speed, C **TIME** the delay the sweep moves around, D **WDTH** the angle between the left and right sweeps (0 to 180 degrees). TIME sets the character: near 0 a subtle, phaser-like sweep, around 32 the classic flanger (a new kit's default), and from 64 up the feedback fades out and the sweep narrows until, by 100 to 127, FLNG is a chorus. For a flanger, keep TIME in the lower half. **FUNC + turn on SPD** steps through speeds in time with the tempo, from one sweep in 16 bars (16/1) to 1/32, as FUNC + turn does on the delay's TIME. Turning SPD without FUNC gives a free speed again. |
 
-## Earlier: a 3-band master compressor on the Digitone II (2026-10-14)
+The delay and the reverb are Elektron's own.
 
-The stock master compressor is now three compressors, each following Elektron's own design (same detector, curve, attack/release laws and makeup), split at two crossovers and summed back. It runs on the unit:
-- **CMP0** puts the three bands on the DSP, driven by the stock Compressor knobs. One band matches Elektron's compressor within 0.001 dB; at MIX 0 the output is bit-identical to the build before it. A guard catches NaN/inf so the master can never latch silent.
-- **CMP1** replaces the Compressor page with three pages, Compressor Low, Mid and High, each with its own gain-reduction meter, read from spare words the DSP sends back to the main OS. The band knobs are on screen; making them act (CMP2) and saving them per kit (CMP3) are next.
+<details>
+<summary>Starting points for the flanger</summary>
 
-How the stock compressor works, the plan and the evidence: [`notes/T6.4-compressor-map-and-plan.md`](notes/T6.4-compressor-map-and-plan.md), [`notes/T6.3-cmp0.md`](notes/T6.3-cmp0.md), [`notes/T6.3-cmp1.md`](notes/T6.3-cmp1.md).
+| sound | DPTH | SPD | TIME | WDTH |
+|---|---:|---:|---:|---:|
+| phaser-like | 45 | 50 | 8 | 64 |
+| jet | 100 | 30 | 20 | 48 |
+| flanger | 96 | 30 | 32 | 48 |
+| long flanger | 70 | 40 | 56 | 90 |
+| flange-chorus | 60 | 60 | 82 | 100 |
+| chorus | 50 | 70 | 110 | 127 |
+| wide chorus | 100 | 80 | 127 | 127 |
 
-## Earlier: the parameter table grows on 1.12 (2026-10-13)
+</details>
 
-Every knob on the Digitone II is a row in one table inside the OS: 321 rows on 1.12, with no room after them. GT00 copies the table at start-up into free memory with room for 384 rows, and GT01 adds 17 hidden rows for the 3-band compressor. On my unit, GT00 starts from cold and saves and loads projects as before, and GT01 has run without problems. Projects store values by slot, never by row, so moving the table doesn't change how they are saved. New rows are safe for projects only if they follow a few rules, listed in the write-up. dn2_firmware_explore did this first, on 1.11, for their LFO4 mod; ours is for 1.12, as an elekloader mod other mods add rows to. How it works, what ran where, and the rules: [`docs/parameter-table-growth.md`](docs/parameter-table-growth.md).
+### Later
 
-## Where things stand (2026-10-22)
+A spring reverb (SPNG) and a tape echo (TAPE) are in the works, each for a pack of its own.
 
-**On the unit.** Sixteen builds have run on real hardware:
-- **EF01**, stock 1.12 with only its name changed and the seal redone. That proved our rebuild, seal and flash path.
-- **FLG1**, our flanger in place of the stock chorus. Our first new code on the Digitone II's DSP: the C in [`fx/flanger.c`](fx/flanger.c), compiled with selcc and spliced into the DSP section by [`tools/dspsplice`](tools/dspsplice). It plays on the stock chorus page's knobs (depth, speed, high-pass, width).
-- **FTD1**, FLG1 plus our one-head tape delay in place of the stock delay (resonant loop filters, wow and flutter, wear, and tape-style pitch bends when TIME changes).
-- **DH01**, our core (the hook bus every screen and MIDI mod runs through) with a small MIDI test mod.
-- **FTN1**, FTD1 with the screens renamed to match: Flanger and Tape on the effect pages, the sends and the mixer.
-- **GT00**, FTN1 with Elektron's parameter table moved at start-up into free memory, with room for 63 more knobs. Saving and loading projects works as before.
-- **GT01**, GT00 with the table grown by 17 rows (still hidden) for the compressor. dn2_firmware_explore grew it first, on 1.11, for their LFO4.
-- **CMP0**, GT01 with the 3-band master compressor on the DSP, on the stock Compressor knobs.
-- **CMP1**, CMP0 with the three band pages and their meters.
-- **CMP2**, the band knobs live. It had the LOW makeup crash above.
-- **CP2D, CP2E, CP2F**, the diagnostic builds that found and fixed it (CP2F is CMP2 fixed).
-- **CMP3**, the finished compressor: band settings saved per kit, a MIX per band, meters in dB.
-- **SC01**, CMP3 with the Space Echo in place of the tape delay. The DSP stopped on echo knob turns and sometimes while idle (above).
-- **CMP4**, CMP3 with the stock delay back, breathing meters and two kit-saving fixes. The stable base.
+## Install
 
-**In the ColdFire emulator** (digikit, with our changes on [a branch of our fork](https://github.com/naturarum/digikit/tree/dn2-1.12)):
-- 1.12 boots to the main screen.
-- PLAY runs the sequencer at the project's tempo. It needs the audio clock and the interrupts the firmware forces on itself.
-- DIN MIDI in and out works, including virtual MIDI ports on a Mac.
-- The trig and key LEDs are drawn.
-- Live play from the computer keyboard runs at about 0.8x real time.
+You need a Digitone II, a Mac with macOS 13 or later, a USB cable and Elektron Transfer.
 
-**On the DSP side:**
-- [`tools/sharcvm`](tools/sharcvm) is an interpreter for the Digitone II's SHARC+ DSP code. It renders the stock chorus, delay, reverb and master compressor offline, and the whole per-block DSP handler. It is checked against 2,039 test programs compiled with selache.
-- [`fx/`](fx) holds the new effects, in portable C: a one-head tape delay (resonant filters in the loop, wow and flutter, AGE, width), a Space Echo style three-head echo (parked, see above), a 3-band compressor (each band follows the stock compressor's design), and a flanger/comb with damped feedback.
-  - The SHARC build gives the same output as the Mac build.
-  - An A/B page compares each effect with the stock one running in the emulator.
+1. **Back up** your projects and the +Drive with Elektron Transfer.
+2. **Download Digiwerk Patcher** from [Releases](https://github.com/naturarum/dn2-cfw/releases), double-click the .zip
+   and open the app. Apple has
+   checked it (it's notarized). The first time, macOS asks whether to open an app from the internet: click **Open**.
+3. **Get Elektron's OS 1.12.** On [Elektron's download page](https://elektron.se/support-downloads/digitone-ii),
+   download **Digitone II OS 1.12**. It arrives as `Digitone_II_OS1.12_dist.zip`. You don't need to unzip it.
+4. **Choose a pack and drop the file.** Click the pack's card in the patcher, then drop the .zip on the window. The
+   patcher checks that it's Elektron's original file, makes the build and saves it next to the .zip, for example
+   `DJ01.syx`.
+5. **Send it to the Digitone.** Connect it over USB, open Transfer, drag `DJ01.syx` onto **Drop files here**, answer
+   **YES** on the Digitone and wait for **SUCCESS! REBOOTING**. The power-on screen shows **DJ01** at the top right.
 
-**Safety:**
-- [`tools/brickcheck`](tools/brickcheck) runs 12 checks, and every candidate must pass before it may be flashed.
-- The STARTUP-menu recovery over DIN MIDI was tested on the unit.
-- An audit of the code that writes flash, and a proof that the STARTUP menu doesn't depend on the main OS (`notes/T1.4*`, `notes/T1.5*`).
+Keep the volume down the first time a new build plays.
 
-**Next:** the release: the Overbridge fix, the flanger retune and the macOS patcher (above). After that, a probe build to test new DSP memory, which the Space Echo, a spring reverb and anything bigger need.
+If you'd rather use Terminal, `digiwerk-patch` (on the same page) does the same. The full guide, with
+what every message means: [tools/patcher/README.md](tools/patcher/README.md).
 
-**Tooling lesson (2026-10-18):** the DSP simulator leaked about 9.6 MB per test run, and a long parallel test froze my Mac. It's fixed (`tools/sharcvm/vm.py`), test workers now stop themselves at 2 GB ([`tools/sharcvm/memguard.py`](tools/sharcvm/memguard.py)), and [`tools/memwatch.py`](tools/memwatch.py) guards unattended runs.
+## Going back, and recovery
 
-## What's where
+- **Back to Elektron's OS:** send Elektron's `Digitone_II_OS1.12.syx` (it's inside the .zip) with Transfer, the same
+  way.
+- **If the Digitone doesn't start:** hold **FUNC** while you switch it on. The STARTUP menu appears. Press **TRIG 4**
+  (OS UPGRADE). In Transfer, use **LEGACY OS UPGRADE mode** and send Elektron's `Digitone_II_OS1.12.syx` over a
+  **DIN MIDI** cable (you need a MIDI interface with a DIN out). USB doesn't work in the STARTUP menu. It takes about
+  13 minutes. We tested this on our own unit.
+- The STARTUP menu lives in the bootstrap, a part of the Digitone that Digiwerk never changes.
 
-| path | what |
-|---|---|
-| [`ROADMAP.md`](ROADMAP.md) | goals, milestones, tasks (T0.1 ...), who did what |
-| [`HANDOFF.md`](HANDOFF.md) | the running log, oldest first. Later entries supersede earlier ones |
-| [`notes/`](notes) | one report per task, with addresses. Claims are marked **[verified]** (measured, or checked against the bytes) or **[inferred]** |
-| [`tools/brickcheck`](tools/brickcheck) | the safety gate for candidate firmware |
-| [`tools/sharcvm`](tools/sharcvm) | the SHARC+ interpreter and offline effect renderer |
-| [`fx/`](fx) | the new effects, a renderer for 48 kHz WAV files, tests, the A/B page builder |
-| [`scripts/`](scripts) | the scripts behind each task's findings (named after the task: `t24b_*`, `t60_*` ...) |
-| [`analysis/`](analysis) | the class hierarchy recovered from the OS's RTTI |
-| [`VENDOR.md`](VENDOR.md) | the upstream projects this builds on, with the commits used |
-| [`FIRMWARE.md`](FIRMWARE.md) | which Elektron firmware files were used, by sha256 |
+## Safety
 
-## Getting started
+Custom firmware is at your own risk. This is what we do to keep that risk low:
 
-Everything runs on macOS (Apple silicon). Linux should work for most of it.
+- **A brick checker with 12 checks.** Every build must pass all twelve before it goes into the patcher. Among other
+  things: only the main OS and the DSP program differ from Elektron's file, and everything else, including the
+  bootstrap that holds the STARTUP menu, is Elektron's, byte for byte; the Digitone's own code accepts the build's
+  seal and unpacks exactly the intended OS; the build starts up to the main screen in an emulator without writing to
+  the flash; the STARTUP menu is still reachable; the DSP program runs in a simulator without a fault; the OS's
+  updater writes only where it should. The details:
+  [tools/brickcheck/README.md](tools/brickcheck/README.md).
+- **Played on a real Digitone II.** Every pack ran on our unit before release.
+- **The patcher writes only tested builds.** It checks that your file is Elektron's original OS 1.12, by its sha256.
+  It saves a build only if the result is, byte for byte, the build we tested. Otherwise it saves nothing.
+- **No Elektron firmware is distributed.** The patcher holds our changes and instructions like "copy these bytes from
+  your file". A check makes sure no 16-byte run from Elektron's file is in it.
 
-1. Put Elektron's `Digitone_II_OS1_12.syx` into `elektron-firmware/`.
-2. Clone the upstream projects into `vendor/`, as listed in [`VENDOR.md`](VENDOR.md). For digikit and elekloader use our forks on the branch `dn2-1.12`:
-   - [naturarum/digikit](https://github.com/naturarum/digikit/tree/dn2-1.12) has 1.12 support, the audio clock, DIN MIDI, LEDs and live play.
-   - [naturarum/elekloader](https://github.com/naturarum/elekloader/tree/dn2-1.12) has the Digitone II 1.12 profile and the core-dn2 hook bus.
-3. Make a Python venv: `python3 -m venv venv`, then `venv/bin/pip install` what a tool's header asks for.
-4. Then, for example:
-   - `scripts/dn2-emu-112.sh all` boots 1.12 in the emulator.
-   - `scripts/dn2-live.sh --ssi0-hz --ips 150e6` opens a window you play from the keyboard. Press `?` for the key map.
-   - `cd fx && make test && make renders && make listen` runs the effects workbench.
-   - `tools/brickcheck/brickcheck CANDIDATE.syx` checks a build.
+## Compatibility
 
-## If you flash anything
+- **Digitone II on OS 1.12 only.** The patcher refuses any other file.
+- **Projects and kits** stay in Elektron's format. Digiwerk's settings live in the kit's existing values and in
+  spare bytes the stock OS doesn't use.
+- **A kit saved on Digiwerk, opened on Elektron's OS 1.12:**
+  - Déjà vu waves play as RAND and show "ERR". The value stays in the kit, so back on Digiwerk the wave comes back.
+  - The stock OS ignores the compressor's band settings and plays Elektron's one-band compressor with the kit's hidden
+    stock compressor settings, which Digiwerk leaves as they were. A project save on the stock OS keeps the band
+    settings. A Save Kit, a +Drive library save or an export on the stock OS drops them, and back on Digiwerk that
+    kit opens as an older kit does (below).
+  - The stock OS plays Elektron's chorus with the flanger's four values: TIME is the chorus's HPF again.
+- **A kit from Elektron's OS, opened on Digiwerk:**
+  - The compressor opens as one full-band compressor with the kit's old settings (crossovers at 30 Hz and 16 kHz). In
+    our tests that sounds within about a dB of the stock compressor.
+  - The chorus values drive the flanger. HPF at its default 0 becomes TIME 0, the shortest, phaser-like end: set TIME
+    to 32 for the classic flanger. WDTH 127, the default, sweeps the two sides 180 degrees apart.
+- **Overbridge** connects as with OS 1.12. **Transfer** works as usual: every build was sent to our unit with it.
+- **MIDI:** CC 106 (LFO 1 WAVE) values 7 to 15 pick the new waves, and 16 and up give OCTA (on stock they give RAND).
+- **dn2_firmware_explore's lfowaves mod** (OS 1.11) uses the same WAVE values for other waves, so a project made with
+  one doesn't carry over to the other.
 
-Anything you flash is at your own risk. What we know about the risks:
-- **A broken main OS or DSP program can be recovered.** Hold FUNC at power-on, press TRIG 4 (OS UPGRADE), and send the stock OS over DIN MIDI. Tested on my unit.
-- **The bootstrap must never change.** It holds that recovery menu. Our builds keep it byte-identical, and the brick checker refuses any change to it.
-- **Back up your +Drive with Transfer before you flash.** And keep the volume down the first time a new DSP build plays.
+## Known limitations
 
-## How this is made
-
-This project is a collaboration between me and Claude, Anthropic's AI model, working in Claude Code.
-- **My part:** I set the goals, make the musical and design decisions, and do everything that touches the hardware: flashing, recording, listening.
-- **Claude's part:** most of the reverse engineering, the tools, the code and the notes.
-
-Claims in the notes are marked as verified or inferred, nothing is flashed without passing the brick checker, and nothing counts as working until it has run on my unit.
+- **The Overbridge plugin knows only Elektron's names and ranges.** It offers LFO WAVE only up to RAND (don't
+  automate WAVE from the plugin on a track that uses a new wave). It most likely calls the flanger's TIME "HPF" and
+  shows a synced flanger speed as a plain number. The compressor's band knobs haven't been tried with the plugin.
+- **Flanger:** in sync, the sweep follows the tempo but doesn't restart at the bar. The picture above TIME is still
+  the stock HPF curve.
+- **Déjà vu:** the loops aren't saved. WAVE, MODE and SPH are, and p-locks on WAVE work, but each power-on makes a new
+  melody. On FM TONE's PITCH and WAVETONE's MAST, the scale snapping assumes semitones; that isn't checked on a unit
+  yet.
+- **Compressor:** the band knobs can't be p-locked (the stock compressor's can't either) and have no MIDI CC. The
+  stock compressor's CCs for THR, ATK, REL, MUP, RAT and MIX (111 to 115, 118) now change only its hidden settings.
+  The meters show the band's gain reduction before its MIX and makeup.
+- **One pack per build.** The patcher runs on macOS only for now.
 
 ## Credits
 
-This builds on other people's work:
-- [digikit](https://github.com/m-dwyer/digikit) by m-dwyer: the ColdFire emulator and the SHARC+ analysis tools.
-- [elekloader](https://github.com/irpina/elekloader) by irpina: the mod loader and its core and hook model.
-- [selache](https://github.com/js216/selache) by js216: the SHARC+ C compiler and toolchain.
-- [elektron-firmware-tool](https://github.com/mischa85/elektron-firmware-tool) by mischa85: the `.syx` format and rebuild.
-- [octabam](https://github.com/sambanks/octabam) by sambanks: the template for the overall approach.
-- [dn2_firmware_explore](https://github.com/angellinares/dn2_firmware_explore) by angellinares: their Digitone II 1.11 research, which much of our DSP and UI work builds on (the splice method, the DSP memory and cache map, the page records, and more; listed per task in [`NOTICE`](NOTICE)).
-- The community around [modwerk](https://modwerk.app).
+Digiwerk builds on other people's work: [elekloader](https://github.com/irpina/elekloader) (irpina),
+[digikit](https://github.com/m-dwyer/digikit) (Em D, now ElekLabs), [selache](https://github.com/js216/selache)
+(Jakob Kastelic), [elektron-firmware-tool](https://github.com/mischa85/elektron-firmware-tool) (Marcel Bierling),
+[octabam](https://github.com/sambanks/octabam) (Sam Banks), and the findings of
+[dn2_firmware_explore](https://github.com/angellinares/dn2_firmware_explore) (angellinares). The Déjà vu LFO follows
+Kári Garðarsson's design for the Digitakt II, after Bezronczek's Syntakt Firmware Workbench and the déjà vu of Émilie
+Gillet's Marbles. Everyone, with licences and what we use: [CREDITS.md](CREDITS.md). Code adapted from other projects
+is listed in [NOTICE](NOTICE).
 
-Where a note uses someone else's finding, it says so. Code adapted from other projects is listed in [`NOTICE`](NOTICE) and named in each file's header.
+Digiwerk is made by naturarum with Claude, Anthropic's AI model, in Claude Code. How we work:
+[docs/DEVELOPERS.md](docs/DEVELOPERS.md#how-this-is-made).
 
 ## Licence
 
-GPL-2.0-or-later, Copyright (C) 2026 naturarum and contributors. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+GPL-2.0-or-later, Copyright (C) 2026 naturarum and contributors. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
-Elektron and Digitone are trademarks of Elektron Music Machines. This project is not affiliated with or endorsed by Elektron.
+Elektron and Digitone are trademarks of Elektron Music Machines. Digiwerk is not made or supported by Elektron, and
+not affiliated with or endorsed by it.

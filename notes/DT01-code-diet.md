@@ -39,7 +39,7 @@ FL02 59,724 B -> DT01 **53,254 B (-6,470 B, -10.8 %)**: block 1 17,966 -> 15,538
 a function 854, `SE_UNDENORM` and one loop in `se_control` 416, `se_mix_targets` through a pointer per head 442,
 `se_control`'s per-head loops on locals 268. A TAPE build would also drop its five API functions (696) and share 13
 helper copies (1,992; `fx_svf_coef` from the compressor). `se_glue.c` unchanged (its fields are before the echo).
-Checks: all 139 A/B renders (47 Space Echo) bit for bit before and after (`make renders`' commands, both builds);
+Checks: all 139 A/B renders (47 TAPE) bit for bit before and after (`make renders`' commands, both builds);
 fxtest 817 checks, 0 failed; fxcheck (sharcvm) on 5 settings incl. every PAN mode, AGE 127, FDBK 127 and knob moves:
 the selcc output and the Mac output each bit for bit as before (selcc and the Mac differ where selcc's division does,
 as before, notes/T5.3); instructions per block -12..+17 mean, at most +49 worst (of 66,812).

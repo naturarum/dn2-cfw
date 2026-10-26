@@ -52,7 +52,7 @@ same way [verified, `g.c`]. Savings, cumulative, sizes from the build's function
 
 Tried and dropped: the head read as a called function (`se_run` -794, the function +1,012: net +218 B); the tape
 glide inside the head loop (no gain). **The diet's three code changes give the same output**: on the Mac, all 47
-Space Echo renders bit for bit [verified]; in sharcvm against SC01's image, section 6.
+TAPE renders bit for bit [verified]; in sharcvm against SC01's image, section 6.
 
 After the subtotal 7,302 B are still missing (5,986 B with the head loop, 4,928 B with crackle gone instead). They would need a rewrite of the echo's
 control code for selcc (values kept in locals: `se_control` 8.5 KB, `spaceecho_init` + `_snap` + `se_init` 3.8 KB,

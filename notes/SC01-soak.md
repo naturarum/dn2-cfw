@@ -3,7 +3,7 @@
 The owner's SC01 report (2026-10-21): the DSP stops (no sound, the UI and the sequencer run on, as the CMP2 stop) when
 an Echo knob is turned, notably CNTR/BW, once while touching FDBK, and at random while the unit is left alone. SC01's
 proofs (notes/SC01.md 3) ran 2 s per case (3,000 blocks), too short for anything rare. This soak runs SC01's built DSP
-image for minutes per recipe, to tell whether our code itself (the Space Echo, the compressor, the glue) can stop,
+image for minutes per recipe, to tell whether our code itself (the tape echo, the compressor, the glue) can stop,
 trap, loop or blow up, independent of where it sits in memory.
 
 ## 1. Method

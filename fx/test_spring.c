@@ -354,28 +354,27 @@ static void test_spring_mode(void)
     float *x = fbuf(N), *yl = fbuf(N), *yr = fbuf(N), *a[3];
     Spring *s = malloc(sizeof *s), *s2 = malloc(sizeof *s2);
     float v[SP_NMODE], w[SP_NMODE];
-    static const float anch[5] = { 0, 64, 85, 106, 127 };
+    static const float anch[3] = { 0, 64, 127 };
     long i;
     int k, j, bad = 0, nonmono = 0;
     uint32_t r = 99u;
     printf("spring: MODE\n");
-    for (k = 0; k < 5; k++) {
+    for (k = 0; k < 3; k++) {
         spring_mode_map(anch[k], v);
         for (j = 0; j < SP_NMODE; j++) if (v[j] != SP_MV[k * SP_NMODE + j]) bad++;
     }
     CHECK(bad == 0, "MODE map: %d values off at the anchors", bad);
-    /* decay and darkness rise, tension falls, all the way */
+    /* the drip and the spread rise, the tension falls (the round trips lengthen), all the way */
     spring_mode_map(0, w);
     for (k = 1; k <= 254; k++) {
         spring_mode_map(0.5f * (float)k, v);
-        if (v[0] < w[0] || v[4] > w[4] || v[5] > w[5] || v[6] < w[6]) nonmono++;
+        if (v[0] < w[0] || v[1] > w[1] || v[2] < w[2]) nonmono++;
         memcpy(w, v, sizeof v);
     }
-    CHECK(nonmono == 0, "MODE map: DEC, TONE, TENS or the spread not monotonic at %d steps", nonmono);
+    CHECK(nonmono == 0, "MODE map: DRIP, TENS or the spread not monotonic at %d steps", nonmono);
     for (k = 0; k <= 127; k += 16) {
         spring_mode_map((float)k, v);
-        printf("  MODE %3d: DEC %5.1f DRIP %5.1f DWEL %5.1f HPF %4.1f TONE %5.1f TENS %5.1f spread %.3f\n",
-               k, v[0], v[1], v[2], v[3], v[4], v[5], v[6]);
+        printf("  MODE %3d: DRIP %5.1f TENS %5.1f (%4.1f ms) spread %.3f\n", k, v[0], v[1], spring_tens_ms(v[1]), v[2]);
     }
     /* MODE 64 is the init patch, bit for bit */
     for (i = 0; i < N; i++) x[i] = (i % 24000) < 4800 ? 0.3f * fx_rands(&r) : 0.0f;
@@ -389,18 +388,33 @@ static void test_spring_mode(void)
     sp_run(s, x, a[1], a[1] + N, N);
     CHECK(!memcmp(a[0], a[1], sizeof(float) * 2 * N), "MODE 64 differs from the init patch");
     printf("  MODE 64 against the init patch: %s\n", memcmp(a[0], a[1], sizeof(float) * 2 * N) ? "DIFFERS" : "bit-identical");
-    /* the trims: MODE 127 (TONE 24 in its character) with TONE 127 is TONE 24 without MODE; TONE 0 stays at 0 */
-    spring_init(s); spring_set(s, SP_MODE, 127); spring_snap(s);
-    spring_init(s2); spring_set(s2, SP_TONE, 24); spring_set(s2, SP_DEC, 112); spring_set(s2, SP_TENS, 28); spring_snap(s2);
-    CHECK(s->tgt[SP_TONE] == s2->tgt[SP_TONE] && s->tgt[SP_DEC] == s2->tgt[SP_DEC] && s->tgt[SP_TENS] == s2->tgt[SP_TENS],
-          "MODE 127: targets TONE %g/%g DEC %g/%g TENS %g/%g", s->tgt[SP_TONE], s2->tgt[SP_TONE], s->tgt[SP_DEC], s2->tgt[SP_DEC],
-          s->tgt[SP_TENS], s2->tgt[SP_TENS]);
-    spring_set(s, SP_TONE, 0); spring_set(s2, SP_TONE, 0); spring_snap(s); spring_snap(s2);
-    CHECK(s->tgt[SP_TONE] == s2->tgt[SP_TONE], "MODE 127, TONE 0: %g, not the darkest %g", s->tgt[SP_TONE], s2->tgt[SP_TONE]);
+    /* character only: at every MODE, PRE, DEC, DWEL, HPF, TONE and WDTH give the targets they give without MODE,
+       and MODE 127 is DRIP 127 and TENS 16 */
+    {
+        static const float kv[6][7] = { { 0, 0, 0, 0, 0, 0, 0 }, { 127, 127, 127, 127, 127, 127, 127 },
+                                        { 40, 24, 100, 50, 24, 96, 0 }, { 100, 112, 20, 0, 110, 10, 0 },
+                                        { 64, 64, 64, 0, 127, 96, 0 }, { 13.7f, 87.2f, 3.3f, 99.9f, 61.5f, 30, 0 } };
+        static const int kp[6] = { SP_PREDLY, SP_DEC, SP_DWEL, SP_HPF, SP_TONE, SP_WDTH, -1 };
+        int nd = 0, m;
+        for (m = 0; m <= 127; m += 9) {
+            for (k = 0; k < 6; k++) {
+                spring_init(s); spring_init(s2);
+                spring_set(s, SP_MODE, (float)m);
+                for (j = 0; j < 6; j++) { spring_set(s, kp[j], kv[k][j]); spring_set(s2, kp[j], kv[k][j]); }
+                spring_snap(s); spring_snap(s2);
+                for (j = 0; j < 6; j++) if (s->tgt[kp[j]] != s2->tgt[kp[j]]) nd++;
+            }
+        }
+        CHECK(nd == 0, "MODE moved %d targets of PRE, DEC, DWEL, HPF, TONE or WDTH", nd);
+        spring_init(s); spring_set(s, SP_MODE, 127); spring_snap(s);
+        spring_init(s2); spring_set(s2, SP_DRIP, 127); spring_set(s2, SP_TENS, 16); spring_snap(s2);
+        CHECK(s->tgt[SP_DRIP] == s2->tgt[SP_DRIP] && s->tgt[SP_TENS] == s2->tgt[SP_TENS] && s->spr == 1.2f,
+              "MODE 127: DRIP %g/%g TENS %g/%g spread %g", s->tgt[SP_DRIP], s2->tgt[SP_DRIP], s->tgt[SP_TENS], s2->tgt[SP_TENS], s->spr);
+    }
     /* a MODE sweep on a held sine: no clicks (TENS bends the pitch on the way, as its own knob does) */
     for (i = 0; i < N; i++) x[i] = 0.05f * sinf(2.0f * 3.14159265f * 500.0f * (float)i / 48000.0f);
     {
-        double c1, c2;
+        double c1, c2, c3;
         long t0;
         spring_init(s);
         spring_set(s, SP_DEC, 100);
@@ -413,8 +427,21 @@ static void test_spring_mode(void)
         }
         c1 = click_ratio(yl, 96000, 192000, 72000, 96000);
         c2 = click_ratio(yl, 240000, 264000, 72000, 96000);
-        printf("  MODE sweep 0 -> 127 over 2 s, then a jump back to 0: click ratio %.2f / %.2f\n", c1, c2);
-        CHECK(c1 < 4.0 && c2 < 4.0, "MODE: click ratio %.2f / %.2f", c1, c2);
+        /* the jump back is TENS 16 -> 110 inside: the tail bends up (the slew limit), as the same TENS jump does */
+        spring_init(s);
+        spring_set(s, SP_DEC, 100);
+        spring_set(s, SP_TENS, 16);
+        spring_set(s, SP_DRIP, 127);
+        spring_snap(s);
+        for (t0 = 0; t0 < N; t0 += 32) {
+            if (t0 == 240000) { spring_set(s, SP_TENS, 110); spring_set(s, SP_DRIP, 30); }
+            spring_process(s, x + t0, x + t0, yl + t0, yr + t0, 32);
+        }
+        c3 = click_ratio(yl, 240000, 264000, 72000, 96000);
+        printf("  MODE sweep 0 -> 127 over 2 s: click ratio %.2f; jump 127 -> 0: %.2f (the same jump on DRIP and TENS\n"
+               "  without MODE: %.2f, the bend of the round trips shortening)\n", c1, c2, c3);
+        /* MODE also moves the spread, so its springs travel further than with TENS alone: a longer bend */
+        CHECK(c1 < 2.0 && c2 < 1.5 * c3, "MODE: click ratio %.2f / %.2f (DRIP and TENS: %.2f)", c1, c2, c3);
     }
     /* cut-independence with MODE moving */
     {

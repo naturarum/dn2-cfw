@@ -253,19 +253,19 @@ def cases(seconds):
         if b % 7 == 0:
             ev[b] = [(p, rnd.choice([0.0, 127.0, rnd.random() * 127])) for p in range(NPAR)]
     out.append({"name": "moving: every knob jumping at random every 7 blocks", "knobs": {}, "events": ev})
-    # MODE: stills, stills with the trims at their ends, MODE ramping every block, MODE and the trims jumping
+    # MODE: stills, stills with the other knobs at their ends, MODE ramping every block, MODE and the others jumping
     for m in (0, 24, 48, 64, 80, 104, 127):
         out.append({"name": f"mode {m}", "knobs": {MODE: m}})
     for m in (0, 85, 127):
-        out.append({"name": f"mode {m} trims at the ends", "knobs": {MODE: m, 1: 127, 3: 127, 4: 127, 5: 0}})
-        out.append({"name": f"mode {m} trims at the other ends", "knobs": {MODE: m, 1: 0, 3: 0, 4: 0, 5: 127}})
+        out.append({"name": f"mode {m}, DEC DWEL HPF TONE at the ends", "knobs": {MODE: m, 1: 127, 3: 127, 4: 127, 5: 0}})
+        out.append({"name": f"mode {m}, DEC DWEL HPF TONE at the other ends", "knobs": {MODE: m, 1: 0, 3: 0, 4: 0, 5: 127}})
     ev = {b: [(MODE, (b * 3) % 254 / 2.0)] for b in range(1, nb)}
     out.append({"name": "moving: MODE ramping every block", "knobs": {MODE: 0}, "events": ev})
     ev = {}
     for b in range(1, nb):
         if b % 7 == 0:
             ev[b] = [(p, rnd.choice([0.0, 127.0, rnd.random() * 127])) for p in (MODE, 0, 1, 3, 4, 5, 6)]
-    out.append({"name": "moving: MODE and the trims jumping at random every 7 blocks", "knobs": {MODE: 64}, "events": ev})
+    out.append({"name": "moving: MODE and the other knobs jumping at random every 7 blocks", "knobs": {MODE: 64}, "events": ev})
     out.append({"name": "fifo: calls of 1..100 samples (selcc) = 32-sample calls (selcc)", "knobs": {1: 90, 2: 100},
                 "cut": "rand", "events": {200: [(7, 120.0)], 400: [(0, 40.0)]}})
     for c in out:

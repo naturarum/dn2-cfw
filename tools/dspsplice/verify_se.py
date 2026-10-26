@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""T5.3 proof: SE01's DSP = FTD1 with the Space Echo (fx/spaceecho.c + src/se_glue.c) in the delay slot.
+"""T5.3 proof: SE01's DSP = FTD1 with the tape echo (fx/spaceecho.c + src/se_glue.c) in the delay slot.
 
     python3 tools/dspsplice/verify_se.py [--seconds 8] [--in out/T3.11/dry/pluck.wav]
 
@@ -12,7 +12,7 @@ out/T5.3/SE01-dsp/verify.json, WAVs next to it):
   3. both slots' inputs (the send buses) are bit-identical to stock's;
   4. each slot's output against a Mac build of the same C (clang -O2, no FMA) fed the same input and,
      block by block, the same parameter floats, frame word 0xa18 and tempo the SHARC code saw; the
-     Space Echo also against fx/'s renderer at the integer knobs; four delay configurations
+     tape echo also against fx/'s renderer at the integer knobs; four delay configurations
      (the main one; an existing kit's values, clean; the RND side; every frame word moving);
   5. the glue's laws on the Mac build: AGE 0 and 1 the same (clean), WID 63/64/65 mono, the ends;
   6. sends at 0: the whole handler output is bit-identical to stock's;
@@ -77,7 +77,7 @@ def f32(x):
 
 
 def glue_knobs(dk, age_v):
-    """the Space Echo knobs se_glue.c applies for integer frame values (float32 as the C computes them)"""
+    """the tape echo knobs se_glue.c applies for integer frame values (float32 as the C computes them)"""
     d = float(dk["DEL_WID"]) - 64.0
     pan, wid = 0, 0.0
     if d < -1.0:

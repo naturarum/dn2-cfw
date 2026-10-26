@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
- * test_spaceecho.c - tests for the Space Echo (T5.2), part of fxtest: test.c includes
+ * test_spaceecho.c - tests for the tape echo (T5.2), part of fxtest: test.c includes
  * this file after its helpers (fbuf, rms, mag_db, click_ratio, sine_residual,
  * sine_delay, cut_loop, CHECK). Not built on its own.
  */
@@ -57,7 +57,7 @@ static void test_se_time(void)
     size_t c;
     int h;
     long n;
-    printf("space echo TIME: heads at 1x, 2x, 3x the head-1 time (impulse peak; 500 Hz phase for fractional delays);\n"
+    printf("tape echo TIME: heads at 1x, 2x, 3x the head-1 time (impulse peak; 500 Hz phase for fractional delays);\n"
            "  head 1 is clamped to %.0f samples (3.54 s) so head 3 fits on the tape\n", (double)SE_DMAX);
     for (c = 0; c < sizeof cases / sizeof cases[0]; c++) {
         double D = spaceecho_time_samples(cases[c].time, cases[c].bpm), want;
@@ -109,7 +109,7 @@ static void test_se_modes(void)
     const float v = se_sat_ref(0.01f);
     int m, k;
     long n;
-    printf("space echo MODE: an impulse, INTENSITY 0: echoes exactly at the selected heads (D, 2D, 3D), nothing else\n");
+    printf("tape echo MODE: an impulse, INTENSITY 0: echoes exactly at the selected heads (D, 2D, 3D), nothing else\n");
     x[0] = 0.01f;
     for (m = 0; m < 7; m++) {
         int got = 0, stray = 0, ok;
@@ -139,7 +139,7 @@ static void test_se_transparent(void)
     uint32_t r = 3u;
     long n, same = 0, bad = 0;
     double dmax = 0, sig = 0;
-    printf("space echo transparency: BW 127, AGE 0, INTENSITY 0: the echo is the input through the tape saturator,\n"
+    printf("tape echo transparency: BW 127, AGE 0, INTENSITY 0: the echo is the input through the tape saturator,\n"
            "  bit for bit; at BW 127 CENTER changes nothing even with feedback (the filter is out of the path)\n");
     for (n = 0; n < N; n++) { x[n] = 0.5f * fx_rands(&r); xr[n] = 0.5f * fx_rands(&r); }
     se_clean(s, 7, 120, 0);
@@ -199,7 +199,7 @@ static void test_se_band(void)
     float *x = fbuf(N), *yl = fbuf(N), *yr = fbuf(N);
     size_t b, c;
     int k;
-    printf("space echo band filter, one pass (first echo of an impulse, INTENSITY 0): peak, its frequency, the -3 dB\n"
+    printf("tape echo band filter, one pass (first echo of an impulse, INTENSITY 0): peak, its frequency, the -3 dB\n"
            "  width around the peak, the gain at CENTER, and the worst gain 2 octaves outside the band edges\n");
     x[0] = 0.01f;
     CHECK(fabs(spaceecho_bw_oct(0) - 0.5) < 1e-4 && fabs(spaceecho_bw_oct(127) - 20.0) < 1e-3, "BW law ends %.4f %.4f",
@@ -267,7 +267,7 @@ static void test_se_intensity(void)
     float *x = fbuf(N), *yl = fbuf(N), *yr = fbuf(N);
     long n;
     int m;
-    printf("space echo INTENSITY: echo-to-echo ratio of one head = the law; full INTENSITY with a narrow band held\n");
+    printf("tape echo INTENSITY: echo-to-echo ratio of one head = the law; full INTENSITY with a narrow band held\n");
     /* the stock FDBK law (SC01): FDBK / 64, exact; 64 = 100 %, 127 = 198 % (shared by the playing heads since SC02) */
     CHECK(spaceecho_fb(0) == 0.0f && spaceecho_fb(-3) == 0.0f && spaceecho_fb(64) == 1.0f
           && spaceecho_fb(127) == 127.0f / 64.0f && spaceecho_fb(300) == 127.0f / 64.0f && spaceecho_fb(32.5f) == 32.5f / 64.0f,
@@ -323,7 +323,7 @@ static void test_se_share(void)
     long n;
     int m;
     size_t k;
-    printf("space echo INTENSITY shared (SC02): the playing heads share FDBK/64 (each 1/n of it), so a pass is FDBK/64/n\n"
+    printf("tape echo INTENSITY shared (SC02): the playing heads share FDBK/64 (each 1/n of it), so a pass is FDBK/64/n\n"
            "  per head and FDBK 64 holds in every MODE (a 1 kHz burst at 0.01; TIME 7 at 120 BPM: D = 6000 samples)\n");
     for (m = 0; m < 7; m++) {
         printf("  MODE %d:", m + 1);
@@ -376,7 +376,7 @@ static void test_se_ceiling(void)
     long n, same = 0, under = 0, mono_bad = 0, ulp = 0;
     int p;
     float prev = 0.0f;
-    printf("space echo wet ceiling: one head, INTENSITY 0, a ramp 0..1.5 into the tape: the echo is lim(sat(input)),\n"
+    printf("tape echo wet ceiling: one head, INTENSITY 0, a ramp 0..1.5 into the tape: the echo is lim(sat(input)),\n"
            "  bit for bit, rises monotonically, and is the plain sat(input) up to the knee 0.5; then MODE 1+2+3 at\n"
            "  INTENSITY 127 (198 %%, 66 %% per head), BW 127, AGE 0, a held tone and 3 s of silence, in MONO, ALT and RND at full width\n");
     for (n = 0; n < N; n++) x[n] = 1.5f * (float)n / (float)N;
@@ -424,7 +424,7 @@ static void test_se_pan(void)
     const float v = se_sat_ref(0.01f), vh = se_sat_ref(0.005f);
     int ok;
     long n;
-    printf("space echo PAN and WIDTH: a left-only impulse (0.01)\n");
+    printf("tape echo PAN and WIDTH: a left-only impulse (0.01)\n");
     xl[0] = 0.01f;
     /* MONO, WIDTH 127: stereo as it comes; WIDTH 0: mono */
     se_clean(s, 7, 120, 0);
@@ -511,7 +511,7 @@ static void test_se_age(void)
     static const float ages[] = { 0, 32, 64, 127 };
     size_t k;
     long n;
-    printf("space echo AGE: noise (hiss + crackle) under a steady echo (AGE 0..127; wow, flutter and top loss off\n"
+    printf("tape echo AGE: noise (hiss + crackle) under a steady echo (AGE 0..127; wow, flutter and top loss off\n"
            "  for this), AGE 0 independent of every noise seed, then wow and flutter per head\n");
     for (n = 0; n < N; n++) x[n] = (float)(0.005 * sin(2 * M_PI * 1000.0 * n / 48000.0));
     for (k = 0; k < 4; k++) {
@@ -595,7 +595,7 @@ static void test_se_smoothing(void)
     size_t k;
     long i;
     double r;
-    printf("space echo smoothing: click detector after a knob jump (as for the other effects; TIME bends by design)\n");
+    printf("tape echo smoothing: click detector after a knob jump (as for the other effects; TIME bends by design)\n");
     for (i = 0; i < N; i++) {
         double fade = i < 4800 ? 0.5 - 0.5 * cos(M_PI * i / 4800.0) : 1.0;
         /* 0.1, about the loudest the unit's input reaches the delay slot (0.13): at 0.3 (until T5.3) three
@@ -638,7 +638,7 @@ static void test_se_blocks(void)
     uint32_t r = 77u;
     long i;
     int k, m;
-    printf("space echo determinism and block size (32-sample calls vs one call per segment vs random 1..100-sample calls)\n");
+    printf("tape echo determinism and block size (32-sample calls vs one call per segment vs random 1..100-sample calls)\n");
     for (i = 0; i < N; i++) x[i] = (i % 24000) < 4800 ? 0.5f * fx_rands(&r) : 0.0f;
     for (k = 0; k < 4; k++) a[k] = fbuf(2 * N);
     for (k = 0; k < 6; k++) ch[k].at = ch[k].at / 32 * 32;
@@ -672,7 +672,7 @@ static void test_se_extremes(void)
     long blk, bad = 0, i, nbad = 0;
     double peak = 0;
     int k;
-    printf("space echo fuzz: 120 s, a random knob jump every 7 blocks (INTENSITY pushed to 127 half the time), BPM jumps,\n"
+    printf("tape echo fuzz: 120 s, a random knob jump every 7 blocks (INTENSITY pushed to 127 half the time), BPM jumps,\n"
            "  loud bursts (+-4.0), then 300 s of silence; every output sample and every state float checked\n");
     spaceecho_init(s, 3u);
     for (blk = 0; blk < 120L * 1500; blk++) {
@@ -729,7 +729,7 @@ static void test_se_extremes(void)
 
 static void test_spaceecho(void)
 {
-    printf("\n---------- Space Echo (T5.2) ----------\n");
+    printf("\n---------- TAPE (T5.2) ----------\n");
     printf("sizeof(SpaceEcho) = %lu bytes; with the 44-byte glue header %lu of the stock delay's 4,194,908 bytes of DDR\n",
            (unsigned long)sizeof(SpaceEcho), (unsigned long)sizeof(SpaceEcho) + 44);
     CHECK(sizeof(SpaceEcho) + 44 <= 4194908, "SpaceEcho does not fit the stock delay's DDR: %lu", (unsigned long)sizeof(SpaceEcho));

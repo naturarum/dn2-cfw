@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""SC01 (notes/SC01.md 1.2): how often each function of the Space Echo (SE01's image) and of the 3-band compressor (CMP3's image) runs:
+"""SC01 (notes/SC01.md 1.2): how often each function of the tape echo (SE01's image) and of the 3-band compressor (CMP3's image) runs:
 instructions executed per block, by scenario (SC01 layout study: what must stay in L1, what may run from L2).
 
     python3 tools/dspsplice/sc01_profile.py out/SC01/SC01-dsp/profile.json

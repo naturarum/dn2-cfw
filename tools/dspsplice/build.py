@@ -12,11 +12,14 @@
     python3 tools/dspsplice/build.py CMP2F     # T6.3 CMP2F: CMP2E moved out of 0x315f8c-0x318000 + a memory scanner
     python3 tools/dspsplice/build.py CMP3A     # T6.3 the first CMP3 (2026-10-18, superseded; frozen sources, src/cmp3a/)
     python3 tools/dspsplice/build.py CMP3      # T6.3 CMP3's DSP: CMP3A on CP2F's layout + band GR meters in dB
-    python3 tools/dspsplice/build.py SC01      # SC01: CMP3 + the Space Echo (stock FDBK law) + breathing meters
+    python3 tools/dspsplice/build.py SC01      # SC01: CMP3 + the tape echo (stock FDBK law) + breathing meters
     python3 tools/dspsplice/build.py CMP4      # CMP4: CMP3 with the stock delay back and the breathing meters
     python3 tools/dspsplice/build.py FL01      # FL01: CMP4 with the retuned flanger glue (knob C is TIME, T5.6)
     python3 tools/dspsplice/build.py FL02      # FL02: FL01 with the flanger's speed in sync with the tempo
     python3 tools/dspsplice/build.py DT01      # DT01: FL02 on a code diet (the same sound, less code)
+    python3 tools/dspsplice/build.py DC01      # DC01: DT01 with the compiler fix (peephole.py: shorter field accesses)
+    python3 tools/dspsplice/build.py DC02      # DC02: DC01's fix in its cautious mode (stock-proven pairings only)
+    python3 tools/dspsplice/build.py SP01      # SP01: DT01 with SPNG, the spring reverb, in the reverb slot
 
 Pipeline (notes/T3.8-dsp-splice.md section 1):
   1. compile the recipe's C with selcc -O1 (as tools/sharcvm/tests/fxcheck.py does), generate the
@@ -83,6 +86,8 @@ CHORUS_INIT_CALL = 0x1c1695     # effect init 0x1c1445: CJUMP 0xb84f51 (stock ch
 CHORUS_INIT = 0xb84f51
 DELAY_CALL, DELAY = 0x1c1c58, 0xb8482c
 DELAY_INIT_CALL, DELAY_INIT = 0x1c166c, 0xb848cb
+REVERB_CALL, REVERB = 0x1c1d11, 0xb836bc           # FX bus 0x1c1738: CJUMP to the stock reverb (T3.4)
+REVERB_INIT_CALL, REVERB_INIT = 0x1c1643, 0xb83dc1  # effect init 0x1c1445: CJUMP to its init (R4 = 0x80000018)
 COMP_CALL, COMP = 0x1c215c, 0xb8541d             # master 0x1c1f1e: CJUMP to the stock compressor (T6.4 1.2)
 COMP_INIT_CALL, COMP_INIT = 0x1c16bb, 0xb85501   # effect init 0x1c1445: CJUMP to its init
 CMP3_TD_PROCESS, CMP3_TD_INIT = 0x18ad4a, 0x18ac0a   # CMP3's td_process / td_init (out/T6.3/CMP3-dsp/build.json)
@@ -119,14 +124,14 @@ RECIPES = {
         hooks=[(CHORUS_CALL, CHORUS, "fxh_chorus"), (CHORUS_INIT_CALL, CHORUS_INIT, "fxh_chorus_init"),
                (DELAY_CALL, DELAY, "fxh_delay"), (DELAY_INIT_CALL, DELAY_INIT, "fxh_delay_init")],
         fills=[(0x300000, 0x8400, "flanger state (FlgSlot: Flanger + glue), zeroed at boot")]),
-    # T5.3: FTD1 with the Space Echo (fx/spaceecho.c) in place of the tape delay, one-page layout
+    # T5.3: FTD1 with the tape echo (fx/spaceecho.c) in place of the tape delay, one-page layout
     # (src/se_glue.c, verify_se.py). Its code (about 38 KB) does not fit FTD1's 0x310000-0x318000,
     # so it starts right after the flanger state: 0x308400-0x318000 is below the PM cache whether that
     # cache is 16 KB (0x31c000, what the start-up's size fields say) or 32 KB (0x318000).
     # Since SC01 (2026-10-21: the stock FDBK law) fx/spaceecho.c and .h are SC01's; SE01's as built (commit 8e3e9f3,
     # image 60894300, never flashed) are frozen in src/se01/, first on the include path, so this recipe still rebuilds.
     "SE01": dict(
-        what="T5.3: the flanger in the chorus slot and the Space Echo (fx/spaceecho.c) in the delay slot, "
+        what="T5.3: the flanger in the chorus slot and the tape echo (fx/spaceecho.c) in the delay slot, "
              "one-page layout (AGE from frame word 0xa18, k 40)",
         c=["fx/flanger.c", "tools/dspsplice/src/flg_glue.c"],
         c2=["tools/dspsplice/src/se01/spaceecho.c", "tools/dspsplice/src/se_glue.c"],
@@ -400,8 +405,8 @@ RECIPES = {
         forbid=[(0x315f8c, 0x318000, "0x315f8c-0x318000: code there stopped the DSP on the unit (CMP2, CP2E); "
                                      "nothing of ours, code or data (notes/T6.3-cmp2f.md)")],
         outdir="out/T6.3/CMP3-dsp", syx="CMP3-dsp.syx", version="CM3D"),
-    # SC01 (2026-10-21, notes/SC01.md): the merged line, CMP3 + the Space Echo in the delay slot (the stock FDBK law) + the
-    # flanger, with band meters that breathe like the stock one. The layout study (notes/SC01.md 1): the Space Echo
+    # SC01 (2026-10-21, notes/SC01.md): the merged line, CMP3 + the tape echo in the delay slot (the stock FDBK law) + the
+    # flanger, with band meters that breathe like the stock one. The layout study (notes/SC01.md 1): the tape echo
     # (39.4 KB) and the compressor (31.1 KB) do not fit block 2's proven 0x308400-0x315f8c (56.2 KB), so their
     # functions are placed one by one (key place; split_asm): every per-sample loop and every function that runs each
     # block in L1 block 2 (checked: key l1); the code that runs only when a knob moves, or rarely, in L2 over the stock
@@ -412,7 +417,7 @@ RECIPES = {
     # Since SC02's FDBK change (2026-10-21: the loop gain shared by the playing heads) fx/spaceecho.c and .h are SC02's;
     # SC01's as built (section 7 788bbef3, on the owner's unit) are frozen in src/sc01/, first on the include path.
     "SC01": dict(
-        what="SC01: the flanger (chorus slot), the Space Echo (delay slot, fx/spaceecho.c on the stock FDBK law) and the "
+        what="SC01: the flanger (chorus slot), the tape echo (delay slot, fx/spaceecho.c on the stock FDBK law) and the "
              "3-band master compressor (fx/mbcomp.c, a MIX per band, the band knobs from the SPI frame tail, CMP3's), "
              "band gain-reduction meters in dB with the stock meter's motion; functions placed per region (L1 block 2, "
              "code4, L2 over dead stock FX code)",
@@ -425,7 +430,7 @@ RECIPES = {
             "spaceecho_trim": "drop", "mbcomp_ratio": "drop", "mbcomp_gr_db": "drop",
             # level 3: boot-time init, after the glue in code4
             "spaceecho_init": "c4", "mbcomp_init": "c4", "mb_clear": "c4", "mbcomp_snap": "c4",
-            # level 2, A (the stock delay): the Space Echo's knob-change code and its own copies of the maths helpers
+            # level 2, A (the stock delay): the tape echo's knob-change code and its own copies of the maths helpers
             "se_mix_targets": "l2a", "se_pan_gains": "l2a", "se_filter_coefs": "l2a", "spaceecho_set_bpm": "l2a",
             "spaceecho:fx_f2i": "l2a", "spaceecho:fx_i2f": "l2a", "spaceecho:fx_clampf": "l2a", "spaceecho:fx_log2": "l2a",
             "spaceecho:fx_exp2": "l2a", "spaceecho:fx_sin_q": "l2a", "spaceecho:fx_cos_q": "l2a", "spaceecho:fx_svf_g": "l2a",
@@ -434,7 +439,7 @@ RECIPES = {
             "se_crackle_event": "l2b", "mb_restart": "l2b",
             # C (the stock chorus's filter bank and entry): the delay slot's init and its one-pole helper
             "se_init": "l2c", "spaceecho:fx_onepole_a": "l2c",
-            # D (the stock compressor): the Space Echo's snap, the compressor's knob setter
+            # D (the stock compressor): the tape echo's snap, the compressor's knob setter
             "spaceecho_snap": "l2d", "mbcomp_set": "l2d"},
         l1=["se_run", "spaceecho_process", "se_control", "se_crackle_plan", "se_process", "mb_run", "mb_state_expo",
             "mb_out_bands", "mbcomp_process", "mb_control", "mb_implausible"],
@@ -459,7 +464,7 @@ RECIPES = {
         forbid=[(0x315f8c, 0x318000, "0x315f8c-0x318000: code there stopped the DSP on the unit (CMP2, CP2E); "
                                      "nothing of ours, code or data (notes/T6.3-cmp2f.md)")],
         outdir="out/SC01/SC01-dsp", syx="SC01-dsp.syx", version="SC1D"),
-    # CMP4 (2026-10-22, notes/T6.3-cmp4.md): the owner dropped the Space Echo for now (SC01 stopped the DSP on the unit;
+    # CMP4 (2026-10-22, notes/T6.3-cmp4.md): the owner dropped the tape echo for now (SC01 stopped the DSP on the unit;
     # its knob code in L2 is the lead suspect, notes/SC01-soak.md) and gave the delay slot back to the stock delay:
     # CMP3 without the tape delay, with SC01's breathing meters (src/cmp_glue.c) and comp-link 0.3 (main OS). The delay
     # hooks are not patched (the stock CJUMPs at 0x1c1c58 and 0x1c166c stay), so Elektron's delay runs from its own code
@@ -539,6 +544,59 @@ RECIPES["DT01"] = dict(
                                         "fx_svf_g", "fx_knob01"]},
     reach=True,
     outdir="out/DT01/DT01-dsp", syx="DT01-dsp.syx", version="DT1D")
+# DC01 (2026-10-24, notes/DC01-compiler-fix.md): DT01 with the compiler fix, the same sources, the same sound, less code:
+# key peephole runs tools/dspsplice/peephole.py over selcc's output after the diet (A: a field's constant offset folded
+# into the access, DM(k,I4); B: the struct pointer loaded from the frame straight into I4), each change kept only where
+# the block it is in does the same before and after (memory accesses, branches, every live register). The same places
+# as DT01 (key proven), each code section shorter.
+RECIPES["DC01"] = dict(
+    RECIPES["DT01"],
+    what="DC01: DT01 with the compiler fix (the same sound): selcc's field accesses shortened by a checked peephole "
+         "pass (field offsets in the access, struct pointers loaded straight into I4)",
+    peephole="AB",
+    outdir="out/DC01/DC01-dsp", syx="DC01-dsp.syx", version="DC1D")
+# DC02 (2026-10-24, notes/DC01-compiler-fix.md section 5): DC01, the cautious version (the review of DC01): the pass in
+# mode "ABs", stock-proven pairings only: B is not used where the instruction right after the new load into I4 is a
+# 48-bit user of I4 (the stock code never has that pairing). Everything else as DC01.
+RECIPES["DC02"] = dict(
+    RECIPES["DC01"],
+    what="DC02: DT01 with the compiler fix in its cautious mode (the same sound): selcc's field accesses shortened by "
+         "a checked peephole pass, a struct pointer loaded straight into I4 only where a 16- or 32-bit instruction "
+         "uses it next (the pairings the stock code has)",
+    peephole="ABs",
+    outdir="out/DC02/DC02-dsp", syx="DC02-dsp.syx", version="DC2D")
+
+# SP01 (2026-10-24, notes/SP01-spring-pack.md): DT01 with SPNG, the spring reverb (fx/spring.c, notes/T5.5), in the
+# stock reverb slot. fx/spring.c and its glue (tools/dspsplice/src/spng_glue.c) in code2 after flg_sync.c, then the
+# reverb's two hook stubs (key stubs2), inside the proven 0x310000-0x315f8c where FTD1 to CMP3's tape delay ran on the
+# unit (key c2_tail: linked after every other object, so flg_sync.c keeps its place and every other section, the
+# constant data included, keeps DT01's bytes; spring.c's constants follow DT01's in the data region). The reverb's
+# CJUMPs (process 0x1c1d11, init 0x1c1643) go to the stubs; the init stub does not run the stock init (it would set up
+# its lines over our state). The spring's state, SpgSlot (43 KB), lives at the start of the stock reverb's DDR state
+# (0x80000018, 0x59114 bytes; the boot stream zero-fills it): key ddr_slot checks the size the SHARC build computes.
+# The diet as DT01's, plus spring.c's seven knob-law functions the DSP never calls (the tests and the write-up use
+# them); fxmath.h's helpers in one copy (the flanger's) for spring.c too. Key reach: every function reached.
+# Key dmda_ddr: the constant data of spring.c and the glue (168 B) in DDR, in the reverb's region after SpgSlot, as one
+# load block (the stock stream loads seven data blocks into DDR): in L1's data region, brickcheck's shift scan, which
+# decodes every changed load block in an executable range as code, read spring.c's SP_AP table as a mis-encoded shift
+# (a false positive on data). L1's data region keeps DT01's bytes.
+RECIPES["SP01"] = dict(
+    RECIPES["DT01"],
+    what="SP01: DT01 with SPNG, the spring reverb (fx/spring.c, spng_glue.c), in the stock reverb slot: its code in "
+         "code2 after flg_sync.c, its state in the stock reverb's DDR region (0x80000018), the stock reverb and its "
+         "init no longer run",
+    c2_tail=["fx/spring.c", "tools/dspsplice/src/spng_glue.c"],
+    dmda_ddr=(0x8000b000, 0x8000c000),
+    stubs2=[("fxh_reverb", [("c", "spg_process", ["R8", "R12"])]),
+            ("fxh_reverb_init", [("c", "spg_init", [])])],
+    hooks=RECIPES["DT01"]["hooks"] + [(REVERB_CALL, REVERB, "fxh_reverb"),
+                                      (REVERB_INIT_CALL, REVERB_INIT, "fxh_reverb_init")],
+    h=RECIPES["DT01"]["h"] + ["fx/spring.h"],
+    drop=RECIPES["DT01"]["drop"] + ["spring_pre_ms", "spring_rt60_s", "spring_dwel_db", "spring_hpf_hz",
+                                    "spring_tone_hz", "spring_width", "spring_tens_ms"],
+    ddr_slot=("spg_slot_bytes", 0x80000018, 0x59114, "SpgSlot (the spring and its glue) in the stock reverb's DDR "
+                                                      "state, 0x80000018-0x8005912c"),
+    outdir="out/SP01/SP01-dsp", syx="SP01-dsp.syx", version="SP1D")
 
 LDF = """ARCHITECTURE(ADSP-21569)
 $OBJECTS = $COMMAND_LINE_OBJECTS;
@@ -642,12 +700,43 @@ LDF_SECL2 = """      t38_{n} SW
          INPUT_SECTIONS( $OBJECTS(seg_t38{n}) )
       }} > mem_t38_{n}
 """
+# SP01: constant data in DDR (recipe key dmda_ddr: byte addresses)
+LDF_MEMDD = """   mem_t38_ddr {{ TYPE(BW RAM) START(0x{g0:08x}) END(0x{g1:08x}) WIDTH(8) }}
+"""
+LDF_SECDD = """      t38_ddata BW
+      {{
+         INPUT_SECTION_ALIGN(4)
+         INPUT_SECTIONS( $OBJECTS(seg_t38dd) )
+      }} > mem_t38_ddr
+"""
 SEG = {"c2": "seg_t38c2", "c3": "seg_t38c3", "c4": "seg_t38c4"}
 
 
 def all_c(rec):
-    """every C source of a recipe, in link order (SC01: the split files last)"""
-    return rec["c"] + rec.get("c2", []) + rec.get("c3", []) + rec.get("c4", []) + rec.get("split", [])
+    """every C source of a recipe, in link order (SC01: the split files last; SP01: c2_tail, code2 sources linked after
+    every other object, so their code follows c2's and their constant data follows everyone else's)"""
+    return (rec["c"] + rec.get("c2", []) + rec.get("c3", []) + rec.get("c4", []) + rec.get("split", [])
+            + rec.get("c2_tail", []))
+
+
+def dmda_ddr_of(rec, src, text):
+    """SP01: a c2_tail source's constant data (selcc's seg_dmda) renamed to seg_t38dd, which the LDF puts in the
+    recipe's dmda_ddr range (DDR): brickcheck's shift scan decodes every load block in an executable L1 range as code,
+    and spring.c's tables decode as a mis-encoded shift there (a false positive on data); a DDR block is not decoded"""
+    if rec.get("dmda_ddr") and src in rec.get("c2_tail", []):
+        return text.replace(".SECTION/DOUBLE32 seg_dmda;", ".SECTION/DOUBLE32 seg_t38dd;")
+    return text
+
+
+def seg_of(rec, src):
+    """the code section a recipe's C source is renamed into (None: L1 block 1's seg_swco as selcc names it)"""
+    if src in rec.get("c2", []) or src in rec.get("c2_tail", []):
+        return "seg_t38c2"
+    if src in rec.get("c3", []):
+        return "seg_t38c3"
+    if src in rec.get("c4", []):
+        return "seg_t38c4"
+    return None
 
 
 FUNC_LABEL = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\.:\s*$")
@@ -814,6 +903,8 @@ def compile_link(name, rec, bdir, log):
     flags = ["-proc", "ADSP-21569", "-char-size-8", "-O1"] + [f"-I{ROOT / i}" for i in rec["inc"]]
     objs = []
     rec["_placed_funcs"] = {}
+    if rec.get("peephole") and not (rec.get("drop") or rec.get("share")):
+        raise SystemExit("the key peephole runs only in the diet path (a recipe with drop or share)")
     if rec.get("drop") or rec.get("share"):
         # DT01: every file compiled (and its section renamed) first, the diet applied over all of them, then assembled
         texts = {}
@@ -822,15 +913,21 @@ def compile_link(name, rec, bdir, log):
             if src in rec.get("split", []):
                 raise SystemExit("a diet recipe has no split files")
             run([SEL / "selcc", *flags, "-S", "-o", bdir / f"{stem}.s", ROOT / src], log)
-            seg = "seg_t38c2" if src in rec.get("c2", []) else ("seg_t38c3" if src in rec.get("c3", []) else
-                                                               ("seg_t38c4" if src in rec.get("c4", []) else None))
+            seg = seg_of(rec, src)
             s = (bdir / f"{stem}.s").read_text()
             (bdir / f"{stem}.sel.s").write_text(s)          # selcc's own output, kept for review
             if s.count(".SECTION/SW seg_swco;") != 1 or ".SECTION/" in s.replace(".SECTION/SW seg_swco;", "").replace(
                     ".SECTION/DOUBLE32 seg_dmda;", ""):
                 raise SystemExit(f"{stem}.s: unexpected sections")
-            texts[stem] = s.replace(".SECTION/SW seg_swco;", f".SECTION/SW {seg};") if seg else s
+            texts[stem] = dmda_ddr_of(rec, src, s.replace(".SECTION/SW seg_swco;", f".SECTION/SW {seg};") if seg else s)
         texts, rec["_diet"] = diet_asm(texts, rec)
+        if rec.get("peephole"):
+            # DC01: the peephole pass (tools/dspsplice/peephole.py) over every file after the diet; its report in
+            # build/peephole.json
+            import peephole
+            texts, rec["_peephole"] = peephole.run(texts, patterns=rec["peephole"], entries=peephole.stub_entries(
+                rec["stubs"] + rec.get("stubs2", []) + rec.get("stubs3", []), stub.SAVE_REGS))
+            (bdir / "peephole.json").write_text(json.dumps(rec["_peephole"], indent=1))
         for src in all_c(rec):
             stem = Path(src).stem
             (bdir / f"{stem}.s").write_text(texts[stem])
@@ -839,8 +936,7 @@ def compile_link(name, rec, bdir, log):
     for src in ([] if rec.get("drop") or rec.get("share") else all_c(rec)):
         stem = Path(src).stem
         run([SEL / "selcc", *flags, "-S", "-o", bdir / f"{stem}.s", ROOT / src], log)
-        seg = "seg_t38c2" if src in rec.get("c2", []) else ("seg_t38c3" if src in rec.get("c3", []) else
-                                                           ("seg_t38c4" if src in rec.get("c4", []) else None))
+        seg = seg_of(rec, src)
         if src in rec.get("split", []):
             # SC01: each function in the section of its region (recipe keys place, split_default)
             s, where = split_asm((bdir / f"{stem}.s").read_text(), stem, rec.get("place", {}),
@@ -853,7 +949,7 @@ def compile_link(name, rec, bdir, log):
             if s.count(".SECTION/SW seg_swco;") < 1 or ".SECTION/" in s.replace(".SECTION/SW seg_swco;", "").replace(
                     ".SECTION/DOUBLE32 seg_dmda;", ""):
                 raise SystemExit(f"{stem}.s: unexpected sections")
-            (bdir / f"{stem}.s").write_text(s.replace(".SECTION/SW seg_swco;", f".SECTION/SW {seg};"))
+            (bdir / f"{stem}.s").write_text(dmda_ddr_of(rec, src, s.replace(".SECTION/SW seg_swco;", f".SECTION/SW {seg};")))
         run([SEL / "selas", "-proc", "ADSP-21569", "-o", bdir / f"{stem}.doj", bdir / f"{stem}.s"], log)
         objs.append(bdir / f"{stem}.doj")
     # CMP2D: hand-written assembly (each file names its own section), after the C objects
@@ -868,6 +964,11 @@ def compile_link(name, rec, bdir, log):
         (bdir / "stubs3.s").write_text(stub.module(rec["stubs3"], SAVE, section=rec.get("stubs3_seg", "seg_t38c3")))
         run([SEL / "selas", "-proc", "ADSP-21569", "-o", bdir / "stubs3.doj", bdir / "stubs3.s"], log)
         objs.append(bdir / "stubs3.doj")
+    if rec.get("stubs2"):
+        # SP01: hook stubs in code2, after every C object's code2 (so after c2_tail's)
+        (bdir / "stubs2.s").write_text(stub.module(rec["stubs2"], SAVE, section="seg_t38c2"))
+        run([SEL / "selas", "-proc", "ADSP-21569", "-o", bdir / "stubs2.doj", bdir / "stubs2.s"], log)
+        objs.append(bdir / "stubs2.doj")
     code = rec.get("code", CODE)
     ldf = LDF.format(c0=code[0], c1=code[1] - 1, d0=DATA[0], d1=DATA[1] - 1,
                      e0=rec.get("code2", CODE2)[0], e1=rec.get("code2", CODE2)[1] - 1, entry=rec["stubs"][0][0])
@@ -889,6 +990,15 @@ def compile_link(name, rec, bdir, log):
         anchor = "      }} > mem_t38_code2\n".replace("}}", "}")
         i = ldf.index(anchor) + len(anchor)
         ldf = ldf[:i] + LDF_SEC4.format() + ldf[i:]
+    if rec.get("dmda_ddr"):
+        g0, g1 = rec["dmda_ddr"]
+        anchor = "   mem_t38_code2 {"
+        i = ldf.index(anchor)
+        i = ldf.index("\n", i) + 1
+        ldf = ldf[:i] + LDF_MEMDD.format(g0=g0, g1=g1 - 1) + ldf[i:]
+        anchor = "      }} > mem_t38_code2\n".replace("}}", "}")
+        i = ldf.index(anchor) + len(anchor)
+        ldf = ldf[:i] + LDF_SECDD.format() + ldf[i:]
     for n, (lo, hi) in rec.get("l2", {}).items():
         anchor = "   mem_t38_code2 {"
         i = ldf.index(anchor)
@@ -966,7 +1076,8 @@ def selcc_shift_imm_count(bdir, rec):
     import re
     n = 0
     for p in ([bdir / f"{Path(s).stem}.s" for s in all_c(rec)] + [bdir / "stubs.s"]
-              + ([bdir / "stubs3.s"] if rec.get("stubs3") else []) + [ROOT / a for a in rec.get("asm2", [])]):
+              + ([bdir / "stubs3.s"] if rec.get("stubs3") else []) + ([bdir / "stubs2.s"] if rec.get("stubs2") else [])
+              + [ROOT / a for a in rec.get("asm2", [])]):
         n += len(re.findall(r"(LSHIFT|ASHIFT|ROT)\s+R\d+\s+BY\s+-?(0x)?[0-9A-Fa-f]+\s*;", p.read_text()))
     return n
 
@@ -1053,7 +1164,8 @@ def layout_check(rec, e, fills):
     other (so neither FTD1's blocks nor ours), and must stay out of the cache and L2 ranges in FORBIDDEN.
     fills: [(addr, bytes, why, slot)]. Returns (rows, problems)."""
     code, code2, code3 = rec.get("code", CODE), rec.get("code2", CODE2), rec.get("code3")
-    slot_of = {"t38_code": code, "t38_code2": code2, "t38_code3": code3, "t38_code4": rec.get("code4")}
+    slot_of = {"t38_code": code, "t38_code2": code2, "t38_code3": code3, "t38_code4": rec.get("code4"),
+               "t38_ddata": rec.get("dmda_ddr")}
     for n, (lo, hi) in rec.get("l2", {}).items():
         slot_of["t38_" + n] = (E.sw_to_byte(lo), E.sw_to_byte(hi))
     rows = []
@@ -1267,6 +1379,7 @@ def build(name, out_root=ROOT / "out/T3.8", odir=None):
     for addr, n, s in ranges_of(e):
         lo, hi = {"t38_code": rec.get("code", CODE), "t38_code2": code2,
                   "t38_code3": rec.get("code3", (0, 0)), "t38_code4": rec.get("code4", (0, 0)),
+                  "t38_ddata": rec.get("dmda_ddr", (0, 0)),
                   **{"t38_" + n: (E.sw_to_byte(a), E.sw_to_byte(b)) for n, (a, b) in rec.get("l2", {}).items()}
                   }.get(s.name, DATA)
         if not (lo <= addr and addr + n <= hi):
@@ -1325,9 +1438,23 @@ def build(name, out_root=ROOT / "out/T3.8", odir=None):
     if rec.get("reach"):
         # DT01: no function of ours that nothing calls (from the hook stubs) is linked
         reach_rows, pp = reach_check(bdir, [Path(s).stem for s in all_c(rec)] + ["stubs"]
-                                     + (["stubs3"] if rec.get("stubs3") else []),
-                                     [n for n, _ in rec["stubs"] + rec.get("stubs3", [])])
+                                     + (["stubs3"] if rec.get("stubs3") else [])
+                                     + (["stubs2"] if rec.get("stubs2") else []),
+                                     [n for n, _ in rec["stubs"] + rec.get("stubs3", []) + rec.get("stubs2", [])])
         problems += pp
+    ddr_slot = None
+    if rec.get("ddr_slot"):
+        # SP01: the effect's state in DDR, its size as the SHARC build computed it (a data symbol), inside its region
+        dname, dlo, dsize, dwhy = rec["ddr_slot"]
+        dn = symbol_word(e, sym, dname)
+        ddr_slot = {"what": dwhy, "core": "%#x-%#x" % (dlo, dlo + dn), "bytes": dn, "region_bytes": dsize,
+                    "left": dsize - dn}
+        if dn > dsize:
+            problems.append(f"{dwhy}: {dn} bytes, more than the region's {dsize}")
+        if rec.get("dmda_ddr"):
+            ddr_slot["constant_data"] = "%#x-%#x" % tuple(rec["dmda_ddr"])
+            if not (dlo + dn <= rec["dmda_ddr"][0] and rec["dmda_ddr"][1] <= dlo + dsize):
+                problems.append(f"{dwhy}: the constant data {rec['dmda_ddr']} is not after the slot inside the region")
     if problems:
         raise SystemExit("layout check failed:\n  " + "\n  ".join(problems))
     stream = st.to_bytes()
@@ -1341,6 +1468,13 @@ def build(name, out_root=ROOT / "out/T3.8", odir=None):
     scan = bc_dsp.scan_sizes_and_blocks(b"\0" * 1, stream)   # stored size checked on the .syx below
     if not (scan["stream_ok"] and scan["parse_ok"] and scan["final"]) or scan["cache_hits"] or scan["region_miss"]:
         raise SystemExit(f"stream check failed: {scan}")
+    if rec.get("dmda_ddr"):
+        # SP01: brickcheck's scan for mis-encoded shifts over every changed load block in an executable range (it
+        # decodes data blocks as code too); run here so a layout it would flag stops the build
+        bads = bc_dsp.scan_bad_shifts(bc_dsp.final_image(stream)[0], bc_dsp.final_image(stock7)[0],
+                                      bc_dsp.final_image(stream)[1])
+        if bads:
+            raise SystemExit(f"brickcheck's shift scan flags {bads}")
     diffs = diff_images(final_image(stock7), final_image(stream))
     allowed = [(ldr.loader_addr(2 * site), ldr.loader_addr(2 * site) + 6) for site, _, _ in rec["hooks"]]
     allowed += [(ldr.loader_addr(CODE[0]), ldr.loader_addr(L1B1_LIMIT)),
@@ -1351,6 +1485,8 @@ def build(name, out_root=ROOT / "out/T3.8", odir=None):
         allowed.append((ldr.loader_addr(rec["code3"][0]), ldr.loader_addr(rec["code3"][1])))
     for n, (lo, hi) in rec.get("l2", {}).items():
         allowed.append((E.sw_to_byte(lo), E.sw_to_byte(hi)))
+    if rec.get("dmda_ddr"):
+        allowed.append(tuple(rec["dmda_ddr"]))
     for lo, data, why, slot in scan_blocks:
         allowed.append((ldr.loader_addr(lo), ldr.loader_addr(lo + len(data))))
     merged = []                          # touching ranges as one (SE01's code2 starts where its state ends)
@@ -1410,7 +1546,7 @@ def build(name, out_root=ROOT / "out/T3.8", odir=None):
         "image_diff_ranges": [("%#x" % a, "%#x" % b) for a, b in diffs],
         "l2_patched": l2_patched or None,
         "functions": fn_rows,
-        "proven_check": proven_rows, "stock_hooks": stock_hooks or None,
+        "proven_check": proven_rows, "stock_hooks": stock_hooks or None, "ddr_slot": ddr_slot,
         "shift_immediates_in_our_asm": selcc_shift_imm_count(bdir, rec),
         "register_census": dict(sorted(census.items())),
         "save_area": {"core": "%#x" % SAVE, "bytes": stub.SAVE_BYTES, "regs": stub.SAVE_REGS},
@@ -1434,7 +1570,9 @@ def function_table(rec, bdir, e):
     fm = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(fm)
     stem = lambda xs: [bdir / f"{Path(s).stem}.s" for s in xs]   # noqa: E731
-    order = {"t38_code": [bdir / "stubs.s"] + stem(rec["c"]), "t38_code2": stem(rec.get("c2", [])),
+    order = {"t38_code": [bdir / "stubs.s"] + stem(rec["c"]),
+             "t38_code2": stem(rec.get("c2", [])) + stem(rec.get("c2_tail", []))
+             + ([bdir / "stubs2.s"] if rec.get("stubs2") else []),
              "t38_code3": stem(rec.get("c3", [])) + ([bdir / "stubs3.s"] if rec.get("stubs3") else []),
              "t38_code4": stem(rec.get("c4", []))}
     rows = []

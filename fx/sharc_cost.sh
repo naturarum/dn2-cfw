@@ -24,7 +24,7 @@ echo "dynamic (tools/sharcvm/tests/fxcheck.py, instructions per 32-sample block)
 for f in tapedelay mbcomp flanger spaceecho; do
     python3 ../tools/sharcvm/tests/fxcheck.py --fx $f 2>&1 | sed 's/^/  /' | tee -a "$OUT/cost.txt"
 done
-# the Space Echo (T5.2) by configuration, notes/T5.2 section 6 (the default above: three heads, AGE 64,
+# the tape echo (T5.2) by configuration, notes/T5.2 section 6 (the default above: three heads, AGE 64,
 # a resonant band, ALT); knob indices: 0 TIME 1 MODE 2 INT 3 AGE 4 CTR 5 BW 6 WID 7 PAN
 F=../tools/sharcvm/tests/fxcheck.py
 echo "  spaceecho by configuration:" | tee -a "$OUT/cost.txt"

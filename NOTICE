@@ -13,7 +13,7 @@ more details.
 
 Every code file carries the line SPDX-License-Identifier: GPL-2.0-or-later.
 Much of this project was written with Claude, Anthropic's AI model, in
-Claude Code (see "How this is made" in README.md).
+Claude Code (see "How this is made" in docs/DEVELOPERS.md).
 
 
 Code from other projects

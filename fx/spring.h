@@ -33,12 +33,13 @@
  *   -> the three outputs panned by WDTH (spring 1 left, 2 right, 3 centre)
  *   -> half-band 12 -> 24 -> half-band 24 -> 48 kHz -> out L, R (wet only)
  * TENS sets the round trips (the three springs at 1 : 1.173 : 1.387).
- * MODE (the page's C since 2026-10-24) is a macro over these: one knob from a short,
- * bright, tight tank (0) through the classic tank (64, the init patch) to heavy
- * dwell, a deep surf drip and a long dark tank (127). It sets DRIP, TENS and the
- * springs' spread, and a base for DEC, DWEL, HPF and TONE that those knobs trim
- * (spring_mode_map). Until MODE is set the springs follow DRIP and TENS, so the
- * earlier renders (and the workbench's DRIP and TENS) are as they were.
+ * MODE (the page's C since 2026-10-24) is a macro over these: the spring's own
+ * character on one knob, from taut short springs with little drip (0) through the
+ * classic tank (64, the init patch) to slack long springs with the deepest drip
+ * (127). It sets DRIP, TENS and the springs' spread (spring_mode_map); size (DEC),
+ * darkness (TONE), DWEL and HPF stay their own knobs. Until MODE is set the springs
+ * follow DRIP and TENS, so the earlier renders (and the workbench's DRIP and TENS)
+ * are as they were.
  * The output is the wet signal only, like the stock reverb: the FX bus adds VOL.
  *
  * State 43,020 bytes (three 2,048-sample spring rings and a 4,096-sample pre-delay
@@ -78,11 +79,11 @@ enum {
     SP_TENS,       /* H TENS: tension: half round trip of spring 1, 50 ms (slack, 0) .. 14.5 ms
                       (tight, 127), log; 64 = 27 ms */
     SP_NINT,       /* the 8 above are the internal parameters (the glides) */
-    SP_MODE = SP_NINT, /* C MODE (page): the character, 0 short and bright .. 64 classic .. 127 long and
-                      dark; once set, it drives DRIP, TENS and the spread and biases DEC, DWEL, HPF, TONE */
+    SP_MODE = SP_NINT, /* C MODE (page): the springs' character, 0 taut, little drip .. 64 classic .. 127
+                      slack, deep surf drip; once set, it drives DRIP, TENS and the spread */
     SP_NPARAMS
 };
-#define SP_NMODE 7        /* what MODE sets: DEC, DRIP, DWEL, HPF, TONE, TENS as knob values, and the spread */
+#define SP_NMODE 3        /* what MODE sets: DRIP and TENS as knob values, and the spread */
 
 typedef struct {
     float a[SP_M];            /* allpass coefficients now (DRIP x the spring's table) */
@@ -154,9 +155,8 @@ float spring_hpf_hz(float knob);
 float spring_tone_hz(float knob);
 float spring_width(float knob);
 float spring_tens_ms(float knob);       /* half round trip of spring 1 (the first arrival) */
-/* MODE -> v[SP_NMODE]: the DEC, DRIP, DWEL, HPF, TONE and TENS knob values its character stands for,
-   and the springs' spread; DEC, DWEL, HPF and TONE then trim it: each adds its own offset from its
-   default (64, 64, 0, 127) to MODE's value */
+/* MODE -> v[SP_NMODE]: the DRIP and TENS knob values its character stands for, and the springs'
+   spread (scales the ratios' distance from 1) */
 void spring_mode_map(float mode, float *v);
 
 #endif
