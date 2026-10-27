@@ -55,23 +55,25 @@ below. For each one: who made it, its licence, and what we use from it.
 
 - **By** angellinares: <https://github.com/angellinares/dn2_firmware_explore>
 - **Licence:** AGPL-3.0-or-later.
-- **Facts only.** None of their code or text is in Digiwerk. We use their published findings on the Digitone II's
-  OS 1.11, credited in the notes where they're used. Among them:
+- **Inspired by their research.** Digiwerk builds on their published findings on the Digitone II's OS 1.11, credited
+  in the notes where they're used; our code and text are our own. Among them:
   - the way we put new code into the DSP section, the memory our DSP code runs in, the 1 MiB limit on that section,
     the cache map, and the assembler's shift mis-encoding they found on the chip;
   - the FX page records, and renaming by repointing strings;
   - the parameter table: they grew it first, on 1.11;
   - the kit and sound storage, and the frame census method;
   - the stock DSP load, measured by idle time;
-  - the LFO facts behind the Déjà vu LFO;
+  - the LFO facts behind the Déjà vu LFO, and where the trig modes ONE and HALF stop;
+  - the arpeggiator's step, which plays SHUF and RAND as CYCL;
+  - the start-up animation's structure;
   - that Overbridge may need the computer restarted before it accepts a changed OS.
 
 ### DNX
 
 - **By** NoiseAndMatter, the author of dn2_firmware_explore: <https://github.com/NoiseAndMatter/DNX>
 - **Licence:** AGPL-3.0.
-- **Facts only.** Its kit captures: the FX offsets in the kit record, which agree with ours, and that the bytes our
-  compressor keeps its band settings in are zero in 2,176 real kits.
+- **Inspired by its research.** Its kit captures: the FX offsets in the kit record, which agree with ours, and that
+  the bytes our compressor keeps its band settings in are zero in 2,176 real kits.
 
 ### syxgrid-digitone-ii
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""DJ01: write vendor/elekloader/examples/lfo-dejavu-dn2/mod.json, lfo-dejavu-dn2 0.1 (every site checked against
+"""DJ01: write scripts/dj01/lfo-dejavu-dn2/mod.json, lfo-dejavu-dn2 0.1 (every site checked against
 the stock image).
 
     venv/bin/python scripts/dj01_make_mod.py [--list]
@@ -26,7 +26,7 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IMAGE = os.path.join(ROOT, 'ele3_out', '02_type3.unpacked.bin')
-MODDIR = os.path.join(ROOT, 'vendor', 'elekloader', 'examples', 'lfo-dejavu-dn2')
+MODDIR = os.path.join(ROOT, 'scripts', 'dj01', 'lfo-dejavu-dn2')   # 0.1, frozen for DJ01 (the fork's folder is 0.2 since base 0.2)
 OUT = os.path.join(MODDIR, 'mod.json')
 LOAD = 0x40000400
 DESC, ROW = 0x401f83a4, 0x3c

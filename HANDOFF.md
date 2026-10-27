@@ -1397,3 +1397,18 @@ the guide `out/SP02/FLASH-SP02.md` (also in the vault, code/Digitone2/SP02/). SP
 tools/dspsplice/src/sp01/ and spring-names 0.1 in scripts/sp01/ (both rebuild byte for byte). Old kits bring D = 50
 (GAIN's stock default): DIRT 50 on old projects (owner chose the full knob). Next: the owner flashes SP02.
 
+
+**2026-10-27, base 0.2 (BA02).** The owner picked light features for the base (vault Base ideas.md): the LFO
+ONE/HALF fix, Déjà vu in the track's key, the arp's SHUF and RAND (a Turing mode to design: vault Turing arp.md, the
+owner's idea: the loop's live values where the arp's offset steps are drawn, ARP LENGTH as its length; four questions
+to the owner there), a Digiwerk boot mark; later the arp on MIDI tracks (without CC p-locks first) and readable values
+(per pack). **BA02** = DC02 + lfo-dejavu 0.2 (ONE/HALF from the start phase then hold, both evaluators; WAVE 16 KEY,
+the track's own KEYBOARD SETUP scale and root) + arp-modes 0.1 (SHUF, RAND) + boot-mark 0.1 (DIGI over WERK in the
+intro's tunnel, the owner's pick B of three): notes/BA02-base-0.2.md, `scripts/ba02_build.py` 31/31; harnesses
+`ba02_lfocheck.py` (with the EMAC done as the chip does it: digikit halves fractional products), `ba02_arpcheck.py`,
+`ba02_bootmark.py` (the stock intro run offline). `out/BA02/BA02.syx` `a3fefcaf...`, brick checker ACCEPT 12/12; the
+emulator's cold boot reaches the main screen, mark B in the intro. lfo-dejavu 0.1 frozen in scripts/dj01/ (DJ01
+rebuilds byte for byte). CREDITS.md: the dnfw/DNX entries say "Inspired by their research" (the owner's wording), and
+dnfw's list names the ONE/HALF, arp and intro findings. The guide `out/BA02/FLASH-BA02.md` (also in the vault,
+code/Digitone2/BA02/). Next: the owner flashes BA02 (SP02 also waits; either first); the Turing mode in a later build
+once its design is agreed.
