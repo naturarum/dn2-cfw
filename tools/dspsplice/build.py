@@ -574,6 +574,7 @@ RECIPES["DC02"] = dict(
 # CJUMPs (process 0x1c1d11, init 0x1c1643) go to the stubs; the init stub does not run the stock init (it would set up
 # its lines over our state). The spring's state, SpgSlot (43 KB), lives at the start of the stock reverb's DDR state
 # (0x80000018, 0x59114 bytes; the boot stream zero-fills it): key ddr_slot checks the size the SHARC build computes.
+# Since 2026-10-26 (SPNG v2 in fx/spring.c) its spring.c and spring.h are frozen in tools/dspsplice/src/sp01/.
 # The diet as DT01's, plus spring.c's seven knob-law functions the DSP never calls (the tests and the write-up use
 # them); fxmath.h's helpers in one copy (the flanger's) for spring.c too. Key reach: every function reached.
 # Key dmda_ddr: the constant data of spring.c and the glue (168 B) in DDR, in the reverb's region after SpgSlot, as one
@@ -585,18 +586,42 @@ RECIPES["SP01"] = dict(
     what="SP01: DT01 with SPNG, the spring reverb (fx/spring.c, spng_glue.c), in the stock reverb slot: its code in "
          "code2 after flg_sync.c, its state in the stock reverb's DDR region (0x80000018), the stock reverb and its "
          "init no longer run",
-    c2_tail=["fx/spring.c", "tools/dspsplice/src/spng_glue.c"],
+    c2_tail=["tools/dspsplice/src/sp01/spring.c", "tools/dspsplice/src/spng_glue.c"],
+    inc=["tools/dspsplice/src/sp01"] + RECIPES["DT01"]["inc"],
     dmda_ddr=(0x8000b000, 0x8000c000),
     stubs2=[("fxh_reverb", [("c", "spg_process", ["R8", "R12"])]),
             ("fxh_reverb_init", [("c", "spg_init", [])])],
     hooks=RECIPES["DT01"]["hooks"] + [(REVERB_CALL, REVERB, "fxh_reverb"),
                                       (REVERB_INIT_CALL, REVERB_INIT, "fxh_reverb_init")],
-    h=RECIPES["DT01"]["h"] + ["fx/spring.h"],
+    h=RECIPES["DT01"]["h"] + ["tools/dspsplice/src/sp01/spring.h"],
     drop=RECIPES["DT01"]["drop"] + ["spring_pre_ms", "spring_rt60_s", "spring_dwel_db", "spring_hpf_hz",
                                     "spring_tone_hz", "spring_width", "spring_tens_ms"],
     ddr_slot=("spg_slot_bytes", 0x80000018, 0x59114, "SpgSlot (the spring and its glue) in the stock reverb's DDR "
                                                       "state, 0x80000018-0x8005912c"),
     outdir="out/SP01/SP01-dsp", syx="SP01-dsp.syx", version="SP1D")
+
+# SP02 (2026-10-26, notes/SP02-spring-pack.md): DC02 with SPNG v2 (fx/spring.c: the new ratios, the cross-feed, the
+# wobble, Catmull-Rom reads, DIRT on the wet output; notes/T5.5 9), placed as SP01 placed v1 on DT01: its code and
+# the glue in code2 after flg_sync.c, the reverb's two stubs, the constants in DDR after SpgSlot, SpgSlot at the start
+# of the stock reverb's DDR state. DC02's peephole runs over the spring's code too. The diet as SP01's, with
+# spring_dirt_db in place of spring_dwel_db.
+RECIPES["SP02"] = dict(
+    RECIPES["DC02"],
+    what="SP02: DC02 with SPNG v2 (fx/spring.c, spng_glue.c) in the stock reverb slot, placed as SP01: its code in "
+         "code2 after flg_sync.c, its state in the stock reverb's DDR region (0x80000018), the stock reverb and its "
+         "init no longer run",
+    c2_tail=["fx/spring.c", "tools/dspsplice/src/spng_glue.c"],
+    dmda_ddr=(0x8000b000, 0x8000c000),
+    stubs2=[("fxh_reverb", [("c", "spg_process", ["R8", "R12"])]),
+            ("fxh_reverb_init", [("c", "spg_init", [])])],
+    hooks=RECIPES["DC02"]["hooks"] + [(REVERB_CALL, REVERB, "fxh_reverb"),
+                                      (REVERB_INIT_CALL, REVERB_INIT, "fxh_reverb_init")],
+    h=RECIPES["DC02"]["h"] + ["fx/spring.h"],
+    drop=RECIPES["DC02"]["drop"] + ["spring_pre_ms", "spring_rt60_s", "spring_dirt_db", "spring_hpf_hz",
+                                    "spring_tone_hz", "spring_width", "spring_tens_ms"],
+    ddr_slot=("spg_slot_bytes", 0x80000018, 0x59114, "SpgSlot (the spring and its glue) in the stock reverb's DDR "
+                                                      "state, 0x80000018-0x8005912c"),
+    outdir="out/SP02/SP02-dsp", syx="SP02-dsp.syx", version="SP2D")
 
 LDF = """ARCHITECTURE(ADSP-21569)
 $OBJECTS = $COMMAND_LINE_OBJECTS;

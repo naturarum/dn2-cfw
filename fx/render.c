@@ -96,15 +96,16 @@ static const PName SE_NAMES[] = {
 };
 
 /* SPNG, the spring reverb (T5.5): the internal knobs A..H as first proposed, and MODE (2026-10-24, the
-   page's C): setting MODE switches the springs to it (DRIP and TENS are then MODE's) */
+   page's C): setting MODE switches the springs to it (DRIP and TENS are then MODE's). D is DIRT since v2
+   (DWEL, its old name, still works) */
 static const PName SP_NAMES[] = {
-    { "PRE", SP_PREDLY }, { "DEC", SP_DEC }, { "DRIP", SP_DRIP }, { "DWEL", SP_DWEL }, { "HPF", SP_HPF },
+    { "PRE", SP_PREDLY }, { "DEC", SP_DEC }, { "DRIP", SP_DRIP }, { "DIRT", SP_DWEL }, { "DWEL", SP_DWEL }, { "HPF", SP_HPF },
     { "TONE", SP_TONE }, { "WDTH", SP_WDTH }, { "TENS", SP_TENS }, { "MODE", SP_MODE }, { 0, 0 }
 };
 /* tapespring: the spring's names, and the tape echo's with "T." (ids from SP_TAPE) */
 #define SP_TAPE 100
 static const PName TS_NAMES[] = {
-    { "PRE", SP_PREDLY }, { "DEC", SP_DEC }, { "DRIP", SP_DRIP }, { "DWEL", SP_DWEL }, { "HPF", SP_HPF },
+    { "PRE", SP_PREDLY }, { "DEC", SP_DEC }, { "DRIP", SP_DRIP }, { "DIRT", SP_DWEL }, { "DWEL", SP_DWEL }, { "HPF", SP_HPF },
     { "TONE", SP_TONE }, { "WDTH", SP_WDTH }, { "TENS", SP_TENS }, { "MODE", SP_MODE },
     { "T.TIME", SP_TAPE + SE_TIME }, { "T.MODE", SP_TAPE + SE_MODE }, { "T.INT", SP_TAPE + SE_INT },
     { "T.AGE", SP_TAPE + SE_AGE }, { "T.CTR", SP_TAPE + SE_CTR }, { "T.BW", SP_TAPE + SE_BW },

@@ -1,0 +1,19 @@
+{
+ "title": "Spring",
+ "description": "DC02 with a spring reverb: three springs that drip and boing. MODE sets their character, DIRT breaks up the tail.",
+ "tested_on_unit": "",
+ "effects": [
+  "cmp3",
+  "flng",
+  "spng"
+ ],
+ "base": [
+  "djvu",
+  "overbridge"
+ ],
+ "dsp": {
+  "code_bytes": null,
+  "state_bytes": null,
+  "load_percent": null
+ }
+}

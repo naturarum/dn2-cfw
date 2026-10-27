@@ -17,7 +17,7 @@ samples at 12 kHz (v2 3.0) and `SPV2_MK` its smoother; `SPV2_INTERP` the loop re
 the wet gain (v2 2.4, v1 1.4). `SPV2_DWEL` DWEL's law: 0 v1's, 1 the level-held first try (0..+23.6 dB, `SPV2_DPA`
 of it made up), 2 `SPV2_DLO`..`SPV2_DHI` dB with `SPV2_DAGC` 1 for the measured make-up (`SPV2_DATC` its meters,
 `SPV2_DAMX` its cap); the A/B page's "more marked" rows are 2 with 8 and 32. 3 is DIRT: the springs' input clean, the soft clip on
-the wet output (`SPV2_RHI` dB at 127, curve `SPV2_RCRV`, meters `SPV2_RATC`), the A/B page's "DIRT" rows.
+the wet output (`SPV2_RHI` dB at 127, curve `SPV2_RCRV`, meters `SPV2_RATC`, `SPV2_RLV` dB left louder at 127, cap `SPV2_RAMX`), the A/B page's "DIRT" rows.
 
 Before this goes on the DSP: freeze SP01's spring sources (as DT01 did in `tools/dspsplice/src/dt01/`) so SP01 still
 rebuilds byte for byte, and keep to selcc's limits (`spmix.h` has negative constants in a static table).

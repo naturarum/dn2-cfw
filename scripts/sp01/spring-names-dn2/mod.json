@@ -1,0 +1,157 @@
+{
+ "id": "spring-names",
+ "version": "0.1",
+ "title": "Spring names (SP01)",
+ "category": "Examples",
+ "license": "GPL-2.0-or-later",
+ "author": "naturarum",
+ "description": "EXPERIMENT: emulator-tested only. For dn2-cfw's SP01 build, whose DSP runs SPNG, a spring reverb, in the reverb slot: the reverb page is titled Spring and reads PRE DEC MODE DWEL HPF TONE WDTH. C (was FREQ) is MODE, the springs' character; D (was GAIN) is DWEL, the drive into the tank; F (was LPF) is TONE, the low-pass in the loop; the hidden \"Reverb FX Routing\" row (k 48, stored with the kit, never shown, no CC) becomes WDTH 0..127 with the chorus WDTH's picture on the empty knob G. C and D are drawn as knobs instead of the stock shelf picture; DEC shows a plain number (no INF); a new kit starts at the spring's init patch (PRE 0, DEC 64, MODE 64, DWEL 64, HPF 0, TONE 127, WDTH 96). Every knob keeps its MIDI CC, storage and DSP frame word; old kits keep their values (WDTH 1: almost mono). On a stock DSP the names would be wrong.",
+ "device": "digitone-mk2",
+ "os": "1.12",
+ "sources": [
+  "spring_names.c"
+ ],
+ "sites": [
+  {
+   "addr": "0x400c9faa",
+   "stock": "487940210b13",
+   "op": "keep2",
+   "target": "snm_spring"
+  },
+  {
+   "addr": "0x401fa088",
+   "stock": "00001000",
+   "op": "bytes",
+   "new": "00000000"
+  },
+  {
+   "addr": "0x401fa0c4",
+   "stock": "00001f00",
+   "op": "bytes",
+   "new": "00004000"
+  },
+  {
+   "addr": "0x401fa0e8",
+   "stock": "400e375e",
+   "op": "bytes",
+   "new": "400e3030"
+  },
+  {
+   "addr": "0x401fa118",
+   "stock": "40210b1e",
+   "op": "ptr",
+   "target": "snm_mode"
+  },
+  {
+   "addr": "0x401fa120",
+   "stock": "402109a2",
+   "op": "ptr",
+   "target": "snm_mode_s"
+  },
+  {
+   "addr": "0x401fa154",
+   "stock": "40210b2f",
+   "op": "ptr",
+   "target": "snm_dwel"
+  },
+  {
+   "addr": "0x401fa15c",
+   "stock": "4022333f",
+   "op": "ptr",
+   "target": "snm_dwel_s"
+  },
+  {
+   "addr": "0x401fa13c",
+   "stock": "00003200",
+   "op": "bytes",
+   "new": "00004000"
+  },
+  {
+   "addr": "0x401fa178",
+   "stock": "00002000",
+   "op": "bytes",
+   "new": "00000000"
+  },
+  {
+   "addr": "0x401fa1cc",
+   "stock": "40210b4a",
+   "op": "ptr",
+   "target": "snm_tone"
+  },
+  {
+   "addr": "0x401fa1d4",
+   "stock": "40210b05",
+   "op": "ptr",
+   "target": "snm_tone_s"
+  },
+  {
+   "addr": "0x401fa1b4",
+   "stock": "00006000",
+   "op": "bytes",
+   "new": "00007f00"
+  },
+  {
+   "addr": "0x401fa280",
+   "stock": "4021c0a1",
+   "op": "ptr",
+   "target": "snm_wdth"
+  },
+  {
+   "addr": "0x401fa288",
+   "stock": "40210c8a",
+   "op": "ptr",
+   "target": "snm_wdth_s"
+  },
+  {
+   "addr": "0x401fa264",
+   "stock": "00000100",
+   "op": "bytes",
+   "new": "00007f00"
+  },
+  {
+   "addr": "0x401fa268",
+   "stock": "00000100",
+   "op": "bytes",
+   "new": "00006000"
+  },
+  {
+   "addr": "0x401fa28c",
+   "stock": "400e3592",
+   "op": "bytes",
+   "new": "400e3030"
+  },
+  {
+   "addr": "0x4006fb3c",
+   "stock": "002c",
+   "op": "bytes",
+   "new": "00a8"
+  },
+  {
+   "addr": "0x4006fb3e",
+   "stock": "0018",
+   "op": "bytes",
+   "new": "00a8"
+  },
+  {
+   "addr": "0x4006f8e8",
+   "stock": "7212",
+   "op": "bytes",
+   "new": "727f",
+   "kind": "code"
+  }
+ ],
+ "subscribe": [
+  {
+   "event": "ev_tick",
+   "fn": "snm_tick",
+   "order": 50
+  }
+ ],
+ "exports": [
+  "snm_state",
+  "snm_ticks"
+ ],
+ "requires": [
+  "core"
+ ]
+}

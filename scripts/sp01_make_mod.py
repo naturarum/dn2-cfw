@@ -21,7 +21,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IMAGE = os.path.join(ROOT, 'ele3_out', '02_type3.unpacked.bin')
-OUT = os.path.join(ROOT, 'vendor', 'elekloader', 'examples', 'spring-names-dn2', 'mod.json')
+OUT = os.path.join(ROOT, 'scripts', 'sp01', 'spring-names-dn2', 'mod.json')   # 0.1, frozen for SP01 (the fork's folder is 0.2 since SP02)
 LOAD = 0x40000400
 DESC, ROW = 0x401f83a4, 0x3c
 MAX, DEFAULT, LONG, GROUP, SHORT, FMT = 0x0c, 0x10, 0x28, 0x2c, 0x30, 0x34

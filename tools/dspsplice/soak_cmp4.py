@@ -57,6 +57,7 @@ WATCH = [(0x2dd600, 0x2e1c40, "L1 block 1 code (stubs, flanger)"),
 REV_CALL, REV_RET = 0x1c1d11, 0x1c1d18
 REV_OUT = (0x25b368, 0x25b3e8)
 SPG = (0x80000018, 0x8005912c, "the spring's DDR state (stores from our code2 only)")
+SPG_BYTES = 43072        # SpgSlot (SP01); run_recipe takes it from the DSP build's record (SP02: 43,296)
 SPG_MAGIC = 0x53504e31
 REV_KEYS = ("REV_PRE", "REV_DEC", "REV_FREQ", "REV_GAIN", "REV_HPF", "REV_LPF")
 K48 = 0xa28
@@ -244,8 +245,10 @@ def func_of(pc):
 
 
 def run_recipe(args):
+    global SPG_BYTES
     name, cfg, cmp_off, dsp, outd = args
     setup(cmp_off, dsp)
+    SPG_BYTES = json.loads((Path(dsp) / "build.json").read_text()).get("ddr_slot", {}).get("bytes", SPG_BYTES)
     OUTD = Path(outd)
     S, V, VC, FB, memguard = G["S"], G["V"], G["VC"], G["FB"], G["memguard"]
     from vm import VMError, watch as W, watch_log
@@ -413,7 +416,7 @@ def run_recipe(args):
         note("flg_slot_unreadable", b, {"error": repr(e)[:200]})
     if rev:     # the spring's slot (spng_glue.c SpgSlot): magic, fresh, the knobs last applied, every float finite
         try:
-            raw = vm.read(SPG[0], 43072)
+            raw = vm.read(SPG[0], SPG_BYTES)
             fl = struct.unpack("<%df" % (len(raw) // 4), raw)
             res["spg_slot"] = {"magic": "%#x" % vm.rd32(SPG[0]), "fresh": vm.rd32(SPG[0] + 4),
                                "last": [round(x, 3) for x in vm.rdf(SPG[0] + 8, 7)],

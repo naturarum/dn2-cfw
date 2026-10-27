@@ -92,10 +92,16 @@ static const float SP_AP[32] = {
                              3 DIRT: the springs' input stays clean (v1's DWEL 64), the drive goes on the wet output */
 #endif
 #ifndef SPV2_RHI
-#define SPV2_RHI 30.0f    /* DIRT: the drive at 127, dB (0 dB at 0) */
+#define SPV2_RHI 36.0f    /* DIRT: the drive at 127, dB (0 dB at 0) */
 #endif
 #ifndef SPV2_RCRV
-#define SPV2_RCRV 0.8f    /* DIRT: the drive in dB follows (knob/127)^SPV2_RCRV */
+#define SPV2_RCRV 1.06f   /* DIRT: the drive in dB follows (knob/127)^SPV2_RCRV */
+#endif
+#ifndef SPV2_RLV
+#define SPV2_RLV 5.5f     /* DIRT: the level rises with the drive (the target at 127; measured +5.6..+6.3 dB) */
+#endif
+#ifndef SPV2_RAMX
+#define SPV2_RAMX 3.0f    /* DIRT: log2 of the most the make-up adds over 1/drive (3 = +18 dB) */
 #endif
 #ifndef SPV2_RATC
 #define SPV2_RATC 0.0008f /* DIRT: the power meters' one-pole coefficient per block (32 samples at 48 kHz): about 0.8 s */
@@ -275,8 +281,8 @@ static void sp_makeup(Spring *s)
 static void sp_dirt_makeup(Spring *s)
 {
     float l = 0.5f * (fx_log2(s->rein + 1e-12f) - fx_log2(s->reout + 1e-12f));
-    l = fx_clampf(l, 0.0f, SPV2_DAMX);
-    s->rpost = fx_exp2(l - s->cur[SP_DWEL]);
+    l = fx_clampf(l, 0.0f, SPV2_RAMX);
+    s->rpost = fx_exp2(l - (1.0f - SPV2_RLV / SPV2_RHI) * s->cur[SP_DWEL]);
 }
 #endif
 

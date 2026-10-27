@@ -32,8 +32,16 @@
  *   tail (in the loop at most an octave down or 0.6 octave up) instead of clicking
  *   or reading backwards.
  * - MODE (2026-10-24) is a layer over the knobs: the spring's character (DRIP,
- *   TENS and the springs' spread, spring_mode_map); DEC, TONE, DWEL, HPF, PRE and
+ *   TENS and the springs' spread, spring_mode_map); DEC, TONE, DIRT, HPF, PRE and
  *   WDTH stay direct. Until MODE is set the springs run as before, bit for bit.
+ * - v2 (2026-10-26, after SP01 on the unit: the tail cycled and was quiet; notes/
+ *   T5.5 9): round trips 1 : 1.21 : 1.32 (v1's 1 : 1.173 : 1.387 sat near
+ *   1 : 7/6 : 7/5, and the three echo trains lined up every 380 ms); a partial
+ *   cross-feed of the three loop returns (a 30-degree rotation about (1,1,1));
+ *   a slow random wobble of each round trip (3 samples), read with Catmull-Rom;
+ *   the wet gain 2.4. The springs' input clip is fixed (clean at the unit's
+ *   levels) and the knob D is DIRT: the same soft clip on the wet output, so the
+ *   tail itself breaks up, its level measured and made up (sp_dirt_makeup).
  * - selcc: per-sample work in a few loops over 8 to 32 samples with the state in
  *   locals; two allpass kernels (one and two stages per pass) for the springs and
  *   the resampler; the helpers called at control rate only. No shift by an
@@ -48,7 +56,8 @@
 #define SP_SM      0.013245f    /* control-rate one-pole, tau 50 ms: 1 - exp(-1/(0.05*1500)) */
 #define SP_HZG     0.017998f    /* loop high-pass: TPT one-pole at 70 Hz, g/(1+g), g = tan(pi 70/12000) */
 #define SP_GIN     0.5f         /* into the springs */
-#define SP_OUT     1.4f         /* wet output: at the defaults about as loud (RMS) as the stock reverb at DEC 64 on the same input */
+#define SP_OUT     2.4f         /* wet output (v2, +4.7 dB on v1): the init patch against the stock reverb at the same
+                                   knobs +2.5 dB (pluck), +2.2 (chords), -0.1 (drums), BS.1770 */
 #define SP_DMIN    24.0f        /* round trip limits (12 kHz samples) */
 #define SP_DMAX    ((float)(SP_RING - 4))
 #define SP_DSLEW   4.0f         /* at most this much change of a round trip per block: 0.5 per sample */
@@ -63,9 +72,10 @@
 /* x = 0 if |x| < SP_TINY (a statement; x a variable) */
 #define SP_FLUSH(x) do { if ((x) < SP_TINY && (x) > -SP_TINY) (x) = 0.0f; } while (0)
 
-/* the springs: round trips 1 : 1.173 : 1.387 (no simple ratios), a little less
-   dispersion on the longer ones, panned left, right, centre */
-static const float SP_RATIO[SP_NS] = { 1.0f, 1.173f, 1.387f };
+/* the springs: round trips 1 : 1.21 : 1.32 (no simple ratios, and their echo trains
+   do not line up within the tail), a little less dispersion on the longer ones,
+   panned left, right, centre */
+static const float SP_RATIO[SP_NS] = { 1.0f, 1.21f, 1.32f };
 static const float SP_APS[SP_NS] = { 1.0f, 0.96f, 0.92f };
 /* pan + 1 (0 left, 2 right, 1 centre): no negative number in a static table, selcc writes
    every negative float constant of an initialiser wrong (-1.0f as -4.0f; notes/T5.5 4) */
@@ -76,10 +86,27 @@ static const float SP_AP[16] = {
     0.80f, 0.62f, 0.76f, 0.58f, 0.72f, 0.66f, 0.78f, 0.60f,
     0.74f, 0.64f, 0.70f, 0.56f, 0.79f, 0.63f, 0.68f, 0.61f
 };
+/* DIRT (the knob D, 2026-10-26; DWEL before): the soft clip on the wet output. Its drive is
+   SP_DIRT_DB x (knob/127)^SP_DIRT_CRV dB (0 dB at 0, 36 at 127; 0 is a bypass), and after the clip
+   1/drive and the loss the clip made over the last 0.8 s (power in / out, two one-pole meters per
+   block) are made up, so the level holds, but for 5.5 of its 36 dB, which stay: louder with DIRT,
+   about +6 dB at 127 (measured +5.6..+6.3). Literals as clang folds the expressions, so the Mac
+   and selcc builds use the same constants. */
+#define SP_DIRT_DB   36.0f
+#define SP_DIRT_CRV  1.06f
+#define SP_DIRT_L2   5.97947073f    /* SP_DIRT_DB in log2: 36 x 0.16609640 */
+#define SP_DIRT_KEEP 0.847222209f   /* 1 - 5.5 / 36: the share of the drive the make-up takes back */
+#define SP_DIRT_MAX  3.0f           /* log2 of the most the measured make-up adds over 1/drive (+18 dB) */
+#define SP_DIRT_TC   0.0008f        /* the meters' one-pole coefficient per block: about 0.8 s */
+/* the wobble: each loop's round trip moves towards a held random value of up to +-SP_WOB samples
+   (12 kHz), a new one every 467, 541, 613 blocks (spring_init), through two one-pole smoothers
+   (SP_WOBK per block, tau about 0.11 s) */
+#define SP_WOB       3.0f
+#define SP_WOBK      0.006f
 /* MODE's characters (2026-10-24, the owner: "i like all the modes, can they live on a continuous
    knob?", then "size and dark should be separate from the continuous knob"): the spring's own
    character only, per anchor DRIP and TENS (knob values) and the springs' spread; DEC (size), TONE
-   (dark), DWEL and HPF stay the knobs' own. Linear in between (TENS is a log law: log in time).
+   (dark), DIRT and HPF stay the knobs' own. Linear in between (TENS is a log law: log in time).
    Tension falls, the drip and the spread rise, all the way. No negative numbers (selcc). */
 static const float SP_MV[3 * SP_NMODE] = {
     30.0f, 110.0f, 0.85f,      /*   0: taut short springs, little drip: a fast, bright boing */
@@ -101,7 +128,7 @@ static const float SP_HBS1[SP_HS] = { 0.310671415f, 0.850563043f };
 float spring_pre_ms(float knob)  { float x = fx_knob01(knob); return 250.0f * x * x; }
 float spring_rt60_s(float knob)  { return 0.3f * fx_exp2(5.7370f * fx_knob01(knob)); }
 float spring_drip(float knob)    { float x = fx_knob01(knob); return x * (2.0f - x); }
-float spring_dwel_db(float knob) { return (fx_clampf(knob, 0.0f, 127.0f) - 64.0f) * (FX_DB_PER_LOG2 / 16.0f); }
+float spring_dirt_db(float knob) { float x = fx_knob01(knob); return x > 0.0f ? SP_DIRT_DB * fx_exp2(SP_DIRT_CRV * fx_log2(x)) : 0.0f; }
 float spring_hpf_hz(float knob)  { return 40.0f * fx_exp2(4.6438562f * fx_knob01(knob)); }
 float spring_tone_hz(float knob) { return 600.0f * fx_exp2(4.0f * fx_knob01(knob)); }
 float spring_width(float knob)   { return fx_knob01(knob); }
@@ -156,7 +183,9 @@ static void sp_targets(Spring *s)
     t[SP_PREDLY] = (float)(int32_t)(x + 0.5f);                        /* whole samples: no interpolation at rest */
     t[SP_DEC] = -1.7369656f + 5.7370f * fx_knob01(k[SP_DEC]);        /* log2 0.3 s .. log2 16 s */
     t[SP_DRIP] = spring_drip(k[SP_DRIP]);
-    t[SP_DWEL] = (k[SP_DWEL] - 64.0f) * 0.0625f;                       /* log2 of the drive */
+    x = fx_knob01(k[SP_DWEL]);                                         /* log2 of DIRT's drive (0 at 0) */
+    t[SP_DWEL] = 0.0f;
+    if (x > 0.0f) t[SP_DWEL] = SP_DIRT_L2 * fx_exp2(SP_DIRT_CRV * fx_log2(x));
     t[SP_HPF] = 5.3219281f + 4.6438562f * fx_knob01(k[SP_HPF]);       /* log2 40 Hz .. log2 1 kHz */
     t[SP_TONE] = 9.2288187f + 4.0f * fx_knob01(k[SP_TONE]);           /* log2 600 Hz .. log2 9.6 kHz */
     t[SP_WDTH] = fx_knob01(k[SP_WDTH]);
@@ -189,6 +218,16 @@ static float sp_tpt(float lf)
 }
 
 /* everything that follows from cur[]: called when a smoothed value moved */
+
+/* DIRT's make-up for log2 drive cd: the loss the soft clip made over the last 0.8 s (half log2 of
+   power in / out), minus SP_DIRT_KEEP of the drive */
+static float sp_dirt_post(const Spring *s, float cd)
+{
+    float l = 0.5f * (fx_log2(s->rein + 1e-12f) - fx_log2(s->reout + 1e-12f));
+    l = fx_clampf(l, 0.0f, SP_DIRT_MAX);
+    return fx_exp2(l - SP_DIRT_KEEP * cd);
+}
+
 static void sp_coefs(Spring *s)
 {
     const float *c = s->cur;
@@ -199,8 +238,7 @@ static void sp_coefs(Spring *s)
     int k, j;
     s->hpc = sp_tpt(c[SP_HPF]);
     s->lpc = sp_onepole(c[SP_TONE]);
-    s->drive = fx_exp2(c[SP_DWEL]);
-    s->post = fx_exp2(-0.5f * c[SP_DWEL]);
+    s->rdrive = fx_exp2(c[SP_DWEL]);
     for (k = 0; k < SP_NS; k++) {
         SpLine *L = &s->sp[k];
         float r, dt, sc, p, x;
@@ -262,8 +300,12 @@ void spring_snap(Spring *s)
         s->sp[k].dd = 0.0f;
     }
     s->pd = s->cur[SP_PREDLY];
-    s->dr0 = s->drive;
-    s->po0 = s->post;
+    s->rdr0 = s->rdrive;
+    s->rpo0 = sp_dirt_post(s, s->cur[SP_DWEL]);
+    s->ldr[0] = s->rdrive;
+    s->ldr[1] = s->rdrive;
+    s->lcd[0] = s->cur[SP_DWEL];
+    s->lcd[1] = s->cur[SP_DWEL];
 }
 
 void spring_init(Spring *s)
@@ -274,7 +316,7 @@ void spring_init(Spring *s)
     s->knob[SP_PREDLY] = 0.0f;
     s->knob[SP_DEC] = 64.0f;      /* 2.2 s */
     s->knob[SP_DRIP] = 64.0f;
-    s->knob[SP_DWEL] = 64.0f;     /* 0 dB */
+    s->knob[SP_DWEL] = 0.0f;      /* DIRT off: the clean tank */
     s->knob[SP_HPF] = 0.0f;       /* 40 Hz */
     s->knob[SP_TONE] = 127.0f;    /* the open tank */
     s->knob[SP_WDTH] = 96.0f;
@@ -283,6 +325,24 @@ void spring_init(Spring *s)
     s->t_spr = 1.0f;
     s->spr = 1.0f;
     s->dirty = 1;
+    s->sp[0].rnd = 0x12345u;
+    s->sp[1].rnd = 0x9e3779b9u;
+    s->sp[2].rnd = 0x7f4a7c15u;
+    s->sp[0].mper = 467;          /* blocks per wobble target */
+    s->sp[1].mper = 541;
+    s->sp[2].mper = 613;
+    /* the cross-feed, a 30-degree rotation about (1,1,1) (fx/proto/spng-v2/mkmix.py 0.5236): each
+       loop takes a of its own return, b of the next spring's and c of the one after (rows of a
+       circulant matrix; in code, as selcc writes negative constants in static tables wrong) */
+    s->sp[0].x0 = 0.91068319f;
+    s->sp[0].x1 = 0.33333415f;
+    s->sp[0].x2 = -0.24401734f;
+    s->sp[1].x0 = -0.24401734f;
+    s->sp[1].x1 = 0.91068319f;
+    s->sp[1].x2 = 0.33333415f;
+    s->sp[2].x0 = 0.33333415f;
+    s->sp[2].x1 = -0.24401734f;
+    s->sp[2].x2 = 0.91068319f;
     spring_snap(s);
 }
 
@@ -305,8 +365,6 @@ static void sp_control(Spring *s)
     int p, k, moved = 0;
     float e;
     if (s->dirty) sp_targets(s);
-    s->dr0 = s->drive;
-    s->po0 = s->post;
     s->pd = sp_slew(s->pd, c[SP_PREDLY], SP_PSLEW);   /* where the last block's ramp ended */
     for (p = 0; p < SP_NINT; p++) {
         e = sp_glide(c[p], t[p], SP_SM);
@@ -328,7 +386,15 @@ static void sp_control(Spring *s)
     for (k = 0; k < SP_NS; k++) {
         SpLine *L = &s->sp[k];
         L->d = L->d + 8.0f * L->dd;                   /* where the last block's ramp ended */
-        e = sp_slew(L->d, L->dt, SP_DSLEW);
+        L->mcnt = L->mcnt - 1;
+        if (L->mcnt <= 0) {           /* a new wobble target, -1..1 from the top 23 bits (no shift: selcc) */
+            L->rnd = L->rnd * 1664525u + 1013904223u;
+            L->mv = (float)(int32_t)((L->rnd & 0xfffffe00u) ^ 0x80000000u) * 4.65661287e-10f;
+            L->mcnt = L->mper;
+        }
+        L->m1 += SP_WOBK * (L->mv - L->m1);
+        L->m2 += SP_WOBK * (L->m1 - L->m2);
+        e = sp_slew(L->d, L->dt + SP_WOB * L->m2, SP_DSLEW);
         L->dd = (e - L->d) * 0.125f;
         SP_FLUSH(L->lp);
         SP_FLUSH(L->hz);
@@ -423,6 +489,7 @@ void sp_interp(Spring *s, float *outL, float *outR);
 void sp_interp(Spring *s, float *outL, float *outR)
 {
     float *t = s->wa;
+    float drv, cd;
     int c, m;
     for (c = 0; c < 2; c++) {
         const float *u = s->lo[s->cur_lo ^ 1][c];
@@ -438,6 +505,50 @@ void sp_interp(Spring *s, float *outL, float *outR)
         }
         sp_ap2(out, 2 * SP_LB, SP_HBW0, SP_HBW1, s->uw[c], SP_HW);
     }
+    /* DIRT, with the setting the tank's block was made with (sp_input), so the output does not depend
+       on how the stream is cut into calls */
+    if (s->cur_lo) {
+        drv = s->ldr[0];
+        cd = s->lcd[0];
+    } else {
+        drv = s->ldr[1];
+        cd = s->lcd[1];
+    }
+    if (cd == 0.0f && s->rdr0 == drv) {
+        s->rein = 0.0f;              /* DIRT 0: out of the way (the output as it is), the meters reset */
+        s->reout = 0.0f;
+        s->rpo0 = 1.0f;
+    } else {   /* DIRT: the wet output into the soft clip, both channels with one gain; power in and out for the make-up */
+        float dr, dri, po, pot, poi, pin, pout;
+        pot = sp_dirt_post(s, cd);
+        dr = s->rdr0;
+        dri = (drv - dr) * 0.03125f;
+        po = s->rpo0;
+        poi = (pot - po) * 0.03125f;
+        pin = 0.0f;
+        pout = 0.0f;
+        for (m = 0; m < FX_BLOCK; m++) {
+            float a, b;
+            dr += dri;
+            po += poi;
+            a = outL[m] * dr;
+            b = outR[m] * dr;
+            pin += a * a + b * b;
+            FX_CLAMP(a, -1.5f, 1.5f);
+            FX_CLAMP(b, -1.5f, 1.5f);
+            a = a - 0.14814815f * a * a * a;
+            b = b - 0.14814815f * b * b * b;
+            pout += a * a + b * b;
+            outL[m] = a * po;
+            outR[m] = b * po;
+        }
+        s->rein += SP_DIRT_TC * (pin - s->rein);
+        s->reout += SP_DIRT_TC * (pout - s->reout);
+        SP_FLUSH(s->rein);
+        SP_FLUSH(s->reout);
+        s->rdr0 = drv;
+        s->rpo0 = pot;
+    }
 }
 
 /* one block of input (32 samples at 48 kHz) -> the tank -> lo[cur_lo] */
@@ -447,7 +558,7 @@ void sp_input(Spring *s, const float *inL, const float *inR)
     float *v = s->wa, *e = s->wb, *x = s->wc;
     float *lo0 = s->lo[s->cur_lo][0], *lo1 = s->lo[s->cur_lo][1];
     const int32_t w0 = s->wp;
-    float od, hs, hpc, dr, dri, po, poi, pd, pdi;
+    float od, hs, hpc, pd, pdi;
     int m, k;
 
     /* mono, 48 -> 24 kHz: pairs (x[2m], x[2m-1]) through the two branches */
@@ -472,14 +583,19 @@ void sp_input(Spring *s, const float *inL, const float *inR)
     }
     s->ods = od;
     sp_ap2x2(v, SP_LB, SP_HBS0, SP_HBS1, s->ds, SP_HS);
+    /* the DIRT setting this block is made with (sp_interp plays it) */
+    if (s->cur_lo) {
+        s->ldr[1] = s->rdrive;
+        s->lcd[1] = s->cur[SP_DWEL];
+    } else {
+        s->ldr[0] = s->rdrive;
+        s->lcd[0] = s->cur[SP_DWEL];
+    }
 
-    /* HPF, DWEL, into the pre-delay ring */
+    /* HPF, the soft clip (clean at the unit's levels: it holds what a hot send would push), into the
+       pre-delay ring */
     hs = s->hps;
     hpc = s->hpc;
-    dr = s->dr0;
-    dri = (s->drive - dr) * 0.125f;
-    po = s->po0;
-    poi = (s->post - po) * 0.125f;
     for (m = 0; m < SP_LB; m++) {
         float y = 0.5f * (v[2 * m] + v[2 * m + 1]);
         {   /* TPT one-pole high-pass: y minus the low-pass */
@@ -488,11 +604,8 @@ void sp_input(Spring *s, const float *inL, const float *inR)
             hs = l + u;
             y -= l;
         }
-        dr += dri;
-        po += poi;
-        y *= dr;
         FX_CLAMP(y, -1.5f, 1.5f);
-        y = (y - 0.14814815f * y * y * y) * po;
+        y = y - 0.14814815f * y * y * y;
         SP_FLUSH(y);
         s->pring[(w0 + m) & SP_PMASK] = y;
     }
@@ -513,10 +626,11 @@ void sp_input(Spring *s, const float *inL, const float *inR)
         lo1[m] = 0.0f;
     }
 
-    /* the springs */
+    /* the springs: the reads (and the output taps) of all three first, then the mix into each loop */
     for (k = 0; k < SP_NS; k++) {
         SpLine *L = &s->sp[k];
         float *rb = s->ring[k];
+        float *rr = s->rr[k];
         float d = L->d;
         const float dd = L->dd;
         const float g = L->g;
@@ -529,7 +643,6 @@ void sp_input(Spring *s, const float *inL, const float *inR)
             int32_t di;
             float f, x0, x1, r, dh;
             d += dd;
-            /* the far end: half a round trip */
             dh = 0.5f * d;
             di = (int32_t)dh;
             f = dh - (float)di;
@@ -538,23 +651,42 @@ void sp_input(Spring *s, const float *inL, const float *inR)
             r = x0 + f * (x1 - x0);
             lo0[m] += gl * r;
             lo1[m] += gr * r;
-            /* back at the input end: a whole round trip */
             di = (int32_t)d;
             f = d - (float)di;
             x0 = rb[(w0 + m - di) & SP_RMASK];
             x1 = rb[(w0 + m - di - 1) & SP_RMASK];
-            r = x0 + f * (x1 - x0);
+            {
+                float xm = rb[(w0 + m - di + 1) & SP_RMASK];
+                float x2 = rb[(w0 + m - di - 2) & SP_RMASK];
+                float c1 = 0.5f * (x1 - xm);
+                float c2 = xm - 2.5f * x0 + 2.0f * x1 - 0.5f * x2;
+                float c3 = 0.5f * (x2 - xm) + 1.5f * (x0 - x1);
+                r = ((c3 * f + c2) * f + c1) * f + x0;
+            }
             lp += lpc * (r - lp);
-            {   /* TPT one-pole high-pass at 70 Hz: lp minus its low-pass */
+            {
                 float u = (lp - hz) * SP_HZG;
                 float l = u + hz;
                 hz = l + u;
-                e[m] = x[m] + g * (lp - l);
+                rr[m] = g * (lp - l);
             }
         }
         L->lp = lp;
         L->hz = hz;
-        sp_ap2x2(e, SP_LB / 2, L->a, L->a, L->ap, SP_M);   /* H(z^2): the even and odd samples apart */
+    }
+    for (k = 0; k < SP_NS; k++) {
+        SpLine *L = &s->sp[k];
+        float *rb = s->ring[k];
+        const float *r0 = s->rr[0];
+        const float *r1 = s->rr[1];
+        const float *r2 = s->rr[2];
+        const float c0 = L->x0;
+        const float c1 = L->x1;
+        const float c2 = L->x2;
+        for (m = 0; m < SP_LB; m++) {
+            e[m] = x[m] + c0 * r0[m] + c1 * r1[m] + c2 * r2[m];
+        }
+        sp_ap2x2(e, SP_LB / 2, L->a, L->a, L->ap, SP_M);
         for (m = 0; m < SP_LB; m++) {
             float y = e[m];
             FX_CLAMP(y, -1.5f, 1.5f);

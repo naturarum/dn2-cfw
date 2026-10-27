@@ -61,8 +61,8 @@ DJ01_MAP = os.path.join(DJ01, 'build', 'DJ01-main.syx.map.json')
 DT01_DSP = os.path.join(ROOT, 'out', 'DT01', 'DT01-dsp')
 DT01_SEC7_SHA = 'fb4b5556cdc3edca39f7a8f6391e5c30eadafacb0555e683c402dee3a1647fdb'
 SP01_DSP = os.path.join(ROOT, 'out', 'SP01', 'SP01-dsp')
-MODDIR = os.path.join(EL, 'examples', 'spring-names-dn2')
-NEW_SRC = ['fx/spring.c', 'fx/spring.h', 'tools/dspsplice/src/spng_glue.c']
+MODDIR = os.path.join(ROOT, 'scripts', 'sp01', 'spring-names-dn2')   # 0.1, frozen (the fork's folder is 0.2 since SP02)
+NEW_SRC = ['tools/dspsplice/src/sp01/spring.c', 'tools/dspsplice/src/sp01/spring.h', 'tools/dspsplice/src/spng_glue.c']
 SPRING_DROP = ['spring:spring_pre_ms', 'spring:spring_rt60_s', 'spring:spring_dwel_db', 'spring:spring_hpf_hz',
                'spring:spring_tone_hz', 'spring:spring_width', 'spring:spring_tens_ms']
 L1 = 0x28000000
