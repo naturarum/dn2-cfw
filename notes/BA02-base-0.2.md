@@ -83,8 +83,8 @@ scroll, +4 the 128 x 64 source Bitmap, +0x20 a 16,384-entry offset table); frame
 Elektron's logo (`0x44647008`) at (48, 20) (`0x400d3ac4`); frames 1..4 copy it; from 5 the panel samples the source
 through the table. Ours: that jsr -> `bm_draw`, which sets the mark's pixels with the stock setPixel. The static screen
 before (logo and version) is untouched. `scripts/ba02_bootmark.py` runs the stock intro offline on DJ01's image with
-three candidate marks (our own pixel letters): 200 frames each, still until about frame 60, then the tunnel, blank
-from 169 (`out/BA02/bootmark/`, vault code/Digitone2/BA02/). **The owner picked B** (DIGI over WERK, 2,277 pixels):
+three candidate marks (our own pixel letters): 175 frames each, still until about frame 65, then the tunnel, blank
+from 169 (the first previews cut the table's build short: section 6) (`out/BA02/bootmark/`, vault code/Digitone2/BA02/). **The owner picked B** (DIGI over WERK, 2,277 pixels):
 `ba02_make_boot.py`'s default. Against the build with mark A, the main OS images differ in 650 bytes, all inside
 bm_mark's stored 1,024 (the link map identical), so every result of mark A's build holds for B's code.
 
@@ -99,9 +99,30 @@ the ARP menu's MODE steps OFF TRUE UP DOWN CYCL **SHUF RAND** and holds at RAND,
 build** (`a3fefcaf...`) cold-booted the same way (`out/BA02/emu-B/`: 400M, 8 tasks; 800M, the main screen): its intro's
 source picture is mark B, pixel for pixel (2,277 lit).
 
+## 6. On the unit (2026-10-28)
+
+The owner flashed BA02. The LFO's ONE and HALF: "oh cool it works, great improvement!" KEY: "works flawlessly"; DEP
+needs no counting of semitones any more (stock wants 12 for an octave in tune): over its whole range the result stays
+in the scale. SHUF and RAND: "work amazingly well too". The start-up animation: "upside down. but works, albeit a bit
+slow".
+
+- **The picture's way up** [verified in the code; inferred for the panel]: the player `0x400d3d0a` (started by the
+  chooser `0x400d3eea`, which plays this intro unless the stock LCG's value is above 32,735) builds its panel Bitmap
+  with the stock constructor `0x40113e2a` over the buffer the flush `0x40131fd2` hands it, as the screens do
+  (`0x4002e4c0`), and the same flush sends both; outside the tunnel's window every pixel is a straight copy
+  (`0x400d3c3c`), and the window is empty until about frame 65. So DIGI over WERK is the right way up, as the stock
+  splash's emblem and text are.
+- **The first previews were wrong after frame 65:** the harness capped frame 0, which builds the tunnel's 16,384-entry
+  table with soft-float math, at 50M instructions, so the table was part built; whole, the effect ends low on the
+  screen, where the previews ended high. That is the likely "upside down" (to confirm with the owner). Fixed in
+  `ba02_bootmark.py` (no cap, the player's arguments, the LCG's state as after the chooser's draw); vault
+  code/Digitone2/BA02/Boot mark B, as on the unit.
+- **The speed is the stock intro's** [verified]: the same instructions per frame with Elektron's emblem as with each
+  mark (1.08M to 1.29M, 14 frames measured with the capped table; the loop's work does not depend on the pixels).
+
 ## Open
 
 - The Turing mode (proposal in the vault's Turing arp.md, questions to the owner): a later build.
-- The flashing guide: `out/BA02/FLASH-BA02.md` (vault code/Digitone2/BA02/). Not flashed yet.
+- The flashing guide: `out/BA02/FLASH-BA02.md` (vault code/Digitone2/BA02/). On the unit since 2026-10-28 (section 6).
 - Unit only: everything sounds as described; KEY's units on FM Tone PITCH and WaveTone MAST (semitones [inferred],
   as DJ01's scale waves).

@@ -1412,3 +1412,11 @@ rebuilds byte for byte). CREDITS.md: the dnfw/DNX entries say "Inspired by their
 dnfw's list names the ONE/HALF, arp and intro findings. The guide `out/BA02/FLASH-BA02.md` (also in the vault,
 code/Digitone2/BA02/). Next: the owner flashes BA02 (SP02 also waits; either first); the Turing mode in a later build
 once its design is agreed.
+
+**2026-10-28, BA02 on the unit.** ONE/HALF "great improvement", KEY "works flawlessly" (DEP's whole range stays in the
+scale), SHUF and RAND "work amazingly well"; the start-up animation "upside down. but works, albeit a bit slow". Read
+in the code: the intro draws the display's own buffer as the screens do, a straight copy until the tunnel opens, so
+the mark is the right way up; my first previews were wrong after frame 65 (frame 0, the tunnel table's build, was
+capped at 50M instructions), and the real tunnel ends low where they ended high: the likely "upside down" (to
+confirm). The cost per frame is the same with Elektron's emblem: the speed is stock. `ba02_bootmark.py` fixed
+(notes/BA02 section 6). SP02 still waits for its flash.

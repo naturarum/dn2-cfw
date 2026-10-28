@@ -13,6 +13,13 @@ frames 1..4 copy the source to the panel; from frame 5 each panel pixel samples 
 plus the scroll, inside a window that grows with the frame. A Bitmap: +4 width, +8 height, +0x0c words per column,
 +0x10 the pixels (column-major: word y >> 5 of column x, bit 31 - (y & 31)), +0x14 a second buffer.
 
+The player (0x400d3d0a, started by the chooser 0x400d3eea, which picks this intro unless the stock random generator's
+first value is above 32,735) calls it as (frame, 175, the panel Bitmap), 175 frames. Frame 0 builds the table with
+soft-float math, hundreds of millions of instructions: it runs here without the usual cap (until 2026-10-28 a 50M cap
+cut it short, so the tunnel in the first previews was wrong; the still frames were right). The table takes two
+values of the stock random generator (an LCG, 0x40150950, its state at 0x405ce95c); the state is set as after one
+draw from a cleared state, as on the unit if nothing else draws before the chooser [inferred: nothing seeds it].
+
 Writes NAME.frames (the mark, then each frame, 1 KB each) per candidate and marks.json (each mark's bits, for the
 mod); then, with the system Python (Pillow), --render writes NAME.png (the mark, x4) and NAME.gif (the animation, x4).
 """
@@ -39,6 +46,8 @@ INTRO, BLIT_SITE = 0x400d39ea, 0x400d3ac4
 OBJ, SRC, TAB = 0x42c46678, 0x42c4667c, 0x42c46698
 GUARDS = (0x42c4cae4, 0x42c4cadc)
 SCRATCH = 0x10500000
+NFRAMES = 175                                           # the player's table entry 0x4028c694: the intro, 0xaf frames
+RNG, RNG_STATE = 0x405ce95c, 12345                      # the LCG's state after one draw from 0 (the chooser's)
 
 # our pixel letters: 9 rows, variable width, 2-pixel strokes
 GLYPHS = {
@@ -146,9 +155,11 @@ class Intro(Base):
         self.bitmap(SCRATCH, SCRATCH + 0x3000, SCRATCH + 0x4000)       # the panel
         self.wr(TAB, struct.pack('>III', SCRATCH + 0x10000, SCRATCH + 0x20000, SCRATCH + 0x20000))
         self.wr(OBJ, struct.pack('>I', 0))
+        self.m.ensure(RNG)
+        self.wr(RNG, struct.pack('>I', RNG_STATE))
 
     def frame(self, n):
-        call(self.m, INTRO, [n, 0, SCRATCH], stack_top=0x10000000 + 0xff000, limit=50_000_000)
+        call(self.m, INTRO, [n, NFRAMES, SCRATCH], stack_top=0x10000000 + 0xff000, limit=4_000_000_000)
         raw = self.rd(SCRATCH + 0x3000, W * 8)
         img = blank()
         for x in range(W):
@@ -189,7 +200,7 @@ def render(out):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--out', required=True)
-    ap.add_argument('--frames', type=int, default=200)
+    ap.add_argument('--frames', type=int, default=NFRAMES)
     ap.add_argument('--only')
     ap.add_argument('--render', action='store_true', help='write the PNGs and GIFs (the system Python, with Pillow)')
     a = ap.parse_args()
