@@ -1,0 +1,128 @@
+{
+ "about": "Our DSP code for each combination of the effects (bytes), placed by first-fit over the four proven regions (scripts/patcher_budget.py, DC02's compiler mode)",
+ "room": 83838,
+ "combos": [
+  {
+   "effects": [
+    "cmp3"
+   ],
+   "code": 34344,
+   "fits": true
+  },
+  {
+   "effects": [
+    "flng"
+   ],
+   "code": 15048,
+   "fits": true
+  },
+  {
+   "effects": [
+    "tape"
+   ],
+   "code": 33926,
+   "fits": true
+  },
+  {
+   "effects": [
+    "spng"
+   ],
+   "code": 19414,
+   "fits": true
+  },
+  {
+   "effects": [
+    "cmp3",
+    "flng"
+   ],
+   "code": 47930,
+   "fits": true
+  },
+  {
+   "effects": [
+    "cmp3",
+    "tape"
+   ],
+   "code": 66614,
+   "fits": true
+  },
+  {
+   "effects": [
+    "cmp3",
+    "spng"
+   ],
+   "code": 53044,
+   "fits": true
+  },
+  {
+   "effects": [
+    "flng",
+    "tape"
+   ],
+   "code": 47192,
+   "fits": true
+  },
+  {
+   "effects": [
+    "flng",
+    "spng"
+   ],
+   "code": 33606,
+   "fits": true
+  },
+  {
+   "effects": [
+    "tape",
+    "spng"
+   ],
+   "code": 52544,
+   "fits": true
+  },
+  {
+   "effects": [
+    "cmp3",
+    "flng",
+    "tape"
+   ],
+   "code": 79880,
+   "fits": true
+  },
+  {
+   "effects": [
+    "cmp3",
+    "flng",
+    "spng"
+   ],
+   "code": 66972,
+   "fits": true
+  },
+  {
+   "effects": [
+    "cmp3",
+    "tape",
+    "spng"
+   ],
+   "code": 85714,
+   "fits": false
+  },
+  {
+   "effects": [
+    "flng",
+    "tape",
+    "spng"
+   ],
+   "code": 66160,
+   "fits": true
+  },
+  {
+   "effects": [
+    "cmp3",
+    "flng",
+    "tape",
+    "spng"
+   ],
+   "code": 99330,
+   "fits": false
+  }
+ ]
+}

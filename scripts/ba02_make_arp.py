@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""Base 0.2: write vendor/elekloader/examples/arp-modes-dn2/mod.json, arp-modes-dn2 0.1 (every site checked against
+"""Base 0.2: write scripts/ba02/arp-modes-dn2/mod.json, arp-modes-dn2 0.1 (every site checked against
 the stock image): the arpeggiator's SHUF and RAND (am.s, am.c; notes/BA02-base-0.2.md).
 
     venv/bin/python scripts/ba02_make_arp.py [--list]
@@ -21,7 +21,7 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IMAGE = os.path.join(ROOT, 'ele3_out', '02_type3.unpacked.bin')
-MODDIR = os.path.join(ROOT, 'vendor', 'elekloader', 'examples', 'arp-modes-dn2')
+MODDIR = os.path.join(ROOT, 'scripts', 'ba02', 'arp-modes-dn2')   # 0.1, frozen for BA02 (the fork's folder is 0.2 since BA03)
 OUT = os.path.join(MODDIR, 'mod.json')
 LOAD = 0x40000400
 STEP, STEP_END = 0x4002a0bc, 0x4002a3a6

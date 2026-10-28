@@ -1,0 +1,67 @@
+{
+ "id": "arp-modes",
+ "version": "0.1",
+ "title": "Arp SHUF and RAND (base 0.2)",
+ "category": "Examples",
+ "license": "GPL-2.0-or-later",
+ "author": "naturarum",
+ "description": "EXPERIMENT: emulator-tested only. The arpeggiator's SHUF and RAND, which the Digitone II names but plays as CYCL: SHUF plays every held note in every octave of RANGE once per cycle, in a new random order each cycle; RAND a random held note in a random octave of RANGE at each step. The steps' on/off and offsets, LEN, SPEED and N.LEN work as in the stock modes. A kit saved with SHUF or RAND opens on a stock OS with its arp OFF. Inspired by research findings of dn2_firmware_explore (angellinares) on OS 1.11; this is our own code. For dn2-cfw's base 0.2.",
+ "device": "digitone-mk2",
+ "os": "1.12",
+ "sources": [
+  "am.s",
+  "am.c"
+ ],
+ "sites": [
+  {
+   "addr": "0x4002a13c",
+   "stock": "7003b084670000c660000144",
+   "op": "jmp",
+   "target": "am_mode"
+  },
+  {
+   "addr": "0x4004befa",
+   "stock": "7404",
+   "op": "bytes",
+   "new": "7406",
+   "kind": "code"
+  },
+  {
+   "addr": "0x4004bf00",
+   "stock": "7204",
+   "op": "bytes",
+   "new": "7206",
+   "kind": "code"
+  },
+  {
+   "addr": "0x4004bfb4",
+   "stock": "7004",
+   "op": "bytes",
+   "new": "7006",
+   "kind": "code"
+  },
+  {
+   "addr": "0x4004bfc6",
+   "stock": "7204",
+   "op": "bytes",
+   "new": "7206",
+   "kind": "code"
+  },
+  {
+   "addr": "0x400dd694",
+   "stock": "7404",
+   "op": "bytes",
+   "new": "7406",
+   "kind": "code"
+  }
+ ],
+ "resources": {
+  "names": [
+   "arp-step-dispatch",
+   "arp-mode-bounds"
+  ]
+ },
+ "requires": [
+  "core"
+ ]
+}

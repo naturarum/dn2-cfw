@@ -2,7 +2,9 @@
 // main.swift - app/test.sh's driver: Core (the app's path into the C core, the same Sources/Core.swift) with the
 // packs of a folder laid out as the app's Resources/packs, for every pack: Elektron's .zip, the unzipped folder, the
 // file; an existing output (the build: nothing to do; another file: the app would ask, and Core leaves it); wrong
-// files. Each output is compared with OUTDIR/ID/ID.syx.
+// files. Each output is compared with OUTDIR/ID/ID.syx. The folder's catalog.json and dsp-budget.json (Catalog.swift)
+// must cover the packs: every effect in a slot, every base id with a manual entry, every combination measured; with
+// DIGIWERK_RELEASE_SET=1 (a set the patcher ships) no two packs may have the same effects.
 //   coretest STOCK.syx STOCK.zip PACKSDIR OUTDIR WORKDIR [WRONG_FILE ...]
 import Foundation
 
@@ -23,11 +25,20 @@ let index = (try? String(contentsOf: URL(fileURLWithPath: a[3]).appendingPathCom
 who = "packs"
 check(!packs.isEmpty && packs.map(\.id) == index, "\(packs.count) pack(s) loaded in index.txt's order: "
       + packs.map(\.id).joined(separator: ", "))
-check(packs.allSatisfy { $0.effects == ["cmp3", "flng"] }, "every pack lists its effects: "
+let wantFx = ["SP01": ["cmp3", "flng", "spng"], "SP02": ["cmp3", "flng", "spng"]]   // the others: ["cmp3", "flng"]
+check(packs.allSatisfy { $0.effects == (wantFx[$0.id] ?? ["cmp3", "flng"]) }, "every pack lists its effects: "
       + packs.map { "\($0.id) \($0.effects.joined(separator: "+"))" }.joined(separator: ", "))
-let wantBase = ["CMP4": [String](), "DJ01": ["djvu", "overbridge"]]          // the others: ["overbridge"]
+let dj = ["djvu", "overbridge"]
+let wantBase = ["CMP4": [String](), "DJ01": dj, "SP01": dj, "SP02": dj]      // the others: ["overbridge"]
 check(packs.allSatisfy { $0.base == (wantBase[$0.id] ?? ["overbridge"]) }, "every pack lists its base: "
       + packs.map { "\($0.id) [\($0.base.joined(separator: "+"))]" }.joined(separator: ", "))
+let catalog = Catalog.load(from: URL(fileURLWithPath: a[3]))
+let release = ProcessInfo.processInfo.environment["DIGIWERK_RELEASE_SET"] == "1"
+let problems = catalog.problems(packs).filter { release || !$0.contains("the same effects as") }
+check(catalog.slots.count == 4 && catalog.budget?.combos.count == 15 && problems.isEmpty,
+      "catalog.json and dsp-budget.json cover the packs\(release ? ", one pack per combination" : ""): "
+      + (problems.isEmpty ? "\(catalog.slots.count) slots, \(catalog.entries.count) manual entries, "
+         + "\(catalog.budget?.combos.count ?? 0) combinations measured" : problems.joined(separator: "; ")))
 let temps = { (try? fm.contentsOfDirectory(atPath: fm.temporaryDirectory.path))?
     .filter { $0.hasPrefix("digiwerk-patcher-") }.count ?? 0 }
 

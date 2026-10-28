@@ -54,8 +54,8 @@ DC02_SEC7, DC02_SEC7_SHA = (os.path.join(DC02, 'DC02-dsp', 'section7.bin'),
                             '9fd315f922f4ea71952d3e0074132ac3df50ae532ba058da39bf032e677b1026')
 DV_DIR = os.path.join(EL, 'examples', 'lfo-dejavu-dn2')
 DV_VERSION = '0.2'
-NEW_MODS = [('arp-modes', '0.1', os.path.join(EL, 'examples', 'arp-modes-dn2'), 'ba02_make_arp.py'),
-            ('boot-mark', '0.1', os.path.join(EL, 'examples', 'boot-mark-dn2'), 'ba02_make_boot.py')]
+NEW_MODS = [('arp-modes', '0.1', os.path.join(ROOT, 'scripts', 'ba02', 'arp-modes-dn2'), 'ba02_make_arp.py'),   # frozen
+            ('boot-mark', '0.1', os.path.join(ROOT, 'scripts', 'ba02', 'boot-mark-dn2'), 'ba02_make_boot.py')]
 WAVE_ROWS = (0x4f, 0x59, 0x63)
 WTAB = 0x4020b7f8
 log = T.log

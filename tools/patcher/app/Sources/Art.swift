@@ -12,9 +12,6 @@ enum Art {
     static var dir = Bundle.main.resourceURL?.appendingPathComponent("identity")
     static let effectNames = ["cmp3": "3-band compressor", "flng": "Flanger", "tape": "Tape echo",
                               "spng": "Spring reverb"]                 // mkpatch.py's EFFECTS
-    static let effectLabels = ["cmp3": "COMPRESSOR", "flng": "FLANGER", "tape": "TAPE ECHO", "spng": "SPRING"]
-    static let baseNames = ["djvu": "D\u{E9}j\u{E0} vu LFO", "overbridge": "Overbridge works"]   // mkpatch.py's BASE
-    static let baseIcons: Set<String> = ["djvu"]             // the base features with an icon in docs/identity
     static let white = NSColor(white: 0.95, alpha: 1)
     private static var cache: [String: Grid] = [:]
 

@@ -80,7 +80,9 @@ META = (('title', 63), ('description', 159), ('record', 159), ('tested_on_unit',
         ('effects', 63), ('base', 63), ('dsp_code_bytes', 15), ('dsp_state_bytes', 15), ('dsp_load_percent', 15))
 # key, most bytes (dn2patch.h's dn2p_info)
 EFFECTS = {'cmp3': '3-band compressor', 'flng': 'flanger', 'tape': 'tape echo', 'spng': 'spring reverb'}
-BASE = {'djvu': 'D\u00e9j\u00e0 vu LFO', 'overbridge': 'Overbridge works'}   # the base: light main-OS features
+BASE = {'djvu': 'D\u00e9j\u00e0 vu LFO', 'key': 'KEY wave', 'onehalf': 'LFO ONE and HALF',
+        'arp': 'Arp SHUF, RAND and TM', 'intro': 'Digiwerk intro',
+        'overbridge': 'Overbridge works'}   # the base: light main-OS features (catalog.json has their manual entries)
 BASE_ICONS = ('djvu',)
 IDENTITY = os.path.join(ROOT, 'docs', 'identity')         # the effects' pixel icons (make_icons.py)
 BRICKCHECK = os.path.join(ROOT, 'out', 'brickcheck')

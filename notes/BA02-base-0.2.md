@@ -106,17 +106,17 @@ needs no counting of semitones any more (stock wants 12 for an octave in tune): 
 in the scale. SHUF and RAND: "work amazingly well too". The start-up animation: "upside down. but works, albeit a bit
 slow".
 
-- **The picture's way up** [verified in the code; inferred for the panel]: the player `0x400d3d0a` (started by the
-  chooser `0x400d3eea`, which plays this intro unless the stock LCG's value is above 32,735) builds its panel Bitmap
-  with the stock constructor `0x40113e2a` over the buffer the flush `0x40131fd2` hands it, as the screens do
-  (`0x4002e4c0`), and the same flush sends both; outside the tunnel's window every pixel is a straight copy
-  (`0x400d3c3c`), and the window is empty until about frame 65. So DIGI over WERK is the right way up, as the stock
-  splash's emblem and text are.
-- **The first previews were wrong after frame 65:** the harness capped frame 0, which builds the tunnel's 16,384-entry
-  table with soft-float math, at 50M instructions, so the table was part built; whole, the effect ends low on the
-  screen, where the previews ended high. That is the likely "upside down" (to confirm with the owner). Fixed in
-  `ba02_bootmark.py` (no cap, the player's arguments, the LCG's state as after the chooser's draw); vault
-  code/Digitone2/BA02/Boot mark B, as on the unit.
+- **Upside down, as the owner saw** [verified]: the intro draws the display's own buffer as the screens do (the
+  player `0x400d3d0a`, started by the chooser `0x400d3eea`, builds its panel Bitmap with the stock constructor
+  `0x40113e2a` over the buffer the flush `0x40131fd2` hands it, as `0x4002e4c0` does for the screens), but the panel's
+  rows run up: page 0 is the bottom eight rows, so setPixel's y = 0 is the bottom row (digikit's `emu/panel.py`; the
+  menus draw their titles at y 58 and their knob hints at y 0). bm_draw wrote the picture's row r at y = r, so upside
+  down. First read here as the right way up, wrongly, from digikit's setPixel capture, which draws y 0 at the top.
+  BA03's boot-mark 0.2 writes row r at y = 63 - r.
+- **The first previews were wrong after frame 65 as well:** the harness capped frame 0, which builds the tunnel's
+  16,384-entry table with soft-float math, at 50M instructions, so the table was part built. Fixed in
+  `ba02_bootmark.py` (no cap, the player's arguments, the LCG's state as after the chooser's draw, the rows as the
+  panel shows them); vault code/Digitone2/BA02/Boot mark B, BA03 (right way up).
 - **The speed is the stock intro's** [verified]: the same instructions per frame with Elektron's emblem as with each
   mark (1.08M to 1.29M, 14 frames measured with the capped table; the loop's work does not depend on the pixels).
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""Base 0.2: write vendor/elekloader/examples/boot-mark-dn2/bm_mark.h and mod.json, boot-mark-dn2 0.1 (the site
+"""Base 0.2: write scripts/ba02/boot-mark-dn2/bm_mark.h and mod.json, boot-mark-dn2 0.1 (the site
 checked against the stock image): the DIGIWERK mark in the start-up animation (bm.c; notes/BA02-base-0.2.md).
 
     venv/bin/python scripts/ba02_make_boot.py [--mark B-two-lines (the default, the owner's pick)|A-one-line|C-framed] [--list]
@@ -19,7 +19,7 @@ sys.dont_write_bytecode = True
 import ba02_bootmark as BM  # noqa: E402
 
 IMAGE = os.path.join(ROOT, 'ele3_out', '02_type3.unpacked.bin')
-MODDIR = os.path.join(ROOT, 'vendor', 'elekloader', 'examples', 'boot-mark-dn2')
+MODDIR = os.path.join(ROOT, 'scripts', 'ba02', 'boot-mark-dn2')   # 0.1, frozen for BA02 (the fork's folder is 0.2 since BA03)
 LOAD = 0x40000400
 img = open(IMAGE, 'rb').read()
 

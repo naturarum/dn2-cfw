@@ -1,7 +1,8 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-2.0-or-later
 # app/build.sh [ID ...]: Digiwerk Patcher with these packs (default OB01), in this order, universal, UNSIGNED
-# (CODE_SIGNING_ALLOWED=NO): the packs (make), Resources/packs (index.txt, ID.dn2p), Resources/identity (the pixel
+# (CODE_SIGNING_ALLOWED=NO): the packs (make), Resources/packs (index.txt, ID.dn2p, ../catalog.json and
+# ../dsp-budget.json), Resources/identity (the pixel
 # art, identity.sh), the project (xcodegen), the app (xcodebuild) -> out/patcher/app/SET/Digiwerk Patcher.app (SET:
 # the ids joined with +).
 #
@@ -21,6 +22,7 @@ make -s -C .. PACKS="$*" >/dev/null
 P="$ROOT/out/patcher/app-packs/packs"
 rm -rf "$P"; mkdir -p "$P"
 for b in "$@"; do cp "$ROOT/out/patcher/$b/patch.bin" "$P/$b.dn2p"; echo "$b" >>"$P/index.txt"; done
+cp ../catalog.json ../dsp-budget.json "$P/"                  # the slots, the manual, the DSP code per combination
 sh identity.sh "$ROOT/out/patcher/app-packs/identity"
 xcodegen generate --spec project.yml --quiet
 xcodebuild -project "Digiwerk Patcher.xcodeproj" -scheme "Digiwerk Patcher" -configuration Release \
@@ -32,6 +34,7 @@ cp -R "$ROOT/out/patcher/app-build/$SET/Build/Products/Release/Digiwerk Patcher.
 APP="$OUT/Digiwerk Patcher.app"
 cmp -s "$P/index.txt" "$APP/Contents/Resources/packs/index.txt" || { echo "the app's packs are not the ones staged"; exit 1; }
 for b in "$@"; do cmp -s "$P/$b.dn2p" "$APP/Contents/Resources/packs/$b.dn2p" || { echo "pack $b differs in the app"; exit 1; }; done
+for f in catalog.json dsp-budget.json; do cmp -s "$P/$f" "$APP/Contents/Resources/packs/$f" || { echo "$f differs in the app"; exit 1; }; done
 diff -rq "$ROOT/out/patcher/app-packs/identity" "$APP/Contents/Resources/identity" >/dev/null || { echo "the art differs in the app"; exit 1; }
 echo "built (unsigned): $APP ($*)"
 lipo -info "$APP/Contents/MacOS/Digiwerk Patcher"

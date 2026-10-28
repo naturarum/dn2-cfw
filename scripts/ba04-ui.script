@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# BA04: the ARP menu with TM v2 (arp-modes 0.3). MODE up to TM; ARP LENGTH 8; LOOP CHANGE 0; ONE note held from MIDI
+# in (C3) so the arp runs: the step graph shows the loop's notes from C3 (the pattern's scale), the playing step's
+# mark moves, the bars stay (the loop locked); LOOP CHANGE up a few; the note let go. Run with the audio clock
+# (--ssi0-hz --ips 150e6) so the voice interrupt, and with it the arp, runs. Each screen's drawn texts (t63b_live)
+# show the values.
+wait-emu 0.5
+tap v                # ARP: the arpeggiator menu
+wait-emu 0.8
+png a00
+tap 1
+wait-emu 0.2
+tap 1
+wait-emu 0.2
+tap 1
+wait-emu 0.2
+tap 1
+wait-emu 0.2
+tap 1
+wait-emu 0.2
+tap 1
+wait-emu 0.2
+tap 1                # TM
+wait-emu 0.4
+png a07
+tap asterisk         # H: ARP LENGTH down from 16 to 8
+wait-emu 0.2
+tap asterisk
+wait-emu 0.2
+tap asterisk
+wait-emu 0.2
+tap asterisk
+wait-emu 0.2
+tap asterisk
+wait-emu 0.2
+tap asterisk
+wait-emu 0.2
+tap asterisk
+wait-emu 0.2
+tap asterisk
+wait-emu 0.4
+png l08
+midi-in 90 3c 64     # one note held on channel 1: C3
+wait-emu 0.4
+png p01
+wait-emu 0.4
+png p02
+wait-emu 0.4
+png p03
+wait-emu 0.4
+png p04
+tap 5                # LOOP CHANGE up
+wait-emu 0.2
+tap 5
+wait-emu 0.2
+tap 5
+wait-emu 0.2
+tap 5
+wait-emu 0.2
+tap 5
+wait-emu 0.4
+png p05
+wait-emu 0.4
+png p06
+wait-emu 0.4
+png p07
+midi-in 80 3c 00
+wait-emu 0.5
+png p08

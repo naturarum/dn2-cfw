@@ -1,0 +1,30 @@
+{
+ "id": "boot-mark",
+ "version": "0.1",
+ "title": "DIGIWERK in the start-up animation (base 0.2)",
+ "category": "Examples",
+ "license": "GPL-2.0-or-later",
+ "author": "naturarum",
+ "description": "EXPERIMENT: emulator-tested only. The start-up animation warps the DIGIWERK mark (B-two-lines) where it warped Elektron's logo; the static screen before it (the logo and the OS version) is untouched. Our own pixel letters. For dn2-cfw's base 0.2.",
+ "device": "digitone-mk2",
+ "os": "1.12",
+ "sources": [
+  "bm.c"
+ ],
+ "sites": [
+  {
+   "addr": "0x400d3ac4",
+   "stock": "4eb940115adc",
+   "op": "jsr",
+   "target": "bm_draw"
+  }
+ ],
+ "resources": {
+  "names": [
+   "intro-logo"
+  ]
+ },
+ "requires": [
+  "core"
+ ]
+}

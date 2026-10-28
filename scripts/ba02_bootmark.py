@@ -11,12 +11,15 @@ The intro (OS 1.12; dn2_firmware_explore's findings on 1.11, 0x1000 lower): an o
 (the Bitmap at 0x44647008) into it at (48, 20) (0x400d3ac4, jsr 0x40115adc) and builds the table (0x400d376a);
 frames 1..4 copy the source to the panel; from frame 5 each panel pixel samples the source at the table's offsets
 plus the scroll, inside a window that grows with the frame. A Bitmap: +4 width, +8 height, +0x0c words per column,
-+0x10 the pixels (column-major: word y >> 5 of column x, bit 31 - (y & 31)), +0x14 a second buffer.
++0x10 the pixels (column-major: word y >> 5 of column x, bit 31 - (y & 31)), +0x14 a second buffer. The panel's rows
+run up: y = 0 is the bottom row (digikit's emu/panel.py; the menus draw their titles at y 58 and their knob hints at
+y 0). So the mod writes the picture's row r at y = 63 - r (boot-mark 0.2; 0.1, in BA02, wrote it at y = r and the
+unit showed it upside down, 2026-10-28), and the renders here put y = 63 at the top, as the panel shows it.
 
 The player (0x400d3d0a, started by the chooser 0x400d3eea, which picks this intro unless the stock random generator's
 first value is above 32,735) calls it as (frame, 175, the panel Bitmap), 175 frames. Frame 0 builds the table with
 soft-float math, hundreds of millions of instructions: it runs here without the usual cap (until 2026-10-28 a 50M cap
-cut it short, so the tunnel in the first previews was wrong; the still frames were right). The table takes two
+cut it short, so the tunnel in the first previews was wrong, and they were drawn upside down too). The table takes two
 values of the stock random generator (an LCG, 0x40150950, its state at 0x405ce95c); the state is set as after one
 draw from a cleared state, as on the unit if nothing else draws before the chooser [inferred: nothing seeds it].
 
@@ -135,14 +138,15 @@ class Intro(Base):
         self.wr(buf2, bytes(W * 2 * 4))
 
     def _blit(self, uc, addr, size, data):
-        """the logo blit at frame 0: the mark into the source's pixels instead (as the mod's setPixel calls do)"""
+        """the logo blit at frame 0: the mark into the source's pixels instead (as boot-mark 0.2's setPixel calls do:
+        the picture's row r at y = 63 - r)"""
         if self.mark is not None:
             buf = self.u32(SRC + 0x10)
             for x in range(W):
                 for half in range(2):
                     w = 0
                     for b in range(32):
-                        if self.mark[32 * half + b][x]:
+                        if self.mark[63 - (32 * half + b)][x]:
                             w |= 0x80000000 >> b
                     self.wr(buf + 4 * (2 * x + half), struct.pack('>I', w))
             uc.reg_write(MC.UC_M68K_REG_PC, addr + 6)
@@ -164,9 +168,9 @@ class Intro(Base):
         img = blank()
         for x in range(W):
             hi, lo = struct.unpack('>II', raw[8 * x:8 * x + 8])
-            for y in range(32):
-                img[y][x] = (hi >> (31 - y)) & 1
-                img[32 + y][x] = (lo >> (31 - y)) & 1
+            for y in range(32):                         # as the panel shows it: y = 63 at the top
+                img[63 - y][x] = (hi >> (31 - y)) & 1
+                img[31 - y][x] = (lo >> (31 - y)) & 1
         return img
 
 

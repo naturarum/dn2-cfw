@@ -156,7 +156,12 @@ enum Core {
             return (false, "\(m.pack.id).syx didn't read back as it was written. Please try again.", m.output.path)
         }
         return (true, "Checked: this is Elektron's original OS 1.12 file.\nSaved \(name(m.pack, titled: titled)) "
-            + "next to \(m.input.lastPathComponent), exactly the build we tested.", shortDetail(m))
+            + "next to \(m.input.lastPathComponent), exactly the build we \(checked(m.pack)).", shortDetail(m))
+    }
+
+    /// "tested" for a build played on a unit, "checked" for one only the brick checker has run
+    static func checked(_ pack: Pack) -> String {
+        pack.record.contains("tested on a Digitone") ? "tested" : "checked"
     }
 
     /// a success's detail, one line: the build's size and the start of its sha256

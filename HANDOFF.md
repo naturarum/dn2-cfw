@@ -1414,9 +1414,61 @@ code/Digitone2/BA02/). Next: the owner flashes BA02 (SP02 also waits; either fir
 once its design is agreed.
 
 **2026-10-28, BA02 on the unit.** ONE/HALF "great improvement", KEY "works flawlessly" (DEP's whole range stays in the
-scale), SHUF and RAND "work amazingly well"; the start-up animation "upside down. but works, albeit a bit slow". Read
-in the code: the intro draws the display's own buffer as the screens do, a straight copy until the tunnel opens, so
-the mark is the right way up; my first previews were wrong after frame 65 (frame 0, the tunnel table's build, was
-capped at 50M instructions), and the real tunnel ends low where they ended high: the likely "upside down" (to
-confirm). The cost per frame is the same with Elektron's emblem: the speed is stock. `ba02_bootmark.py` fixed
-(notes/BA02 section 6). SP02 still waits for its flash.
+scale), SHUF and RAND "work amazingly well"; the start-up animation "upside down. but works, albeit a bit slow".
+Upside down it is: the panel's rows run up (setPixel's y = 0 is the bottom row, digikit's emu/panel.py) and bm_draw
+wrote the picture top-down; first read wrongly as upright from digikit's setPixel capture (y 0 at the top). Fixed in
+BA03's boot-mark 0.2 (row r at y = 63 - r). My first previews were also wrong after frame 65 (frame 0, the tunnel
+table's build, was capped at 50M instructions). The cost per frame is the same with Elektron's emblem: the speed is
+stock. `ba02_bootmark.py` fixed (notes/BA02 section 6). SP02 still waits for its flash.
+
+**2026-10-28, BA03: the Turing arp and the boot mark the right way up.** The owner: "turing arp: GO!" (the vault's
+Turing arp.md as proposed); the arp on MIDI tracks next, "without cc plocks, but ideally with shuf, rand and TM"; then
+the patcher made modular (mockup and questions: vault Patcher modules.md). BA03 = BA02 + arp-modes 0.2 (TM: MODE
+7..107 with LOOP CHANGE = MODE - 7; a 16-bit loop per track moving at every step, rests too through a hook on the
+step's rest test 0x4002a108; the ARP menu: TM's name in CHRD's slot, knob A holding at TM and bringing back the
+track's LOOP CHANGE, knob E LOOP CHANGE, the step graph as the loop's bars, live through the menu's tick) + boot-mark 0.2
+(row r at y = 63 - r: the panel's rows run up). notes/BA03-turing-arp.md; `scripts/ba03_build.py` 31/31;
+`ba03_arpcheck.py` all pass (2,400 TM steps; every other mode BA02's note for note); the emulator shows the menu and,
+with the audio clock, the arp running in TM. BA02's arp-modes 0.1 and boot-mark 0.1 frozen in scripts/ba02/ (BA02
+rebuilds byte for byte). Emulator note: late in a long run with `--ssi0-hz` knob turns are lost on any menu (BA02's
+too). Beads (owner asked): not started; the agreed first step is still the Mac-only study.
+
+**2026-10-28, the patcher's modules: decided.** Slots as in the mockup (out/patcher/mockup/, vault Patcher
+modules.md); brick-check-only builds shown; combinations that fit shown greyed and built and checked here before
+they're offered (local checks on the user's Mac stay an idea, R1.4); a manual in the patcher: a MANUAL page in the same
+window, one entry per base feature and effect (from the release notes and README), the base strip's chips and the
+effect tiles open their entries; Overbridge out of the strip. Order: BA03 on the unit; the patcher (Mac only); the
+MIDI arp (BA04); every fitting combination built on the final base and checked; release 0.2.0. The patcher work is a
+big stage: start it in a fresh session from this entry.
+
+**2026-10-28, BA03 on the unit: TM not what was meant.** The owner: a change alters several notes, and TM needs a
+chord held for several notes; wanted: hold one note and the loop makes a melody from it, a change altering one note.
+BA03's TM is the module's shift register (one flipped bit passes through 8 notes; notes picked among those held). Not
+committed or pushed (the owner: "we're not totally clear what the Turing machine is"). TM v2 proposal and four
+questions in the vault's Turing arp.md (root = the held note, the track's scale over RANGE, a loop of ARP LENGTH
+notes, LOOP CHANGE = the chance a step's note is replaced). Everything of BA03 stays local: fork arp-modes 0.2 and
+boot-mark 0.2, scripts/ba03_*, scripts/ba02/ (the freeze), notes/BA03, the corrected BA02 notes. The boot mark's fix
+(boot-mark 0.2) is independent of TM; its result on the unit not reported yet.
+
+**2026-10-28, TM v2 (BA04) and the patcher's slots and manual.** The owner's answers (vault Turing arp.md): the
+lowest note held is the root, the others ignored; the track's KEYBOARD SETUP scale; LOOP CHANGE 100 fully random
+(every note changed to another); no offsets. The boot mark was right on the unit (BA03). **BA04** = BA02 + arp-modes
+0.3 (TM v2: per track 16 values put on the pool, the scale's notes from the lowest held note over RANGE + 1 octaves;
+a step takes another note with the chance LOOP CHANGE / 100, that step only; the rest test's hook gone, 12 sites) +
+boot-mark 0.2: notes/BA04-turing-arp-v2.md, `scripts/ba04_build.py` 31/31, `ba04_arpcheck.py` all six checks
+(4,608 TM steps over 40 scale setups); `out/BA04/BA04.syx` `75dcd637...`, brick checker ACCEPT 12/12, the emulator's
+ARP menu with one note held as specified (`out/BA04/emu/ba04-ui-sheet.png`); guide `out/BA04/FLASH-BA04.md` (vault
+code/Digitone2/BA04/). BA03's arp-modes 0.2 frozen in scripts/ba03/ (BA03 rebuilds `3f123216...`). The MIDI arp moves
+to BA05. **Patcher** (tools/patcher/app): the slots, the base strip (from the packs' base ids; Overbridge not shown),
+the pick's status with the DSP bar, the MANUAL page (Sources/Catalog.swift, ManualView.swift; texts and slots in
+tools/patcher/catalog.json, the DSP code of all 15 combinations in tools/patcher/dsp-budget.json from
+`scripts/patcher_budget.py`: 13 fit, CMP3 + TAPE + SPNG and all four don't; SPNG v2 makes CMP3 + FLNG + SPNG 67.0 KB).
+Not-built combinations are pickable to look at (greyed tiles, NOT BUILT YET); WON'T FIT tiles can't be picked.
+`app/test.sh` (three sets, catalog checks), `app/screens.sh` (out/patcher/screens/), `app/build.sh DJ01 SP02` builds.
+mkpatch's BASE has base 0.2's ids (key, onehalf, arp, intro). The README and tools/patcher/README.md still describe
+0.1.0's window: update them with the 0.2.0 release. Nothing committed (BA03's and BA04's work, the patcher).
+
+**2026-10-28, BA04 on the unit.** The owner: "new tm works exactly as expected!" TM v2 is base 0.2's Turing arp.
+The in-app brick checker: skipped for now (owner; vault Patcher modules.md). Not committed yet: BA03's and BA04's
+work, the patcher's slots and manual (commit and push wait for the owner's word). Next: the arp on MIDI tracks with
+SHUF, RAND and TM (BA05, notes/T2.2-arp-midi-v2.md option 2).

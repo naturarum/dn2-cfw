@@ -1,0 +1,82 @@
+{
+ "about": "Digiwerk Patcher's slots and manual (app/Sources/Catalog.swift). slots: the DSP's four effect slots, Elektron's effect first, then ours (effect ids as in mkpatch.py's EFFECTS). entries: the MANUAL page, in order: kind base (shown in the base strip when a build carries that base id), effect, or about. dsp-budget.json, next to this file, says how much DSP code each combination takes.",
+ "slots": [
+  {"id": "compressor", "title": "Compressor", "stock": "Compressor", "options": ["cmp3"]},
+  {"id": "chorus", "title": "Chorus slot", "stock": "Chorus", "options": ["flng"]},
+  {"id": "delay", "title": "Delay slot", "stock": "Delay", "options": ["tape"]},
+  {"id": "reverb", "title": "Reverb slot", "stock": "Reverb", "options": ["spng"]}
+ ],
+ "entries": [
+  {
+   "id": "djvu", "kind": "base", "title": "Déjà vu LFO", "label": "Déjà vu LFO", "icon": "djvu",
+   "text": ["Nine new LFO waves after RAND. DV-F is a loop of random values. DV-T is the same loop, started again from its first value by every trig with LFO.T on.", "PMAJ, PMIN, HIRA, WTON, DORI, LYDI and OCTA play the DV-F loop, and when DEST is the machine's tuning they snap it to a scale: major and minor pentatonic, hirajoshi, whole-tone, dorian, lydian, octatonic."],
+   "where": "Any LFO page: WAVE, past RAND.",
+   "knobs": [["G", "MODE", "The loop's length: FREE 2, TRIG 4, HOLD 8, ONE 16, HALF 32 values."], ["F", "SPH", "How much the loop changes: 0 a new value at every step, 64 the same loop exactly, above 64 values swap places, 127 a swap at every step."], ["", "SPD, MULT, FADE, DEP", "As on every wave."]],
+   "notes": ["The loops aren't saved: each power-on makes a new melody. WAVE, MODE and SPH are saved with the kit, and p-locks on WAVE work.", "On Elektron's OS a Déjà vu wave plays as RAND and shows ERR. The value stays in the kit, so back on Digiwerk the wave comes back."],
+   "credit": "This is Kári Garðarsson's Déjà vu LFO from the Digitakt II, brought to the Digitone II. The waves, their names and how they behave are Kári's design; Digiwerk's code is written anew for the Digitone II's LFOs. DV-F and DV-T follow the original Déjà vu LFO, Bezronczek's on the Syntakt."
+  },
+  {
+   "id": "key", "kind": "base", "title": "KEY, the LFO in the track's key", "label": "KEY wave",
+   "text": ["A Déjà vu wave in the track's own key: the DV-F loop, snapped to the scale and root of the track's KEYBOARD SETUP. Whatever note the trig plays, the note you hear stays in the key, over the whole range of DEP: there are no semitones to count."],
+   "where": "An LFO's WAVE, past OCTA, with DEST on the machine's tuning: TUNE (FM Drum, Swarmer), TUN1, TUN2 or MAST (WaveTone), PITCH (FM Tone).",
+   "knobs": [["G", "MODE", "The loop's length, as on the other Déjà vu waves."], ["F", "SPH", "How much the loop changes, as on the other Déjà vu waves."], ["", "DEP", "How far the melody reaches, in the scale."]],
+   "notes": ["Chromatic gives semitones. Change the scale while it plays and the melody follows.", "On FM Tone's PITCH and WaveTone's MAST, KEY takes one unit as a semitone."]
+  },
+  {
+   "id": "onehalf", "kind": "base", "title": "LFO ONE and HALF", "label": "LFO ONE / HALF",
+   "text": ["An LFO in MODE ONE runs one whole cycle from where SPH starts it, then holds where it ended. HALF runs half a cycle. Elektron's OS 1.12 cuts them short."],
+   "where": "Any LFO, MODE ONE or HALF, on synth and MIDI tracks.",
+   "knobs": [["F", "SPH", "Where the cycle starts."]]
+  },
+  {
+   "id": "arp", "kind": "base", "title": "Arp SHUF, RAND and TM", "label": "Arp SHUF · RAND · TM",
+   "text": ["Three more arpeggiator modes after CYCL. SHUF plays every held note, in every octave of RANGE, once per cycle, in a new order each time. RAND plays a random one at each step.", "TM is a Turing Machine loop: hold one note and the arp plays a melody from it, one note per step of ARP LENGTH, from the notes of the track's scale (KEYBOARD SETUP) over the octaves of RANGE. LOOP CHANGE sets how often a step takes a new note when the loop comes round to it; only that step changes."],
+   "where": "The ARP menu: MODE (A), past CYCL.",
+   "knobs": [["A", "MODE", "SHUF, RAND, then TM."], ["E", "LOOP CHANGE", "In TM: 0 locks the melody, 100 gives every step a new note every time round."], ["H", "ARP LENGTH", "In TM, the loop's length: 1 to 16 steps."], ["C", "RANGE", "The octaves the notes come from."]],
+   "notes": ["In TM the step graph shows the loop's notes, one bar per step, and a line marks the step playing. The trig keys still turn steps off: they rest, and the loop moves on.", "TM plays from the lowest note held; other notes held don't change it. The steps' offsets aren't used in TM; in SHUF and RAND they add, and steps that are off rest.", "A kit saved with SHUF, RAND or TM opens on Elektron's OS with its arp off. The shuffle order and TM's loop aren't saved: a power-on makes new ones."],
+   "credit": "TM after Tom Whitwell's Turing Machine. SHUF and RAND build on the findings of dn2_firmware_explore (angellinares)."
+  },
+  {
+   "id": "intro", "kind": "base", "title": "The Digiwerk intro", "label": "Digiwerk intro",
+   "text": ["At power-on, after Elektron's logo screen, the start-up animation shows DIGI over WERK, then the tunnel takes it apart."],
+   "where": "Power-on."
+  },
+  {
+   "id": "cmp3", "kind": "effect", "title": "3-band compressor", "label": "3-band", "name": "compressor", "icon": "cmp3",
+   "text": ["Elektron's master compressor, split into three bands at two crossovers. Each band follows the stock compressor's design: its detector, curve, attack and release, makeup."],
+   "where": "The MIXER has a page per band, Compressor Low, Mid and High, each with a meter for its band's gain reduction.",
+   "knobs": [["A", "THR", "Threshold."], ["B", "ATK", "Attack."], ["C", "REL", "Release."], ["D", "MUP", "Makeup."], ["E", "RAT", "Ratio: 1.00 turns the band off, then the stock ratios 1.50 to 20.00."], ["F", "Crossover", "Low/Mid, 30 Hz to 1 kHz, on the LOW page; Mid/High, 1 to 16 kHz, on the MID page."], ["G", "SCS", "The sidechain source, shared by the bands."], ["H", "MIX", "The band's dry/wet."]],
+   "notes": ["Saved with the kit. A new kit starts with every MIX at 0: you hear no compression until you raise one.", "The band knobs can't be p-locked (the stock compressor's can't either) and have no MIDI CC.", "A kit from Elektron's OS opens as one full-band compressor with its old settings."]
+  },
+  {
+   "id": "flng", "kind": "effect", "title": "Flanger", "label": "Flanger", "name": "flanger", "icon": "flng",
+   "text": ["A flanger in the chorus slot that reaches from a phaser-like sweep to a chorus. TIME sets the character: near 0 a subtle, phaser-like sweep, around 32 the classic flanger (a new kit's default), and from 64 up the feedback fades out and the sweep narrows until, by 100 to 127, it is a chorus."],
+   "where": "The Flanger page, where the chorus was.",
+   "knobs": [["A", "DPTH", "Sweep depth."], ["B", "SPD", "Sweep speed. FUNC + turn steps through speeds in time with the tempo, from one sweep in 16 bars to 1/32."], ["C", "TIME", "The delay the sweep moves around: the character."], ["D", "WDTH", "The angle between the left and right sweeps, 0 to 180 degrees."]],
+   "notes": ["In sync, the sweep follows the tempo but doesn't restart at the bar.", "Starting points (DPTH, SPD, TIME, WDTH): flanger 96, 30, 32, 48; jet 100, 30, 20, 48; chorus 50, 70, 110, 127."]
+  },
+  {
+   "id": "tape", "kind": "effect", "title": "Tape echo", "label": "Tape echo", "name": "tape echo", "icon": "tape",
+   "text": ["A tape echo for the delay slot. No build has it yet."]
+  },
+  {
+   "id": "spng", "kind": "effect", "title": "Spring reverb", "label": "Spring", "name": "spring", "icon": "spng",
+   "text": ["Three springs in place of the reverb, that drip and boing. MODE sets their character, DIRT breaks up the tail."],
+   "where": "The Spring page: FUNC + FX, then down once.",
+   "knobs": [["A", "PRE", "Pre-delay, 0 to 250 ms."], ["B", "DEC", "Size: the decay, 0.3 s to 16 s."], ["C", "MODE", "The springs' character: 0 taut and bright, 64 the classic tank, 127 slack, deep drip, surf."], ["D", "DIRT", "The tail breaks up: 0 clean, heavy at 127."], ["E", "HPF", "Thins what goes into the tank, 40 Hz to 1 kHz."], ["F", "TONE", "127 open, lower is darker."], ["G", "WDTH", "0 mono, like a real tank; up to 127, wide stereo."]],
+   "notes": ["A new kit starts clean: PRE 0, DEC 64, MODE 64, DIRT 0, HPF 0, TONE 127, WDTH 96. A kit from Elektron's OS keeps its reverb values, so DIRT starts at the old GAIN's value."]
+  },
+  {
+   "id": "checks", "kind": "about", "title": "What the checks mean",
+   "text": ["BRICK CHECK 12/12: the build passed all twelve checks of our brick checker. Everything but the main OS and the DSP program is Elektron's, byte for byte; the Digitone's own code accepts the build; in an emulator of the Digitone II it starts up to the main screen without writing to the flash; the STARTUP menu is still reachable.", "TESTED ON A DIGITONE II: we also played it on a real unit, on that date. NOT YET TESTED ON A UNIT: only the brick checker has run it so far.", "NOT BUILT YET: the effects fit, but we haven't built and checked that combination, so the patcher can't make it."]
+  },
+  {
+   "id": "room", "kind": "about", "title": "Why some won't fit",
+   "text": ["Our effects run on the Digitone's DSP, in 83.8 KB of memory that we know is safe for our code. Each effect takes some of it, so not every combination fits. The slots mark an effect WON'T FIT when, with the others picked, it would need more."]
+  },
+  {
+   "id": "compat", "kind": "about", "title": "Compatibility",
+   "text": ["Digitone II on OS 1.12 only: the patcher refuses any other file.", "Projects and kits stay in Elektron's format. Digiwerk keeps its settings in the kit's existing values and in spare bytes Elektron's OS doesn't use.", "Overbridge connects as with OS 1.12, and Transfer works as usual. The Overbridge plugin knows only Elektron's names and ranges."]
+  }
+ ]
+}
