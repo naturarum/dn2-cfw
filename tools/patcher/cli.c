@@ -245,16 +245,21 @@ static int run(char *path, int k)
     return 0;
 }
 
-/* a pack's effects or base features, by name: "3-band compressor, flanger" (mkpatch.py's EFFECTS and BASE) */
+/* a pack's effects or base features, by name: "3-band compressor, flanger" (mkpatch.py's EFFECTS and BASE). Overbridge
+   working is compatibility, not a feature: left out, as the app leaves it out of its BASE line. */
 static void names(const char *ids, char *out, size_t n)
 {
     static const char *names[][2] = { { "cmp3", "3-band compressor" }, { "flng", "flanger" },
                                       { "tape", "tape echo" }, { "spng", "spring reverb" },
-                                      { "djvu", "D\u00e9j\u00e0 vu LFO" }, { "overbridge", "Overbridge works" } };
+                                      { "djvu", "D\u00e9j\u00e0 vu LFO" }, { "key", "KEY wave" },
+                                      { "onehalf", "LFO ONE and HALF" }, { "arp", "Arp SHUF, RAND and TM" },
+                                      { "midiarp", "Arp on MIDI tracks" }, { "intro", "Digiwerk intro" } };
     char id[16];
     int at = 0;
     out[0] = 0;
     for (const char *p = ids; sscanf(p, "%15s", id) == 1; p = strchr(p, ' ') ? strchr(p, ' ') + 1 : p + strlen(p)) {
+        if (!strcmp(id, "overbridge"))
+            continue;
         const char *name = id;
         for (size_t i = 0; i < sizeof names / sizeof names[0]; i++)
             if (!strcmp(id, names[i][0]))
@@ -267,7 +272,7 @@ static void names(const char *ids, char *out, size_t n)
 
 static void list(void)
 {
-    char fx[128], base[128];
+    char fx[128], base[192];
     for (int k = 0; k < NPACKS; k++) {
         names(info[k].effects, fx, sizeof fx);
         names(info[k].base, base, sizeof base);

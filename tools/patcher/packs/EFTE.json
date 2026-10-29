@@ -1,0 +1,23 @@
+{
+ "title": "Flanger and tape echo",
+ "description": "Base 0.2 with the flanger and the tape echo; Elektron's compressor and reverb.",
+ "tested_on_unit": "",
+ "effects": [
+  "flng",
+  "tape"
+ ],
+ "base": [
+  "djvu",
+  "key",
+  "onehalf",
+  "arp",
+  "midiarp",
+  "intro",
+  "overbridge"
+ ],
+ "dsp": {
+  "code_bytes": 47194,
+  "state_bytes": null,
+  "load_percent": null
+ }
+}

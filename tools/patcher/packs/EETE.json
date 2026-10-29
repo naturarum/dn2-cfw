@@ -1,0 +1,22 @@
+{
+ "title": "Tape echo",
+ "description": "Base 0.2 with the tape echo; Elektron's compressor, chorus and reverb.",
+ "tested_on_unit": "",
+ "effects": [
+  "tape"
+ ],
+ "base": [
+  "djvu",
+  "key",
+  "onehalf",
+  "arp",
+  "midiarp",
+  "intro",
+  "overbridge"
+ ],
+ "dsp": {
+  "code_bytes": 33924,
+  "state_bytes": null,
+  "load_percent": null
+ }
+}

@@ -1,0 +1,22 @@
+{
+ "title": "Compressor",
+ "description": "Base 0.2 with the 3-band compressor; Elektron's chorus, delay and reverb.",
+ "tested_on_unit": "",
+ "effects": [
+  "cmp3"
+ ],
+ "base": [
+  "djvu",
+  "key",
+  "onehalf",
+  "arp",
+  "midiarp",
+  "intro",
+  "overbridge"
+ ],
+ "dsp": {
+  "code_bytes": 34346,
+  "state_bytes": null,
+  "load_percent": null
+ }
+}

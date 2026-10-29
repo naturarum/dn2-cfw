@@ -63,7 +63,10 @@
   },
   {
    "id": "tape", "kind": "effect", "title": "Tape echo", "label": "Tape echo", "name": "tape echo", "icon": "tape",
-   "text": ["A tape echo for the delay slot. No build has it yet."]
+   "text": ["A tape echo in place of the delay: one tape, three playback heads at one, two and three times head 1's time, a band filter in the feedback loop, and tape wear to dial in."],
+   "where": "The Echo page, where the delay was: FUNC + FX.",
+   "knobs": [["A", "TIME", "Head 1's time, on the stock delay's TIME scale."], ["B", "MODE", "Which heads play: 1, 2, 3, 12, 23, 13 or 123."], ["C", "WID", "Below 0 the repeats alternate left and right, 0 is mono, above 0 each repeat lands at a new random place."], ["D", "FDBK", "The repeats. At 64 they go on forever in every MODE; above it they grow until the tape saturates."], ["E", "CNTR", "The centre of the band filter in the loop, 50 Hz to 12.8 kHz."], ["F", "BW", "The band's width: narrow resonates, 127 is no filter."], ["G", "AGE", "Tape wear: wow and flutter, hiss, soft crackle and a duller top. 0 or 1 is clean."], ["H", "REV", "The send to the reverb, as on the stock delay."]],
+   "notes": ["A kit from Elektron's OS opens with its delay values: MODE from Pingpong (1 or 2), CNTR and BW from the HPF and LPF, AGE clean.", "MODE and AGE can't be p-locked, and AGE has no MIDI CC."]
   },
   {
    "id": "spng", "kind": "effect", "title": "Spring reverb", "label": "Spring", "name": "spring", "icon": "spng",

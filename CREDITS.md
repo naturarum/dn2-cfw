@@ -65,6 +65,7 @@ below. For each one: who made it, its licence, and what we use from it.
   - the stock DSP load, measured by idle time;
   - the LFO facts behind the Déjà vu LFO, and where the trig modes ONE and HALF stop;
   - the arpeggiator's step, which plays SHUF and RAND as CYCL;
+  - the arpeggiator on MIDI tracks, which their mod did first, on 1.11;
   - the start-up animation's structure;
   - that Overbridge may need the computer restarted before it accepts a changed OS.
 
@@ -140,11 +141,17 @@ below. For each one: who made it, its licence, and what we use from it.
 - **Facts only.** The one detail we took from it is the squared curve of its déjà vu knob, for SPH. The Marbles code (MIT,
   <https://github.com/pichenettes/eurorack>) is not in Digiwerk.
 
+### Tom Whitwell
+
+- **What:** the [Turing Machine](https://www.musicthing.co.uk/Turing-Machine/) of Music Thing Modular, a looping random
+  sequencer whose loop changes one step at a time.
+- **Idea only.** The arpeggiator's TM mode takes its name and that idea. How it plays (a melody from the lowest note
+  held, in the track's scale, LOOP CHANGE the chance a step takes a new note) is our own design, in our own code.
+
 ### Elektron
 
 - **What:** the Digitone II and its OS. The bands of CMP3 follow Elektron's master compressor, as we measured it in
-  their code. The delay and the reverb in the Compressor + Flanger pack are Elektron's own code, taken from your own
-  OS file.
+  their code. In every build, the FX slots left to Elektron run Elektron's own effects, taken from your own OS file.
 - Elektron and Digitone are trademarks of Elektron Music Machines. Digiwerk is not made or supported by Elektron.
 
 ### The Modwerk community

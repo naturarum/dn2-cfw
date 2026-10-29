@@ -25,12 +25,21 @@ let index = (try? String(contentsOf: URL(fileURLWithPath: a[3]).appendingPathCom
 who = "packs"
 check(!packs.isEmpty && packs.map(\.id) == index, "\(packs.count) pack(s) loaded in index.txt's order: "
       + packs.map(\.id).joined(separator: ", "))
+// The 0.2.0 packs are named by their four FX slots, compressor, chorus, delay, reverb: C, F, T or S where ours runs,
+// E where Elektron's does; every one carries base 0.2.
+func slotFx(_ id: String) -> [String]? {
+    let c = Array(id)
+    guard c.count == 4, Swift.zip(c, "CFTS").allSatisfy({ $0 == $1 || $0 == "E" }) else { return nil }
+    return Swift.zip(c, ["cmp3", "flng", "tape", "spng"]).filter { $0.0 != "E" }.map(\.1)
+}
 let wantFx = ["SP01": ["cmp3", "flng", "spng"], "SP02": ["cmp3", "flng", "spng"]]   // the others: ["cmp3", "flng"]
-check(packs.allSatisfy { $0.effects == (wantFx[$0.id] ?? ["cmp3", "flng"]) }, "every pack lists its effects: "
+check(packs.allSatisfy { $0.effects == (slotFx($0.id) ?? wantFx[$0.id] ?? ["cmp3", "flng"]) },
+      "every pack lists its effects: "
       + packs.map { "\($0.id) \($0.effects.joined(separator: "+"))" }.joined(separator: ", "))
-let dj = ["djvu", "overbridge"]
+let dj = ["djvu", "overbridge"], base02 = ["djvu", "key", "onehalf", "arp", "midiarp", "intro", "overbridge"]
 let wantBase = ["CMP4": [String](), "DJ01": dj, "SP01": dj, "SP02": dj]      // the others: ["overbridge"]
-check(packs.allSatisfy { $0.base == (wantBase[$0.id] ?? ["overbridge"]) }, "every pack lists its base: "
+check(packs.allSatisfy { $0.base == (slotFx($0.id) != nil ? base02 : wantBase[$0.id] ?? ["overbridge"]) },
+      "every pack lists its base: "
       + packs.map { "\($0.id) [\($0.base.joined(separator: "+"))]" }.joined(separator: ", "))
 let catalog = Catalog.load(from: URL(fileURLWithPath: a[3]))
 let release = ProcessInfo.processInfo.environment["DIGIWERK_RELEASE_SET"] == "1"

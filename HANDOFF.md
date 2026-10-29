@@ -1499,3 +1499,55 @@ combination (79.9 KB of the 83.8 KB proven room with DC02's compiler), on BA05, 
 already ran on the unit, brick-checked; the owner plays it (SC01's failures first, then a stress test by ear for the
 load); then the 14 builds. SPNG v2 (SP02) hasn't been on the unit yet. A big stage: start it in a fresh session from
 this entry.
+
+**2026-10-29, the 0.2.0 packs, in progress (the owner: "naming is fine, go ahead. run until we are ready to publicly
+release 0.2.0").** Builds are named by the four FX slots (compressor, chorus, delay, reverb): C/F/T/S ours, E
+Elektron's. **TE01** (= CFTE): `tools/dspsplice/build.py` recipe TE01 (key `fit`: the echo's functions placed one by
+one, best fit, into the room DC02 leaves in the four proven regions; split files linked last so DC02's bytes stay;
+alignment-aware), `scripts/te01_make_echo.py` (echo-names-dn2 0.1 = fx-echo 0.2 without its 13 flanger sites, which
+flanger-names also writes), `scripts/te01_build.py` (all checks pass): `out/TE01/TE01.syx` `723ac590...`, DSP
+`48993b82...` = DC02's but the four regions' tails and the two delay CJUMPs. Guide draft `out/TE01/FLASH-TE01.md`.
+Running at this entry: TE01's brick check, its emulator ladder (`scripts/te01-emu.sh`, `te01-echo.script`), a helper
+agent (Opus, high) writing and running `tools/dspsplice/verify_te01.py` and `soak_te01.py` (DSP lockstep against DC02,
+the echo against SC01, whole mix, stores, soak). **The packs:** build.py `pack_recipe` + `PACKS` (ten new DSP
+sections; share mode "first": every fxmath helper two files have in one copy), CFEE/CFTE/CFES reuse DC02/TE01/SP02's
+DSP; `scripts/pack_build.py` (main OS = base mods + each effect's, generic checks; CFEE = BA05 and CFTE = TE01 byte
+for byte but the name): all 14 built (`out/NAME/NAME.syx`); `scripts/pack_brickcheck.sh` running all 14, two at a
+time (`out/pack-brickcheck.log`). Patcher: `tools/patcher/packs/NAME.json` (14), catalog's tape entry, dsp-budget.json
+from the built sizes, app 0.2.0, test.sh and screens.sh on the 14. Docs drafted locally, NOT to be pushed before the
+release: README (0.2.0 sections; the builds table by `scripts/release_tables.py`; the install screenshot is still
+0.1.0's), docs/release/digiwerk-0.2.0.md (zip hashes PATCHER_ZIP_SHA256 / PATCH_ZIP_SHA256 to fill), CREDITS (TM,
+the MIDI arp's dnfw credit). Open: Roland's manuals as a credited source for the echo (1:2:3 heads, MODE order)?
+Ask the owner. To do before the release: DSP smoke runs of the ten new layouts (sharcvm), emulator UI checks (EEEE,
+EETS, CEEE), the owner plays TE01 (gates the tape) and ideally CFES and EFTS, then `make PACKS=...` (mkpatch needs
+each ACCEPT), app build + tests + screens, tools/patcher/README.md for the new window, notarize, the owner's go.
+Later the same day: **TE01 ready to flash** (sent to the owner): brick checker ACCEPT 12/12 (373,653 instructions per
+block in its DSP run), the agent's DSP proofs all pass (`tools/dspsplice/verify_te01.py`, `soak_te01.py`; numbers in
+notes/TE01-tape-echo.md 3: lockstep with DC02 bit for bit, the echo SC01's bit for bit for one head and exactly at half
+FDBK for two, worst case about +17 % instructions over DC02, 20 minutes of soak on SC01's crash recipes, no fault), the
+emulator's Echo page as specified (`out/TE01/emu/te01-echo-sheet.png`). EEEE in the emulator: WAVE to KEY and TM work
+without param-grow, stock names on the three FX pages (`out/EEEE/emu/pack-ui-sheet.png`). The agent now runs
+`tools/dspsplice/verify_packs.py` on the ten new layouts.
+
+**2026-10-29, evening: 0.2.0 ready but notarization and the owner's go.** TE01 on the unit: "seems stable! been
+torturing it for 5min, turning every knob incl. the compressor knobs, no crash!" -> the tape echo is in; CFTE marked
+played (`tools/patcher/packs/CFTE.json`). All fourteen builds brick-checked ACCEPT 12/12 (notes/R1.12-packs-0.2.md 5).
+Patcher (notes/R1.12 6): the fourteen packs, the app 0.2.0 (CFEE first), `app/test.sh` and `make test` pass (Tests/main.swift reads a
+0.2.0 pack's effects from its name; test.sh's stale "not yet tested" check dropped), the 14-pack Terminal tool every
+pack byte for byte (cli.c: the base features' names, Overbridge left out as in the app); screens in
+`docs/images/patcher-0.2.0-*.png`, the README's install picture; `scripts/release_tables.py` filled both tables.
+`out/release/0.2.0/`: app and tool signed (Developer ID), `notarize-app.zip` and `digiwerk-patch-0.2.0.zip` made;
+**notarytool couldn't find the keychain profile redeemer-notary from this session** (it worked on 10-26): the owner
+submits both, then staple the app, zip it as `Digiwerk-Patcher-0.2.0.zip`, fill the two hashes in
+docs/release/digiwerk-0.2.0.md. Open: TE01 idle test (asked), Roland credit (asked), the drafts' review, the go
+(tag v0.2.0, GitHub release with both zips, push README/docs/CREDITS/patcher/scripts/packs; fork: echo-names-dn2).
+"Everything in one build" (owner): not yet, 15.5 KB over the proven room; CETS 1.9 KB over; a 0.3 goal.
+
+**2026-10-29, night: Digiwerk 0.2.0 released (the owner's go).** TE01 idle and in a whole patch for 15+ minutes: "seems
+very very stable". The owner notarized both zips (keychain); the app stapled ("Notarized Developer ID"),
+`out/release/0.2.0/Digiwerk-Patcher-0.2.0.zip` `31f55595...`. **Only the app is released**: the owner asked whether to
+ship the Terminal tool at all; 0.1.0's one download of it was our own check, and it is 30 MB zipped now (README,
+release notes and tools/patcher/README.md changed; `make` still builds it). The tape echo's MODE shows the mode's number
+in its box and the heads under it (23, 123): as designed, the README spells it out (notes/R1.12-packs-0.2.md 8). No
+Roland credit (the owner). Fork: echo-names-dn2 0.1 committed (b8a688e). Tag v0.2.0 on this commit, the GitHub release
+with the app's zip; the body is docs/release/digiwerk-0.2.0.md.

@@ -1,0 +1,23 @@
+{
+ "title": "Compressor and flanger",
+ "description": "Base 0.2 with the 3-band compressor and the flanger; Elektron's delay and reverb.",
+ "tested_on_unit": "29 Oct 2026",
+ "effects": [
+  "cmp3",
+  "flng"
+ ],
+ "base": [
+  "djvu",
+  "key",
+  "onehalf",
+  "arp",
+  "midiarp",
+  "intro",
+  "overbridge"
+ ],
+ "dsp": {
+  "code_bytes": 47932,
+  "state_bytes": null,
+  "load_percent": null
+ }
+}

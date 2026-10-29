@@ -1,0 +1,23 @@
+{
+ "title": "Compressor and tape echo",
+ "description": "Base 0.2 with the 3-band compressor and the tape echo; Elektron's chorus and reverb.",
+ "tested_on_unit": "",
+ "effects": [
+  "cmp3",
+  "tape"
+ ],
+ "base": [
+  "djvu",
+  "key",
+  "onehalf",
+  "arp",
+  "midiarp",
+  "intro",
+  "overbridge"
+ ],
+ "dsp": {
+  "code_bytes": 66622,
+  "state_bytes": null,
+  "load_percent": null
+ }
+}

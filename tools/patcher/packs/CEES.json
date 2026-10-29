@@ -1,0 +1,23 @@
+{
+ "title": "Compressor and spring",
+ "description": "Base 0.2 with the 3-band compressor and the spring reverb; Elektron's chorus and delay.",
+ "tested_on_unit": "",
+ "effects": [
+  "cmp3",
+  "spng"
+ ],
+ "base": [
+  "djvu",
+  "key",
+  "onehalf",
+  "arp",
+  "midiarp",
+  "intro",
+  "overbridge"
+ ],
+ "dsp": {
+  "code_bytes": 52128,
+  "state_bytes": null,
+  "load_percent": null
+ }
+}

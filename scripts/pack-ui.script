@@ -1,0 +1,84 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# The 0.2.0 packs (scripts/pack-emu.sh): what each pack's mix of mods shows. LFO 1's WAVE from SINE up 16 to KEY
+# and one more (it holds); the ARP menu's MODE up to TM; then the three SEND FX pages (the delay slot, the reverb
+# slot, the chorus slot): Elektron's names where the slot is Elektron's, ours where it is ours. Run with t63b_live.
+wait-emu 0.5
+png 00-main
+tap semicolon        # MOD: LFO 1
+wait-emu 0.5
+down space
+wait-emu 0.1
+tap percent          # FUNC + E left: WAVE to its default (SINE)
+wait-emu 0.2
+up space
+wait-emu 0.4
+png 01-lfo-sine
+tap 5
+wait-emu 0.25
+tap 5
+wait-emu 0.25
+tap 5
+wait-emu 0.25
+tap 5
+wait-emu 0.25
+tap 5
+wait-emu 0.25
+tap 5
+wait-emu 0.25
+tap 5
+wait-emu 0.25
+tap 5
+wait-emu 0.25
+tap 5
+wait-emu 0.25
+tap 5
+wait-emu 0.25
+tap 5
+wait-emu 0.25
+tap 5
+wait-emu 0.25
+tap 5
+wait-emu 0.25
+tap 5
+wait-emu 0.25
+tap 5
+wait-emu 0.25
+tap 5
+wait-emu 0.25
+png 02-lfo-key
+tap 5
+wait-emu 0.4
+png 03-lfo-key-holds
+tap v                # ARP: the arpeggiator menu
+wait-emu 0.8
+tap 1
+wait-emu 0.2
+tap 1
+wait-emu 0.2
+tap 1
+wait-emu 0.2
+tap 1
+wait-emu 0.2
+tap 1
+wait-emu 0.2
+tap 1
+wait-emu 0.2
+tap 1
+wait-emu 0.2
+wait-emu 0.3
+png 04-arp-tm
+tap v
+wait-emu 0.5
+down space
+wait-emu 0.1
+tap l                # FUNC + FX: SEND FX 1, the delay slot
+wait-emu 0.1
+up space
+wait-emu 0.8
+png 05-delay-slot
+tap Down             # SEND FX 2: the reverb slot
+wait-emu 0.8
+png 06-reverb-slot
+tap Down             # SEND FX 3: the chorus slot
+wait-emu 0.8
+png 07-chorus-slot

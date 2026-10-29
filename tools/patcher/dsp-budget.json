@@ -1,82 +1,92 @@
 {
- "about": "Our DSP code for each combination of the effects (bytes), placed by first-fit over the four proven regions (scripts/patcher_budget.py, DC02's compiler mode)",
+ "about": "Our DSP code for each combination of the effects (bytes): for each one that is built, the build's own (its code sections as linked, tools/dspsplice/build.py); for the two that don't fit, the first-fit measure over the four proven regions (scripts/patcher_budget.py, DC02's compiler mode)",
  "room": 83838,
  "combos": [
   {
    "effects": [
     "cmp3"
    ],
-   "code": 34344,
-   "fits": true
+   "code": 34346,
+   "fits": true,
+   "build": "CEEE"
   },
   {
    "effects": [
     "flng"
    ],
    "code": 15048,
-   "fits": true
+   "fits": true,
+   "build": "EFEE"
   },
   {
    "effects": [
     "tape"
    ],
-   "code": 33926,
-   "fits": true
+   "code": 33924,
+   "fits": true,
+   "build": "EETE"
   },
   {
    "effects": [
     "spng"
    ],
-   "code": 19414,
-   "fits": true
+   "code": 18978,
+   "fits": true,
+   "build": "EEES"
   },
   {
    "effects": [
     "cmp3",
     "flng"
    ],
-   "code": 47930,
-   "fits": true
+   "code": 47932,
+   "fits": true,
+   "build": "CFEE"
   },
   {
    "effects": [
     "cmp3",
     "tape"
    ],
-   "code": 66614,
-   "fits": true
+   "code": 66622,
+   "fits": true,
+   "build": "CETE"
   },
   {
    "effects": [
     "cmp3",
     "spng"
    ],
-   "code": 53044,
-   "fits": true
+   "code": 52128,
+   "fits": true,
+   "build": "CEES"
   },
   {
    "effects": [
     "flng",
     "tape"
    ],
-   "code": 47192,
-   "fits": true
+   "code": 47194,
+   "fits": true,
+   "build": "EFTE"
   },
   {
    "effects": [
     "flng",
     "spng"
    ],
-   "code": 33606,
-   "fits": true
+   "code": 32832,
+   "fits": true,
+   "build": "EFES"
   },
   {
    "effects": [
     "tape",
     "spng"
    ],
-   "code": 52544,
-   "fits": true
+   "code": 51708,
+   "fits": true,
+   "build": "EETS"
   },
   {
    "effects": [
@@ -84,8 +94,9 @@
     "flng",
     "tape"
    ],
-   "code": 79880,
-   "fits": true
+   "code": 80404,
+   "fits": true,
+   "build": "CFTE"
   },
   {
    "effects": [
@@ -93,8 +104,9 @@
     "flng",
     "spng"
    ],
-   "code": 66972,
-   "fits": true
+   "code": 65718,
+   "fits": true,
+   "build": "CFES"
   },
   {
    "effects": [
@@ -111,8 +123,9 @@
     "tape",
     "spng"
    ],
-   "code": 66160,
-   "fits": true
+   "code": 64980,
+   "fits": true,
+   "build": "EFTS"
   },
   {
    "effects": [

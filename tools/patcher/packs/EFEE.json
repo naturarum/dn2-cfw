@@ -1,0 +1,22 @@
+{
+ "title": "Flanger",
+ "description": "Base 0.2 with the flanger; Elektron's compressor, delay and reverb.",
+ "tested_on_unit": "",
+ "effects": [
+  "flng"
+ ],
+ "base": [
+  "djvu",
+  "key",
+  "onehalf",
+  "arp",
+  "midiarp",
+  "intro",
+  "overbridge"
+ ],
+ "dsp": {
+  "code_bytes": 15048,
+  "state_bytes": null,
+  "load_percent": null
+ }
+}

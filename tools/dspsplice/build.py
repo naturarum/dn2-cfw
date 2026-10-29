@@ -20,6 +20,8 @@
     python3 tools/dspsplice/build.py DC01      # DC01: DT01 with the compiler fix (peephole.py: shorter field accesses)
     python3 tools/dspsplice/build.py DC02      # DC02: DC01's fix in its cautious mode (stock-proven pairings only)
     python3 tools/dspsplice/build.py SP01      # SP01: DT01 with SPNG, the spring reverb, in the reverb slot
+    python3 tools/dspsplice/build.py SP02      # SP02: DC02 with SPNG v2 in the reverb slot
+    python3 tools/dspsplice/build.py TE01      # TE01: DC02 with the tape echo, fitted where our code ran
 
 Pipeline (notes/T3.8-dsp-splice.md section 1):
   1. compile the recipe's C with selcc -O1 (as tools/sharcvm/tests/fxcheck.py does), generate the
@@ -623,6 +625,116 @@ RECIPES["SP02"] = dict(
                                                       "state, 0x80000018-0x8005912c"),
     outdir="out/SP02/SP02-dsp", syx="SP02-dsp.syx", version="SP2D")
 
+# TE01 (2026-10-29, notes/TE01-tape-echo.md): DC02 with the tape echo (fx/spaceecho.c, SC02's FDBK shared by the playing
+# heads, and se_glue.c) in the stock delay slot, every byte of it where our code already ran on the unit: SC01 stopped the
+# DSP with the echo's knob code in L2, a place no code of ours had run (notes/SC02-plan.md). DC02's sections keep their
+# places and bytes; the echo's functions (the diet and the pass over them too) are linked after every other object and
+# placed one by one, largest first, into the room each proven region leaves after DC02's code (key fit; best fit), the
+# delay's two stubs in code2 after flg_sync.c. The stub of the init does not run the stock delay's init (it would clear
+# its rings over SeSlot, which lives at the start of the stock delay's DDR state, 0x8005912c; se_glue.c checks the size
+# at compile time). Block 1 ends at the proven 0x2e1c36.
+RECIPES["TE01"] = dict(
+    RECIPES["DC02"],
+    what="TE01: DC02 with the tape echo (fx/spaceecho.c, se_glue.c) in the stock delay slot: its functions placed one "
+         "by one in the room DC02 leaves in the four regions where our code ran on the unit, the delay's stubs in "
+         "code2, its state at the start of the stock delay's DDR state; the stock delay and its init no longer run",
+    split=["fx/spaceecho.c", "tools/dspsplice/src/se_glue.c"], split_default="c2",
+    fit=[("c2", "t38_code2", 0x310000, 0x315f8c), ("c3", "t38_code3", 0x308400, 0x30ff76),
+         ("c1", "t38_code", 0x2dd600, 0x2e1c36), ("c4", "t38_code4", 0x2e2900, 0x2e4f46)],
+    stubs2=[("fxh_delay", [("c", "se_process", ["R8", "R12"])]),
+            ("fxh_delay_init", [("c", "se_init", [])])],
+    hooks=RECIPES["DC02"]["hooks"] + [(DELAY_CALL, DELAY, "fxh_delay"), (DELAY_INIT_CALL, DELAY_INIT, "fxh_delay_init")],
+    stock_hooks=[],
+    h=RECIPES["DC02"]["h"] + ["fx/spaceecho.h", "fx/fxmath.h", "tools/dspsplice/src/fxio.h"],
+    drop=RECIPES["DC02"]["drop"] + ["spaceecho_heads", "spaceecho_center_hz", "spaceecho_bw_oct", "spaceecho_q",
+                                    "spaceecho_trim"],
+    code=(0x2dd600, 0x2e1c36),
+    outdir="out/TE01/TE01-dsp", syx="TE01-dsp.syx", version="TE1D")
+
+# The packs of Digiwerk 0.2.0 (2026-10-29, notes/R1.12-packs-0.2.md): a build per combination of our four effects that
+# fits, named by the four FX slots in order, compressor, chorus, delay, reverb: C, F, T, S where ours runs, E where
+# Elektron's does (the owner's naming). CFEE, CFTE and CFES are the DSP sections of DC02, TE01 and SP02 as they are;
+# EEEE has Elektron's. pack_recipe makes the other ten: every hook stub in L1 block 1; the flanger and its glue after
+# them, flg_sync.c in code2 (as DC02 places them); the compressor in code3, its glue and tail reader in code4 (as
+# DC02); the spring and its glue in code2 after flg_sync.c, its constants and state in the stock reverb's DDR region
+# (as SP02); the tape echo fitted, one function at a time, into what the regions have left (as TE01). The diet as
+# DC02's (each effect's never-called functions dropped) with every fxmath.h helper that two files have in one copy,
+# the first file's (scripts/patcher_budget.py measured all fifteen combinations so); DC02's pass (ABs); every code
+# section where our code ran on the unit (proven); an absent effect's hooks stay stock.
+PACK_CODE = dict(code=(0x2dd600, 0x2e1c36), code2=(0x310000, 0x315f8c), code3=(0x308400, 0x30ff76),
+                 code4=(0x2e2900, 0x2e4f46))
+PACK_FIT = [("c2", "t38_code2", 0x310000, 0x315f8c), ("c3", "t38_code3", 0x308400, 0x30ff76),
+            ("c1", "t38_code", 0x2dd600, 0x2e1c36), ("c4", "t38_code4", 0x2e2900, 0x2e4f46)]
+PACKS = ("CEEE", "EFEE", "EETE", "EEES", "CETE", "CEES", "EFTE", "EFES", "EETS", "EFTS")
+
+
+def pack_recipe(name):
+    """the recipe of pack NAME (four letters: C or E, F or E, T or E, S or E)"""
+    if len(name) != 4 or any(ch not in (o, "E") for ch, o in zip(name, "CFTS")) or name == "EEEE":
+        raise SystemExit(f"{name}: not a pack name")
+    on = {o for ch, o in zip(name, "CFTS") if ch != "E"}
+    what = [w for k, w in (("C", "the 3-band compressor"), ("F", "the flanger"), ("T", "the tape echo"),
+                           ("S", "the spring reverb")) if k in on]
+    rec = dict(what=f"{name}: base 0.2's DSP pack with {', '.join(what)}; every other slot Elektron's",
+               c=[], c2=[], c3=[], c4=[], inc=["tools/dspsplice/src/dt01", "fx", "tools/dspsplice/src"], h=[],
+               stubs=[], hooks=[], stock_hooks=[], drop=[], fills=[], fills_sym=[], share={"mode": "first"},
+               peephole="ABs", reach=True, proven=PROVEN, state=(0x300000, 0x308400),
+               forbid=[(0x315f8c, 0x318000, "0x315f8c-0x318000: code there stopped the DSP on the unit (CMP2, CP2E); "
+                                            "nothing of ours, code or data (notes/T6.3-cmp2f.md)")],
+               outdir=f"out/{name}/{name}-dsp", syx=f"{name}-dsp.syx", version=name, **PACK_CODE)
+    if "F" in on:
+        rec["c"] += ["tools/dspsplice/src/dt01/flanger.c", "tools/dspsplice/src/flg_glue3.c"]
+        rec["c2"] += ["tools/dspsplice/src/flg_sync.c"]
+        rec["h"] += ["tools/dspsplice/src/dt01/flanger_unit.h", "tools/dspsplice/src/flg_slot3.h"]
+        rec["stubs"] += [("fxh_chorus", [("c", "flg_process", ["R8", "R12"])]),
+                         ("fxh_chorus_init", [("c", "flg_init", []), ("tail", CHORUS_INIT)])]
+        rec["hooks"] += [(CHORUS_CALL, CHORUS, "fxh_chorus"), (CHORUS_INIT_CALL, CHORUS_INIT, "fxh_chorus_init")]
+        rec["drop"] += ["flanger_man_ms", "flanger_damp_hz", "flanger_rate_hz", "flanger_delay_at"]
+        rec["fills"] += [(0x300000, 0x8400, "flanger state (FlgSlot: Flanger + glue), zeroed at boot")]
+    else:
+        rec["stock_hooks"] += [(CHORUS_CALL, CHORUS, "the stock chorus"),
+                               (CHORUS_INIT_CALL, CHORUS_INIT, "the stock chorus's init")]
+    if "C" in on:
+        rec["c3"] += ["tools/dspsplice/src/dt01/mbcomp.c"]
+        rec["c4"] += ["tools/dspsplice/src/cmp_glue.c", "tools/dspsplice/src/cmp_tail.c"]
+        rec["h"] += ["fx/mbcomp.h", "tools/dspsplice/src/cmp_tail.h"]
+        rec["stubs"] += [("fxh_comp", [("c", "cmp_process", ["R8", "R12"])]),
+                         ("fxh_comp_init", [("c", "cmp_init", []), ("tail", COMP_INIT)])]
+        rec["hooks"] += [(COMP_CALL, COMP, "fxh_comp"), (COMP_INIT_CALL, COMP_INIT, "fxh_comp_init")]
+        rec["drop"] += ["mbcomp_ratio", "mbcomp_gr_db"]
+        rec["fills_sym"] += [((0x2e1c40, 0x2e2400), "cmp_slot_bytes", "3-band compressor state (CmpSlot), zeroed at boot"),
+                             ((0x2e2400, 0x2e2800), "cmp_tail_bytes", "frame-tail reader state (CmpTail), zeroed at boot")]
+    else:
+        rec["stock_hooks"] += [(COMP_CALL, COMP, "the stock compressor"),
+                               (COMP_INIT_CALL, COMP_INIT, "the stock compressor's init")]
+    if "T" in on:
+        rec.update(split=["fx/spaceecho.c", "tools/dspsplice/src/se_glue.c"], split_default="c2", fit=PACK_FIT)
+        rec["h"] += ["fx/spaceecho.h"]
+        rec["stubs"] += [("fxh_delay", [("c", "se_process", ["R8", "R12"])]),
+                         ("fxh_delay_init", [("c", "se_init", [])])]
+        rec["hooks"] += [(DELAY_CALL, DELAY, "fxh_delay"), (DELAY_INIT_CALL, DELAY_INIT, "fxh_delay_init")]
+        rec["drop"] += ["spaceecho_heads", "spaceecho_center_hz", "spaceecho_bw_oct", "spaceecho_q", "spaceecho_trim"]
+    else:
+        rec["stock_hooks"] += [(DELAY_CALL, DELAY, "the stock delay"), (DELAY_INIT_CALL, DELAY_INIT, "the stock delay's init")]
+    if "S" in on:
+        rec.update(c2_tail=["fx/spring.c", "tools/dspsplice/src/spng_glue.c"], dmda_ddr=(0x8000b000, 0x8000c000),
+                   ddr_slot=("spg_slot_bytes", 0x80000018, 0x59114, "SpgSlot (the spring and its glue) in the stock "
+                                                                   "reverb's DDR state, 0x80000018-0x8005912c"))
+        rec["h"] += ["fx/spring.h"]
+        rec["stubs"] += [("fxh_reverb", [("c", "spg_process", ["R8", "R12"])]),
+                         ("fxh_reverb_init", [("c", "spg_init", [])])]
+        rec["hooks"] += [(REVERB_CALL, REVERB, "fxh_reverb"), (REVERB_INIT_CALL, REVERB_INIT, "fxh_reverb_init")]
+        rec["drop"] += ["spring_pre_ms", "spring_rt60_s", "spring_dirt_db", "spring_hpf_hz", "spring_tone_hz",
+                        "spring_width", "spring_tens_ms"]
+    else:
+        rec["stock_hooks"] += [(REVERB_CALL, REVERB, "the stock reverb"),
+                               (REVERB_INIT_CALL, REVERB_INIT, "the stock reverb's init")]
+    return rec
+
+
+for _n in PACKS:
+    RECIPES[_n] = pack_recipe(_n)
+
 LDF = """ARCHITECTURE(ADSP-21569)
 $OBJECTS = $COMMAND_LINE_OBJECTS;
 MEMORY
@@ -734,7 +846,10 @@ LDF_SECDD = """      t38_ddata BW
          INPUT_SECTIONS( $OBJECTS(seg_t38dd) )
       }} > mem_t38_ddr
 """
-SEG = {"c2": "seg_t38c2", "c3": "seg_t38c3", "c4": "seg_t38c4"}
+SEG = {"c1": "seg_swco", "c2": "seg_t38c2", "c3": "seg_t38c3", "c4": "seg_t38c4"}
+# TE01: where fit's first link puts every split function, to measure them and the room the other code leaves (byte
+# addresses; only linked, never part of an image)
+FIT_MEASURE = (0x400000, 0x480000)
 
 
 def all_c(rec):
@@ -859,19 +974,30 @@ def diet_asm(texts, rec):
     names, prov = sh.get("names", []), sh.get("from")
     drop = set(rec.get("drop", []))
     parsed = {stem: asm_chunks(t, stem) for stem, t in texts.items()}
-    if names and prov not in parsed:
-        raise SystemExit(f"share: the provider {prov} is not in the recipe")
-    pbody = {}
-    if names:
+    pbody, prov_of = {}, {}
+    if sh.get("mode") == "first":
+        # the packs (pack_recipe): every fxmath.h helper (a file-local fx_* function) that more than one file has, in
+        # one copy, the first file's in link order (scripts/patcher_budget.py's diet)
+        copies = collections.Counter(n for st, (_, chunks, _) in parsed.items() for n, b in chunks
+                                     if n.startswith("fx_") and not b[0].startswith(".GLOBAL"))
+        for stem, (_, chunks, _) in parsed.items():
+            for n, body in chunks:
+                if copies[n] > 1 and n not in pbody and not body[0].startswith(".GLOBAL"):
+                    pbody[n], prov_of[n] = body, stem
+        prov = None
+    elif names:
+        if prov not in parsed:
+            raise SystemExit(f"share: the provider {prov} is not in the recipe")
         for n, body in parsed[prov][1]:
             if n in names:
                 if body[0].startswith(".GLOBAL"):
                     raise SystemExit(f"share: {prov}'s {n} is already global")
-                pbody[n] = body
+                pbody[n], prov_of[n] = body, prov
         missing = [n for n in names if n not in pbody]
         if missing:
             raise SystemExit(f"share: {prov} has no copy of {missing}")
-    rep = {"dropped": [], "shared_from": prov, "shared": [], "removed_copies": []}
+    rep = {"dropped": [], "shared_from": prov if sh.get("mode") != "first" else dict(sorted(prov_of.items())),
+           "shared": [], "removed_copies": []}
     out = {}
     for stem, (head, chunks, tail) in parsed.items():
         keep, ext = [], []
@@ -879,12 +1005,12 @@ def diet_asm(texts, rec):
             if n in drop or f"{stem}:{n}" in drop:
                 rep["dropped"].append(f"{stem}:{n}")
                 continue
-            if n in pbody and stem == prov:
+            if n in pbody and stem == prov_of[n]:
                 body = [f".GLOBAL {n}.;"] + body
                 rep["shared"].append(n)
             elif n in pbody:
                 if body != pbody[n]:
-                    raise SystemExit(f"share: {stem}'s {n} is not {prov}'s text line for line")
+                    raise SystemExit(f"share: {stem}'s {n} is not {prov_of[n]}'s text line for line")
                 rep["removed_copies"].append(f"{stem}:{n}")
                 ext.append(f".EXTERN {n}.;")
                 continue
@@ -904,6 +1030,8 @@ def reach_check(bdir, stems, entries):
         cur = None
         for ln in (bdir / f"{stem}.s").read_text().split("\n"):
             m = FUNC_LABEL.match(ln)
+            if m and m.group(1).startswith("scfn_"):
+                continue                    # split_asm's marker label, not a function
             if m:
                 cur = m.group(1)
                 fns.setdefault(cur, stem)
@@ -923,11 +1051,40 @@ def reach_check(bdir, stems, entries):
     return rows, [f"{r['file']}:{r['function']} is never reached from the hooks" for r in rows if not r["reached"]]
 
 
+def fit_place(rec, e1, place):
+    """TE01: the split functions placed by best fit, largest first, into the room each region of recipe key fit
+    [(region, section, byte lo, byte hi)] leaves after the code linked there before them (split files link last).
+    e1: the measuring link, every split function in FIT_MEASURE. -> (place, report)"""
+    rows = placement(rec, e1)
+    up = lambda x: (x + 3) // 4 * 4         # noqa: E731   the LDF's INPUT_SECTION_ALIGN(2): 2 SW parcels, 4 bytes
+    ends = {s.name: E.sw_to_byte(s.addr) + len(s.data) for s in e1.sections if s.kind == "sw_code"}
+    room, order = {}, []
+    for reg, sec, lo, hi in rec["fit"]:
+        room[reg] = hi - up(ends.get(sec, lo))
+        order.append(reg)
+        if room[reg] < 0:
+            raise SystemExit(f"fit: {sec} already ends past {hi:#x}")
+    start = dict(room)
+    place = dict(place)
+    # each function as linked: its own input section, so its start aligned (its bytes rounded up here)
+    funcs = sorted(((up(r["bytes"]), r["file"], r["function"]) for r in rows if r["region"] == "fitm"),
+                   key=lambda x: (-x[0], x[1], x[2]))
+    for b, st, fn in funcs:
+        cand = [r for r in order if room[r] >= b]
+        if not cand:
+            raise SystemExit(f"fit: {st}:{fn} ({b} B) fits in no region; room left {room}")
+        r = min(cand, key=lambda r: (room[r] - b, order.index(r)))
+        room[r] -= b
+        place[f"{st}:{fn}"] = r
+    return place, {"room": start, "left": room, "functions": len(funcs), "bytes": sum(b for b, _, _ in funcs)}
+
+
 def compile_link(name, rec, bdir, log):
     bdir.mkdir(parents=True, exist_ok=True)
     flags = ["-proc", "ADSP-21569", "-char-size-8", "-O1"] + [f"-I{ROOT / i}" for i in rec["inc"]]
     objs = []
     rec["_placed_funcs"] = {}
+    split_texts = {}        # TE01: a diet recipe's split files after the diet and the pass, split at link time
     if rec.get("peephole") and not (rec.get("drop") or rec.get("share")):
         raise SystemExit("the key peephole runs only in the diet path (a recipe with drop or share)")
     if rec.get("drop") or rec.get("share"):
@@ -935,8 +1092,6 @@ def compile_link(name, rec, bdir, log):
         texts = {}
         for src in all_c(rec):
             stem = Path(src).stem
-            if src in rec.get("split", []):
-                raise SystemExit("a diet recipe has no split files")
             run([SEL / "selcc", *flags, "-S", "-o", bdir / f"{stem}.s", ROOT / src], log)
             seg = seg_of(rec, src)
             s = (bdir / f"{stem}.s").read_text()
@@ -955,6 +1110,10 @@ def compile_link(name, rec, bdir, log):
             (bdir / "peephole.json").write_text(json.dumps(rec["_peephole"], indent=1))
         for src in all_c(rec):
             stem = Path(src).stem
+            if src in rec.get("split", []):
+                # TE01: split per function at link time (keys place, fit), linked after every other object
+                split_texts[stem] = texts[stem]
+                continue
             (bdir / f"{stem}.s").write_text(texts[stem])
             run([SEL / "selas", "-proc", "ADSP-21569", "-o", bdir / f"{stem}.doj", bdir / f"{stem}.s"], log)
             objs.append(bdir / f"{stem}.doj")
@@ -994,47 +1153,80 @@ def compile_link(name, rec, bdir, log):
         (bdir / "stubs2.s").write_text(stub.module(rec["stubs2"], SAVE, section="seg_t38c2"))
         run([SEL / "selas", "-proc", "ADSP-21569", "-o", bdir / "stubs2.doj", bdir / "stubs2.s"], log)
         objs.append(bdir / "stubs2.doj")
-    code = rec.get("code", CODE)
-    ldf = LDF.format(c0=code[0], c1=code[1] - 1, d0=DATA[0], d1=DATA[1] - 1,
-                     e0=rec.get("code2", CODE2)[0], e1=rec.get("code2", CODE2)[1] - 1, entry=rec["stubs"][0][0])
-    if "code3" in rec:
-        g0, g1 = rec["code3"]
-        anchor = "   mem_t38_code2 {"
-        i = ldf.index(anchor)
-        i = ldf.index("\n", i) + 1
-        ldf = ldf[:i] + LDF_MEM3.format(g0=g0, g1=g1 - 1) + ldf[i:]
-        anchor = "      }} > mem_t38_code2\n".replace("}}", "}")
-        i = ldf.index(anchor) + len(anchor)
-        ldf = ldf[:i] + LDF_SEC3.format() + ldf[i:]
-    if "code4" in rec:
-        g0, g1 = rec["code4"]
-        anchor = "   mem_t38_code2 {"
-        i = ldf.index(anchor)
-        i = ldf.index("\n", i) + 1
-        ldf = ldf[:i] + LDF_MEM4.format(g0=g0, g1=g1 - 1) + ldf[i:]
-        anchor = "      }} > mem_t38_code2\n".replace("}}", "}")
-        i = ldf.index(anchor) + len(anchor)
-        ldf = ldf[:i] + LDF_SEC4.format() + ldf[i:]
-    if rec.get("dmda_ddr"):
-        g0, g1 = rec["dmda_ddr"]
-        anchor = "   mem_t38_code2 {"
-        i = ldf.index(anchor)
-        i = ldf.index("\n", i) + 1
-        ldf = ldf[:i] + LDF_MEMDD.format(g0=g0, g1=g1 - 1) + ldf[i:]
-        anchor = "      }} > mem_t38_code2\n".replace("}}", "}")
-        i = ldf.index(anchor) + len(anchor)
-        ldf = ldf[:i] + LDF_SECDD.format() + ldf[i:]
-    for n, (lo, hi) in rec.get("l2", {}).items():
-        anchor = "   mem_t38_code2 {"
-        i = ldf.index(anchor)
-        i = ldf.index("\n", i) + 1
-        ldf = ldf[:i] + LDF_MEML2.format(n=n, g0=2 * lo, g1=2 * hi - 1) + ldf[i:]
-        anchor = "      }} > mem_t38_code2\n".replace("}}", "}")
-        i = ldf.index(anchor) + len(anchor)
-        ldf = ldf[:i] + LDF_SECL2.format(n=n) + ldf[i:]
-    (bdir / "t38.ldf").write_text(ldf)
-    run([SEL / "seld", "-proc", "ADSP-21569", "-T", bdir / "t38.ldf", "-o", bdir / f"{name}.dxe", *objs], log)
-    return E.read_elf(bdir / f"{name}.dxe")
+
+    def emit_split(place):
+        out = []
+        for src in rec.get("split", []):
+            stem = Path(src).stem
+            s, where = split_asm(split_texts[stem], stem, place, rec.get("split_default", "c2"))
+            rec["_placed_funcs"][stem] = where
+            (bdir / f"{stem}.s").write_text(s)
+            run([SEL / "selas", "-proc", "ADSP-21569", "-o", bdir / f"{stem}.doj", bdir / f"{stem}.s"], log)
+            out.append(bdir / f"{stem}.doj")
+            for old in bdir.glob(f"{stem}@*.s"):
+                old.unlink()                    # an earlier link's regions (the function table reads what exists)
+            for r in sorted(set(where.values()) - {"drop"}):
+                # the function table's view: this file's functions in region r alone, without the marker labels
+                t, _ = split_asm(split_texts[stem], stem, {f"{stem}:{fn}": (g if g == r else "drop")
+                                                           for fn, g in where.items()}, "drop")
+                (bdir / f"{stem}@{r}.s").write_text("\n".join(
+                    ln for ln in t.split("\n") if not (ln.startswith(".GLOBAL scfn_") or ln.startswith("scfn_"))))
+        return out
+
+    def link(extra_objs, measure):
+        code = rec.get("code", CODE)
+        ldf = LDF.format(c0=code[0], c1=code[1] - 1, d0=DATA[0], d1=DATA[1] - 1,
+                         e0=rec.get("code2", CODE2)[0], e1=rec.get("code2", CODE2)[1] - 1, entry=rec["stubs"][0][0])
+        if "code3" in rec:
+            g0, g1 = rec["code3"]
+            anchor = "   mem_t38_code2 {"
+            i = ldf.index(anchor)
+            i = ldf.index("\n", i) + 1
+            ldf = ldf[:i] + LDF_MEM3.format(g0=g0, g1=g1 - 1) + ldf[i:]
+            anchor = "      }} > mem_t38_code2\n".replace("}}", "}")
+            i = ldf.index(anchor) + len(anchor)
+            ldf = ldf[:i] + LDF_SEC3.format() + ldf[i:]
+        if "code4" in rec:
+            g0, g1 = rec["code4"]
+            anchor = "   mem_t38_code2 {"
+            i = ldf.index(anchor)
+            i = ldf.index("\n", i) + 1
+            ldf = ldf[:i] + LDF_MEM4.format(g0=g0, g1=g1 - 1) + ldf[i:]
+            anchor = "      }} > mem_t38_code2\n".replace("}}", "}")
+            i = ldf.index(anchor) + len(anchor)
+            ldf = ldf[:i] + LDF_SEC4.format() + ldf[i:]
+        if rec.get("dmda_ddr"):
+            g0, g1 = rec["dmda_ddr"]
+            anchor = "   mem_t38_code2 {"
+            i = ldf.index(anchor)
+            i = ldf.index("\n", i) + 1
+            ldf = ldf[:i] + LDF_MEMDD.format(g0=g0, g1=g1 - 1) + ldf[i:]
+            anchor = "      }} > mem_t38_code2\n".replace("}}", "}")
+            i = ldf.index(anchor) + len(anchor)
+            ldf = ldf[:i] + LDF_SECDD.format() + ldf[i:]
+        regs = [(n, 2 * lo, 2 * hi) for n, (lo, hi) in rec.get("l2", {}).items()] + ([("fitm", *FIT_MEASURE)] if measure else [])
+        for n, b0, b1 in regs:
+            anchor = "   mem_t38_code2 {"
+            i = ldf.index(anchor)
+            i = ldf.index("\n", i) + 1
+            ldf = ldf[:i] + LDF_MEML2.format(n=n, g0=b0, g1=b1 - 1) + ldf[i:]
+            anchor = "      }} > mem_t38_code2\n".replace("}}", "}")
+            i = ldf.index(anchor) + len(anchor)
+            ldf = ldf[:i] + LDF_SECL2.format(n=n) + ldf[i:]
+        (bdir / "t38.ldf").write_text(ldf)
+        run([SEL / "seld", "-proc", "ADSP-21569", "-T", bdir / "t38.ldf", "-o", bdir / f"{name}.dxe", *objs,
+             *extra_objs], log)
+        return E.read_elf(bdir / f"{name}.dxe")
+
+    if not split_texts:
+        return link([], False)
+    place = dict(rec.get("place", {}))
+    if rec.get("fit"):
+        # TE01: a first link with every split function in a measuring region, then each placed where it fits
+        meas = {f"{st}:{n}": "fitm" for st, t in split_texts.items() for n, _ in asm_chunks(t, st)[1]}
+        e1 = link(emit_split({**place, **{k: v for k, v in meas.items() if k not in place}}), True)
+        place, rec["_fit"] = fit_place(rec, e1, place)
+    return link(emit_split(place), False)
 
 
 CENSUS_ALLOWED = {f"R{i}" for i in range(16)} | {"I4", "I6", "I7", "I12", "LCNTR"}
@@ -1572,6 +1764,7 @@ def build(name, out_root=ROOT / "out/T3.8", odir=None):
         "l2_patched": l2_patched or None,
         "functions": fn_rows,
         "proven_check": proven_rows, "stock_hooks": stock_hooks or None, "ddr_slot": ddr_slot,
+        "fit": rec.get("_fit"),
         "shift_immediates_in_our_asm": selcc_shift_imm_count(bdir, rec),
         "register_census": dict(sorted(census.items())),
         "save_area": {"core": "%#x" % SAVE, "bytes": stub.SAVE_BYTES, "regs": stub.SAVE_REGS},
@@ -1600,14 +1793,35 @@ def function_table(rec, bdir, e):
              + ([bdir / "stubs2.s"] if rec.get("stubs2") else []),
              "t38_code3": stem(rec.get("c3", [])) + ([bdir / "stubs3.s"] if rec.get("stubs3") else []),
              "t38_code4": stem(rec.get("c4", []))}
+    if rec.get("fit"):
+        # TE01: the split files' functions of each region last, in the link's order
+        for reg, sec, _, _ in rec["fit"]:
+            order[sec] += [p for p in (bdir / f"{Path(s).stem}@{reg}.s" for s in rec["split"]) if p.exists()]
+    def localize(p, d):
+        """TE01: a copy of p with its file-local function labels named <stem>__<name> (references too), since funcmap
+        makes every label global and two files of one section can each have a static helper of the same name"""
+        t = p.read_text()
+        glob = set(re.findall(r"^\.GLOBAL ([A-Za-z_][A-Za-z0-9_]*)\.;", t, re.M))
+        for n in [m.group(1) for m in map(FUNC_LABEL.match, t.split("\n")) if m]:
+            if n not in glob:
+                t = re.sub(r"\b%s\." % re.escape(n), "%s__%s." % (re.sub(r"\W", "_", p.stem), n), t)
+        d.mkdir(parents=True, exist_ok=True)
+        (d / p.name).write_text(t)
+        return d / p.name
+
     rows = []
     for s in e.sections:
         if s.kind != "sw_code" or not s.data:
             continue
-        got, sec = fm.funcmap(bdir / f"funcmap-{s.name}", E.sw_to_byte(s.addr), order[s.name])
+        files = order[s.name]
+        if rec.get("fit"):
+            files = [localize(p, bdir / f"funcmap-{s.name}-src") for p in files]
+        got, sec = fm.funcmap(bdir / f"funcmap-{s.name}", E.sw_to_byte(s.addr), files)
         if sec.addr != s.addr or len(sec.data) != len(s.data):
             raise SystemExit(f"function table: {s.name} re-linked alone is not the build's size")
-        rows += [{"section": s.name, "function": n, "file": f[:-2], "core": "%#x" % E.sw_to_byte(a), "bytes": 2 * (b - a)}
+        rows += [{"section": s.name, "function": n.split("__", 1)[1] if n.startswith(re.sub(r"\W", "_", f[:-2]) + "__")
+                  else n,
+                  "file": f[:-2].split("@")[0], "core": "%#x" % E.sw_to_byte(a), "bytes": 2 * (b - a)}
                  for n, f, a, b in got]
     return rows
 

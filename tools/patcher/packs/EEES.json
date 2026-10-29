@@ -1,0 +1,22 @@
+{
+ "title": "Spring",
+ "description": "Base 0.2 with the spring reverb; Elektron's compressor, chorus and delay.",
+ "tested_on_unit": "",
+ "effects": [
+  "spng"
+ ],
+ "base": [
+  "djvu",
+  "key",
+  "onehalf",
+  "arp",
+  "midiarp",
+  "intro",
+  "overbridge"
+ ],
+ "dsp": {
+  "code_bytes": 18978,
+  "state_bytes": null,
+  "load_percent": null
+ }
+}

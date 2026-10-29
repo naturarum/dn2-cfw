@@ -1,0 +1,23 @@
+{
+ "title": "Tape echo and spring",
+ "description": "Base 0.2 with the tape echo and the spring reverb; Elektron's compressor and chorus.",
+ "tested_on_unit": "",
+ "effects": [
+  "tape",
+  "spng"
+ ],
+ "base": [
+  "djvu",
+  "key",
+  "onehalf",
+  "arp",
+  "midiarp",
+  "intro",
+  "overbridge"
+ ],
+ "dsp": {
+  "code_bytes": 51708,
+  "state_bytes": null,
+  "load_percent": null
+ }
+}

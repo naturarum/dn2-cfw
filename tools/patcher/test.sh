@@ -82,8 +82,8 @@ cmp -s "$T/run3-num/FL01.syx" "$ROOT/out/FL01/FL01.syx" && grep -q "Which one?" 
 out=$("$C3" --list 2>&1)
 [ "$(echo "$out" | grep -c '^  [1-6]\. \(CMP4\|OB01\|FL01\|FL02\|DT01\|DJ01\) ')" = 6 ] \
     && echo "$out" | grep -q "Brick check 12 of 12 · tested on a Digitone II, 2[0-9] Oct 2026" \
-    && echo "$out" | grep -q "not yet tested on a unit" && [ "$(echo "$out" | grep -c '     base: ')" = 6 ] \
-    && echo "$out" | grep -q "base: D.*vu LFO, Overbridge works" && echo "$out" | grep -q "base: none" \
+    && [ "$(echo "$out" | grep -c '     base: ')" = 6 ] \
+    && echo "$out" | grep -q "base: D.*vu LFO$" && echo "$out" | grep -q "base: none" \
     && ok "six-pack tool: --list shows the six packs with their base and record lines" || bad "--list: $out"
 fresh "$T/run3-bad"
 out=$("$C3" --pack ZZ99 "$T/run3-bad/Digitone_II_OS1.12.syx" </dev/null 2>&1); got=$?
