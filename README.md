@@ -14,6 +14,9 @@ Digiwerk is part of the [Modwerk](https://modwerk.app) effort, the community hub
 
 **Not made or supported by Elektron.**
 
+**Get it:** [Digiwerk Patcher 0.1.0](https://github.com/naturarum/dn2-cfw/releases/download/v0.1.0/Digiwerk-Patcher-0.1.0.zip), for macOS 13 or
+later. Then follow the [install steps](#install).
+
 - [What's in it](#whats-in-it)
 - [Install](#install)
 - [Going back, and recovery](#going-back-and-recovery)
@@ -67,26 +70,32 @@ A spring reverb (SPNG) and a tape echo (TAPE) are in the works, each for a pack 
 
 ## Install
 
-You need a Digitone II, a Mac with macOS 13 or later, a USB cable and Elektron Transfer.
+You need a Digitone II, a Mac with macOS 13 or later (Apple silicon or Intel), a USB cable and
+[Elektron Transfer](https://www.elektron.se/support-downloads/transfer).
 
 1. **Back up** your projects and the +Drive with Elektron Transfer.
-2. **Download Digiwerk Patcher** from [Releases](https://github.com/naturarum/dn2-cfw/releases), double-click the .zip
-   and open the app. Apple has
-   checked it (it's notarized). The first time, macOS asks whether to open an app from the internet: click **Open**.
-3. **Get Elektron's OS 1.12.** On [Elektron's download page](https://elektron.se/support-downloads/digitone-ii),
-   download **Digitone II OS 1.12**. It arrives as `Digitone_II_OS1.12_dist.zip`. You don't need to unzip it.
-   **Keep this .zip:** Elektron's page lists only the current OS, and you need this file to go back or to make
-   another build.
-4. **Drop the file** on the patcher's window (if it offers more than one pack, click one first). The
-   patcher checks that it's Elektron's original file, makes the build and saves it next to the .zip, for example
-   `DJ01.syx`.
-5. **Send it to the Digitone.** Connect it over USB, open Transfer, drag `DJ01.syx` onto **Drop files here**, answer
-   **YES** on the Digitone and wait for **SUCCESS! REBOOTING**. The power-on screen shows **DJ01** at the top right.
+2. **Download Digiwerk Patcher:** [Digiwerk-Patcher-0.1.0.zip](https://github.com/naturarum/dn2-cfw/releases/download/v0.1.0/Digiwerk-Patcher-0.1.0.zip).
+   It's also on the [release page](https://github.com/naturarum/dn2-cfw/releases/latest), where `digiwerk-patch-0.1.0.zip` is the
+   Terminal version and the "Source code" files aren't the app. Double-click the .zip and open **Digiwerk Patcher**.
+   Apple has checked it (it's notarized). The first time, macOS asks whether to open an app from the internet: click
+   **Open**.
+3. **Get Elektron's OS 1.12.** On [Elektron's download page](https://elektron.se/support-downloads/digitone-ii)
+   (the patcher's **OPEN DOWNLOAD PAGE** button opens it), download **Digitone II OS 1.12**. It arrives as
+   `Digitone_II_OS1.12_dist.zip`. You don't need to unzip it. **Keep this .zip:** Elektron's page lists only the
+   current OS, and you need this file to go back or to make another build.
+4. **Drop the file** on the patcher's window, in box **02** (or click **CHOOSE FILE**). The patcher checks that it's
+   Elektron's original file, makes the build and saves it next to the .zip: `DJ01.syx`. The line at the bottom says
+   **Checked: this is Elektron's original OS 1.12 file.**
+5. **Send it to the Digitone.** Connect it over USB and open Transfer (the patcher's **OPEN TRANSFER** button does
+   it). Drag `DJ01.syx` onto **Drop files here** (**SHOW IN FINDER** shows you the file), answer **YES** on the
+   Digitone and wait for **SUCCESS! REBOOTING**. The power-on screen shows **DJ01** at the top right.
+
+<img src="docs/images/patcher-0.1.0-done.png" width="100%" alt="Digiwerk Patcher 0.1.0 after step 4: the DJ01 card; 01 Get Elektron's OS 1.12 and 02 Drop it here ticked; 03 Send it to your Digitone with Show in Finder and Open Transfer; at the bottom, Checked: this is Elektron's original OS 1.12 file. Saved DJ01.syx next to Digitone_II_OS1.12_dist.zip.">
 
 Keep the volume down the first time a new build plays.
 
-If you'd rather use Terminal, `digiwerk-patch` (on the same page) does the same. The full guide, with
-what every message means: [tools/patcher/README.md](tools/patcher/README.md).
+If you'd rather use Terminal, [digiwerk-patch-0.1.0.zip](https://github.com/naturarum/dn2-cfw/releases/download/v0.1.0/digiwerk-patch-0.1.0.zip) does the same. The
+full guide, with what every message means: [tools/patcher/README.md](tools/patcher/README.md).
 
 ## Going back, and recovery
 
