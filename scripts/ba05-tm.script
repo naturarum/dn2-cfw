@@ -1,0 +1,73 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# BA05: TM on a MIDI track, read on DIN MIDI out (--midi-log). Track 1 -> the MIDI machine on channel 1; the ARP
+# menu: MODE up to TM (LOOP CHANGE 0), SPEED 1/32, ARP LENGTH 8; C3 held from MIDI in for 2 s -> the loop's eight
+# notes, then the same eight again (locked), all in the octave above C3 (RANGE 1; the pattern's scale). Run with
+# the audio clock (--ssi0-hz --ips 150e6).
+wait-emu 0.3
+down space           # FUNC held
+wait-emu 0.1
+tap p                # + SYN = MACHINE SEL
+wait-emu 0.1
+up space
+wait-emu 0.4
+tap Down
+wait-emu 0.2
+tap Down             # MIDI
+wait-emu 0.2
+tap Return
+wait-emu 0.6
+tap Escape
+wait-emu 0.4
+down space           # FUNC + encoder A push: CHAN on (channel 1)
+wait-emu 0.1
+tap F1
+wait-emu 0.1
+up space
+wait-emu 0.4
+tap v                # ARP
+wait-emu 0.6
+tap 1                # MODE: TRUE UP DOWN CYCL SHUF RAND TM
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1                # TM
+wait-emu 0.2
+tap 2                # SPEED 1/32
+wait-emu 0.15
+tap 2
+wait-emu 0.15
+tap 2
+wait-emu 0.15
+tap 2
+wait-emu 0.15
+tap asterisk         # ARP LENGTH 16 -> 8
+wait-emu 0.15
+tap asterisk
+wait-emu 0.15
+tap asterisk
+wait-emu 0.15
+tap asterisk
+wait-emu 0.15
+tap asterisk
+wait-emu 0.15
+tap asterisk
+wait-emu 0.15
+tap asterisk
+wait-emu 0.15
+tap asterisk
+wait-emu 0.4
+png 1-tm-set
+midi-in 90 30 64     # C3 held
+wait-emu 2.0
+png 2-tm-playing
+midi-in 80 30 00
+wait-emu 0.5
+png 3-done

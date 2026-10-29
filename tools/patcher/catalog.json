@@ -37,6 +37,12 @@
    "credit": "TM after Tom Whitwell's Turing Machine. SHUF and RAND build on the findings of dn2_firmware_explore (angellinares)."
   },
   {
+   "id": "midiarp", "kind": "base", "title": "The arp on MIDI tracks", "label": "Arp on MIDI tracks",
+   "text": ["The arpeggiator works on MIDI-machine tracks. The ARP key and menu open there, and a MIDI track whose arp is on plays its trigs and the keys you play through the arp, its notes out on the track's MIDI channel. SHUF, RAND and TM work there too."],
+   "where": "A MIDI track: the ARP key, as on a synth track. FUNC + ARP turns its arp on and off.",
+   "notes": ["While a MIDI track's arp is on, its trigs' MIDI p-locks (CC, pitch bend, aftertouch, program change) aren't sent. With the arp off they are.", "N.LEN goes out as the nearest MIDI trig length that isn't shorter; INF holds each note until the next one."]
+  },
+  {
    "id": "intro", "kind": "base", "title": "The Digiwerk intro", "label": "Digiwerk intro",
    "text": ["At power-on, after Elektron's logo screen, the start-up animation shows DIGI over WERK, then the tunnel takes it apart."],
    "where": "Power-on."

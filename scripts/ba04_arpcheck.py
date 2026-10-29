@@ -3,7 +3,7 @@
 """BA04: arp-modes 0.3's TM, the Turing Machine loop of notes, with the arpeggiator's step FUN_4002a0bc run as a
 function on BA02's and BA04's main OS images (Unicorn, digikit's ColdFire model), as scripts/ba02_arpcheck.py runs it.
 
-    cd vendor/digikit && uv run python ../../scripts/ba04_arpcheck.py [--json ../../out/BA04/arpcheck.json]
+    cd vendor/digikit && uv run python ../../scripts/ba04_arpcheck.py [--json ../../out/BA04/arpcheck.json] [--name BA04]
 
 The pool: the notes from the lowest note held up to below it + 12 x (RANGE + 1) (and below 128) that are in the
 track's scale, KEYBOARD SETUP's in the pattern playing (scale and root per pattern, or per track when bit 2 of the
@@ -311,10 +311,11 @@ def check_idle(b):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--json')
+    ap.add_argument('--name', default='BA04', help='a later build with arp-modes 0.3 (BA05)')
     a = ap.parse_args()
-    ba2, ba4 = A.Arp('BA02'), Tm('BA04')
+    ba2, ba4 = A.Arp('BA02'), Tm(a.name)
     rep = {'stock_modes': check_stock(ba2, ba4)}
-    print('1 TRUE UP DOWN CYCL SHUF RAND 108 -1, BA02 = BA04:', rep['stock_modes'])
+    print('1 TRUE UP DOWN CYCL SHUF RAND 108 -1, BA02 = %s:' % a.name, rep['stock_modes'])
     rep['steps'] = check_steps(ba4)
     print('2 TM step by step:', rep['steps'])
     rep['seed'] = check_seed(ba4)

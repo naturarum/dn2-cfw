@@ -1472,3 +1472,30 @@ mkpatch's BASE has base 0.2's ids (key, onehalf, arp, intro). The README and too
 The in-app brick checker: skipped for now (owner; vault Patcher modules.md). Not committed yet: BA03's and BA04's
 work, the patcher's slots and manual (commit and push wait for the owner's word). Next: the arp on MIDI tracks with
 SHUF, RAND and TM (BA05, notes/T2.2-arp-midi-v2.md option 2).
+
+**2026-10-28, BA05: the arp on MIDI tracks.** The owner: "commit and push, then go BA05" (BA03, BA04 and the patcher
+pushed: main 46338f6, fork 4887834). **BA05** = BA04 + arp-midi-dn2 0.1 (notes/T2.2-arp-midi-v2.md option 2: the ARP
+key, menu and LED on MIDI tracks; an arp-on MIDI track's trigs and live keys through the stock arp; `ami_sink` turns
+its notes into MIDI events on the list the voice interrupt posts to the MIDI task; the trig's MIDI p-locks aren't sent
+while the arp is on): notes/BA05-arp-midi.md, `scripts/ba05_make_midi.py` (11 sites), `scripts/ba05_build.py` 32/32;
+`out/BA05/BA05.syx` `1a345a94...`, brick checker ACCEPT 12/12. The emulator, with the audio clock and DIN MIDI out
+logged (`scripts/ba05-midi.script`, `ba05-tm.script`, `ba05_midicheck.py`; track 1 made a MIDI track by keys): live and
+sequenced arp notes right on channel 1, the stock trig with the arp off, TM's locked loop in the project's scale. It
+found one bug, fixed: a live key's first note ended at once (its "play at once" bucket's time field isn't the time;
+the sink now dates such notes by the pass's end). Guide `out/BA05/FLASH-BA05.md` (vault code/Digitone2/BA05/). The
+patcher's catalog has the MIDI arp's manual entry and mkpatch the base id `midiarp`. Not committed: BA05's work.
+Next: the owner flashes BA05.
+
+**2026-10-29, BA05 on the unit.** The owner: "ba05 works flawlessly! omg". The arp on MIDI tracks (arp-midi-dn2 0.1)
+is base 0.2's, and base 0.2 is complete: the LFO's ONE and HALF, KEY, the arp's SHUF, RAND and TM, the Digiwerk intro,
+the arp on MIDI tracks, all played on the unit. BA05 is the final base for 0.2.0. BA05's work committed and pushed at
+the owner's word (2026-10-29), with the fork's arp-midi-dn2 0.1. Next, the patcher plan's step 4 (vault Patcher
+modules.md): every combination that fits built on BA05's base and brick-checked, then played on the unit; then the
+README and the patcher's guide for 0.2.0; release 0.2.0. **The owner (2026-10-29): the tape echo goes into 0.2.0**
+("for sure"), so 14 builds: the base alone and the 13 combinations that fit. The echo comes back on the bench first:
+it has never run cleanly on the unit (SC01 stopped the DSP on echo knob turns, on FDBK and at random when idle; its
+new code places the prime suspect, notes/SC02-plan.md). So: a test build of CMP3 + FLNG + TAPE, the echo's heaviest
+combination (79.9 KB of the 83.8 KB proven room with DC02's compiler), on BA05, every byte of our DSP code where ours
+already ran on the unit, brick-checked; the owner plays it (SC01's failures first, then a stress test by ear for the
+load); then the 14 builds. SPNG v2 (SP02) hasn't been on the unit yet. A big stage: start it in a fresh session from
+this entry.
