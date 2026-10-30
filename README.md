@@ -5,8 +5,8 @@
 </p>
 
 **Digiwerk** is custom firmware for the Elektron Digitone II, for OS 1.12. It adds a 3-band master compressor, a
-flanger that reaches from a phaser-like sweep to a chorus, a tape echo with three heads, a spring reverb, LFO waves
-that play looping random melodies (one of them in the track's key), three arpeggiator modes, among them a Turing
+flanger that reaches from a phaser-like sweep to a chorus, a tape echo with three heads, LFO waves that play
+looping random melodies (one of them in the track's key), three arpeggiator modes, among them a Turing
 Machine loop, and the arpeggiator on MIDI tracks. You make it yourself: Digiwerk Patcher turns Elektron's own OS 1.12
 file into a Digiwerk build on your Mac, and you send that build to the Digitone with Elektron Transfer. No Elektron
 firmware is shared here.
@@ -15,7 +15,7 @@ Digiwerk is part of the [Modwerk](https://modwerk.app) effort, the community hub
 
 **Not made or supported by Elektron.**
 
-**Get it:** [Digiwerk Patcher 0.2.0](https://github.com/naturarum/dn2-cfw/releases/download/v0.2.0/Digiwerk-Patcher-0.2.0.zip), for macOS 13 or
+**Get it:** [Digiwerk Patcher 0.2.1](https://github.com/naturarum/dn2-cfw/releases/download/v0.2.1/Digiwerk-Patcher-0.2.1.zip), for macOS 13 or
 later. Then follow the [install steps](#install).
 
 - [What's in it](#whats-in-it)
@@ -32,7 +32,8 @@ later. Then follow the [install steps](#install).
 Every Digiwerk build is **the base plus the effects you pick**. The base is a set of changes to the main OS, the same
 in every build. The effects run in the sound engine (the DSP), one per FX slot: in each of the four slots, compressor,
 chorus, delay and reverb, you keep Elektron's effect or take ours. Effects take DSP memory, so not every combination
-fits: of the sixteen, fourteen are built, and you pick one in the patcher.
+fits: of the sixteen, fourteen fit and eight are built, and you pick one in the patcher. The six with the spring
+reverb are withdrawn (below).
 
 ### The base, in every build
 
@@ -63,7 +64,7 @@ fits: of the sixteen, fourteen are built, and you pick one in the patcher.
 | <img src="docs/identity/cmp3.svg" width="104" alt="CMP3 icon"> | **CMP3**<br>3-band master compressor | Elektron's master compressor, split into three bands at two crossovers. Each band follows the stock compressor's design (its detector, curve, attack and release, makeup). The MIXER has a page per band, **Compressor Low, Mid and High**: A **THR**, B **ATK**, C **REL**, D **MUP**, E **RAT** (1.00 turns the band off, then the stock ratios 1.50 to 20.00), F the crossover (**Low/Mid** 30 Hz to 1 kHz on the LOW page, **Mid/High** 1 to 16 kHz on the MID page), G **SCS**, the sidechain source shared by the bands, and H the band's own **MIX** (dry/wet). Each page has a meter for its band's gain reduction. The knobs use the stock compressor's pictures (the crossovers a plain dial). The settings are saved with the kit. A new kit starts with every MIX at 0, so you hear no compression until you raise one. |
 | <img src="docs/identity/flng.svg" width="104" alt="FLNG icon"> | **FLNG**<br>flanger | In the chorus slot, on the Flanger page. A **DPTH** sweep depth, B **SPD** sweep speed, C **TIME** the delay the sweep moves around, D **WDTH** the angle between the left and right sweeps (0 to 180 degrees). TIME sets the character: near 0 a subtle, phaser-like sweep, around 32 the classic flanger (a new kit's default), and from 64 up the feedback fades out and the sweep narrows until, by 100 to 127, FLNG is a chorus. For a flanger, keep TIME in the lower half. **FUNC + turn on SPD** steps through speeds in time with the tempo, from one sweep in 16 bars (16/1) to 1/32, as FUNC + turn does on the delay's TIME. Turning SPD without FUNC gives a free speed again. |
 | <img src="docs/identity/tape.svg" width="104" alt="TAPE icon"> | **TAPE**<br>tape echo | In the delay slot, on the **Echo** page: one tape, three playback heads at one, two and three times head 1's time, a band filter in the feedback loop, and tape wear to dial in. A **TIME**, head 1's time on the stock delay's TIME scale, B **MODE**, the heads that play, shown under the knob as 1, 2, 3, 12, 23, 13 or 123 (23 is heads 2 and 3; the box shows the mode's number, 1 to 7), C **WID**, below 0 the repeats alternate left and right, 0 is mono, above 0 each repeat lands at a new random place, D **FDBK**, the repeats: at 64 they go on forever in every MODE, above it they grow until the tape saturates, E **CNTR**, the centre of the loop's band filter (50 Hz to 12.8 kHz), F **BW**, its width (narrow resonates, 127 is no filter), G **AGE**, tape wear: wow and flutter, hiss, soft crackle and a duller top (0 or 1 is clean), H **REV**, the send to the reverb. |
-| <img src="docs/identity/spng.svg" width="104" alt="SPNG icon"> | **SPNG**<br>spring reverb | In the reverb slot, on the **Spring** page: three springs that drip and boing. A **PRE** pre-delay (0 to 250 ms), B **DEC** the size, a decay of 0.3 s to 16 s, C **MODE** the springs' character (0 taut and bright, 64 the classic tank, 127 slack, deep drip, surf), D **DIRT** breaks up the tail (0 clean, heavy at 127), E **HPF** thins what goes into the tank (40 Hz to 1 kHz), F **TONE** (127 open, lower is darker), G **WDTH** (0 mono, like a real tank; up to 127, wide stereo). A new kit starts clean: PRE 0, DEC 64, MODE 64, DIRT 0, HPF 0, TONE 127, WDTH 96. |
+| <img src="docs/identity/spng.svg" width="104" alt="SPNG icon"> | **SPNG**<br>spring reverb | **Withdrawn in 0.2.1: on a Digitone II it stops the sound within a second, so no build carries it.** In the reverb slot, on the **Spring** page: three springs that drip and boing. A **PRE** pre-delay (0 to 250 ms), B **DEC** the size, a decay of 0.3 s to 16 s, C **MODE** the springs' character (0 taut and bright, 64 the classic tank, 127 slack, deep drip, surf), D **DIRT** breaks up the tail (0 clean, heavy at 127), E **HPF** thins what goes into the tank (40 Hz to 1 kHz), F **TONE** (127 open, lower is darker), G **WDTH** (0 mono, like a real tank; up to 127, wide stereo). A new kit starts clean: PRE 0, DEC 64, MODE 64, DIRT 0, HPF 0, TONE 127, WDTH 96. |
 
 <details>
 <summary>Starting points for the flanger</summary>
@@ -91,18 +92,15 @@ Each build is named after its four slots, in the order compressor, chorus, delay
 | **CEEE** | **3-band compressor** | Elektron's | Elektron's | Elektron's | not yet |
 | **EFEE** | Elektron's | **flanger** | Elektron's | Elektron's | not yet |
 | **EETE** | Elektron's | Elektron's | **tape echo** | Elektron's | not yet |
-| **EEES** | Elektron's | Elektron's | Elektron's | **spring reverb** | not yet |
 | **CFEE** | **3-band compressor** | **flanger** | Elektron's | Elektron's | 29 Oct 2026 |
 | **CETE** | **3-band compressor** | Elektron's | **tape echo** | Elektron's | not yet |
-| **CEES** | **3-band compressor** | Elektron's | Elektron's | **spring reverb** | not yet |
 | **EFTE** | Elektron's | **flanger** | **tape echo** | Elektron's | not yet |
-| **EFES** | Elektron's | **flanger** | Elektron's | **spring reverb** | not yet |
-| **EETS** | Elektron's | Elektron's | **tape echo** | **spring reverb** | not yet |
 | **CFTE** | **3-band compressor** | **flanger** | **tape echo** | Elektron's | 29 Oct 2026 |
-| **CFES** | **3-band compressor** | **flanger** | Elektron's | **spring reverb** | not yet |
-| **EFTS** | Elektron's | **flanger** | **tape echo** | **spring reverb** | not yet |
 
-CMP3 with TAPE and SPNG doesn't fit, with or without FLNG.
+The six builds with the spring reverb, EEES, CEES, EFES, EETS, CFES and EFTS, were in 0.2.0 and are withdrawn: on a
+Digitone II, CFES and EFTS stop the sound within a second of starting (the screen keeps working, the audio goes
+silent or buzzes), and the four others run the same spring code. If you sent one to your Digitone, send another
+build or Elektron's `Digitone_II_OS1.12.syx` with Transfer, as usual.
 
 ## Install
 
@@ -110,7 +108,7 @@ You need a Digitone II, a Mac with macOS 13 or later (Apple silicon or Intel), a
 [Elektron Transfer](https://www.elektron.se/support-downloads/transfer).
 
 1. **Back up** your projects and the +Drive with Elektron Transfer.
-2. **Download Digiwerk Patcher:** [Digiwerk-Patcher-0.2.0.zip](https://github.com/naturarum/dn2-cfw/releases/download/v0.2.0/Digiwerk-Patcher-0.2.0.zip).
+2. **Download Digiwerk Patcher:** [Digiwerk-Patcher-0.2.1.zip](https://github.com/naturarum/dn2-cfw/releases/download/v0.2.1/Digiwerk-Patcher-0.2.1.zip).
    It's also on the [release page](https://github.com/naturarum/dn2-cfw/releases/latest), where the "Source code" files
    aren't the app. Double-click the .zip and open **Digiwerk Patcher**.
    Apple has checked it (it's notarized). The first time, macOS asks whether to open an app from the internet: click

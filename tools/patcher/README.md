@@ -14,7 +14,7 @@ the 3-band compressor, the flanger and the tape echo, with Elektron's reverb.
 
 ## Step by step
 
-Download **Digiwerk Patcher**: [Digiwerk-Patcher-0.2.0.zip](https://github.com/naturarum/dn2-cfw/releases/download/v0.2.0/Digiwerk-Patcher-0.2.0.zip)
+Download **Digiwerk Patcher**: [Digiwerk-Patcher-0.2.1.zip](https://github.com/naturarum/dn2-cfw/releases/download/v0.2.1/Digiwerk-Patcher-0.2.1.zip)
 (or the newest version from [Releases](https://github.com/naturarum/dn2-cfw/releases/latest)). Double-click the .zip and open the app.
 Apple has checked the app (it's notarized), so it opens normally. The first time, macOS asks whether you want to
 open an app downloaded from the internet: click **Open**.

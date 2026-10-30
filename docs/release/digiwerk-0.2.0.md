@@ -1,5 +1,8 @@
 # Digiwerk 0.2.0
 
+> [!WARNING]
+> **Withdrawn on 30 Oct 2026: the six builds with the spring reverb, EEES, CEES, EFES, EETS, CFES and EFTS.** On a Digitone II, CFES and EFTS stop the sound within a second of starting: the screen keeps working, the audio goes silent or buzzes. The four others run the same spring code. Don't use them. If you sent one to your Digitone, send another build or Elektron's `Digitone_II_OS1.12.syx` with Transfer, as usual.
+
 Digiwerk is custom firmware for the Elektron Digitone II on OS 1.12. 0.2.0 brings a new base and two new effects, a
 tape echo and a spring reverb, and you now pick the effects one FX slot at a time. **Not made or supported by
 Elektron.**
@@ -32,7 +35,7 @@ is in this release.
 - **TAPE**, new: a tape echo in the delay slot, with three playback heads at one, two and three times head 1's time,
   a band filter in the feedback loop and tape wear (AGE).
 - **SPNG**, new: a spring reverb in the reverb slot, three springs that drip and boing; MODE sets their character and
-  DIRT breaks up the tail.
+  DIRT breaks up the tail. **Withdrawn**: see the top of this page.
 - **CMP3**, the 3-band master compressor, and **FLNG**, the flanger, as in 0.1.0.
 
 **Digiwerk Patcher** has a slot for each effect: keep Elektron's or take ours, and the patcher makes the build for
@@ -46,16 +49,16 @@ that combination. Its MANUAL page explains every effect and base feature.
 | **CEEE** | **3-band compressor** | Elektron's | Elektron's | Elektron's | 12 of 12 | not yet | `925e82ae5d935cd0a1fdb6894dfd5a4b408ec47ea1609a0d47c1d7a54b6bd261` |
 | **EFEE** | Elektron's | **flanger** | Elektron's | Elektron's | 12 of 12 | not yet | `355bee2cd58a61bfb564e406d1e8f72b50e0b973d0f693d32afb757ff1021e36` |
 | **EETE** | Elektron's | Elektron's | **tape echo** | Elektron's | 12 of 12 | not yet | `5caa78166a014cb233e86756f400a0729fd4851dd4c8dcbec59153ada738abf2` |
-| **EEES** | Elektron's | Elektron's | Elektron's | **spring reverb** | 12 of 12 | not yet | `1b0f5bc2bd8656a4a4e12266f1de912e55a77a632b44ec5dee2884558f548ef5` |
+| **EEES** | Elektron's | Elektron's | Elektron's | **spring reverb** | 12 of 12 | withdrawn | `1b0f5bc2bd8656a4a4e12266f1de912e55a77a632b44ec5dee2884558f548ef5` |
 | **CFEE** | **3-band compressor** | **flanger** | Elektron's | Elektron's | 12 of 12 | 29 Oct 2026 | `cdd04164165bb8001412b29e7b320fde638e0ec5971b2a31235b7f21370e92cf` |
 | **CETE** | **3-band compressor** | Elektron's | **tape echo** | Elektron's | 12 of 12 | not yet | `65eab76547211b8df18f094cf61c94348ca86f050cca1b4efc16d4dfc5a46615` |
-| **CEES** | **3-band compressor** | Elektron's | Elektron's | **spring reverb** | 12 of 12 | not yet | `13d77c5d9706286da7e050ffd78746c5222ba7891b0004634ef678aed16593ba` |
+| **CEES** | **3-band compressor** | Elektron's | Elektron's | **spring reverb** | 12 of 12 | withdrawn | `13d77c5d9706286da7e050ffd78746c5222ba7891b0004634ef678aed16593ba` |
 | **EFTE** | Elektron's | **flanger** | **tape echo** | Elektron's | 12 of 12 | not yet | `db91033a37ceddbc852dcc789766a8afe55bcd8052bc195afccadcf84eac854c` |
-| **EFES** | Elektron's | **flanger** | Elektron's | **spring reverb** | 12 of 12 | not yet | `5c8042e51b77c19a8f75d638c2817ac82e67efd31e083770bb5389f8f6279161` |
-| **EETS** | Elektron's | Elektron's | **tape echo** | **spring reverb** | 12 of 12 | not yet | `6123d911c75e34136df1f1435096f00a3ec44558d9a0b1b249176e6e27e046e5` |
+| **EFES** | Elektron's | **flanger** | Elektron's | **spring reverb** | 12 of 12 | withdrawn | `5c8042e51b77c19a8f75d638c2817ac82e67efd31e083770bb5389f8f6279161` |
+| **EETS** | Elektron's | Elektron's | **tape echo** | **spring reverb** | 12 of 12 | withdrawn | `6123d911c75e34136df1f1435096f00a3ec44558d9a0b1b249176e6e27e046e5` |
 | **CFTE** | **3-band compressor** | **flanger** | **tape echo** | Elektron's | 12 of 12 | 29 Oct 2026 | `eafa99b3f73fdd7635c86dbd61f81db73b65c8181bd068e00125196950c84f63` |
-| **CFES** | **3-band compressor** | **flanger** | Elektron's | **spring reverb** | 12 of 12 | not yet | `854e24b624f3cf58c5a45e4618b9a5f933a98d9041894ce7af8df5474a9543fe` |
-| **EFTS** | Elektron's | **flanger** | **tape echo** | **spring reverb** | 12 of 12 | not yet | `b28c9958a34e88d22d6d98562104ce1d65efefc0c910f791ce02119e2278f35b` |
+| **CFES** | **3-band compressor** | **flanger** | Elektron's | **spring reverb** | 12 of 12 | **stops the sound**, 30 Oct 2026 | `854e24b624f3cf58c5a45e4618b9a5f933a98d9041894ce7af8df5474a9543fe` |
+| **EFTS** | Elektron's | **flanger** | **tape echo** | **spring reverb** | 12 of 12 | **stops the sound**, 30 Oct 2026 | `b28c9958a34e88d22d6d98562104ce1d65efefc0c910f791ce02119e2278f35b` |
 
 Each build is named after its four slots, compressor, chorus, delay, reverb: C, F, T or S where ours runs, E where
 Elektron's does. CMP3 with TAPE and SPNG doesn't fit in the DSP's memory, with or without FLNG. The patcher checks both

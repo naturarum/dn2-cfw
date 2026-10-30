@@ -1551,3 +1551,21 @@ release notes and tools/patcher/README.md changed; `make` still builds it). The 
 in its box and the heads under it (23, 123): as designed, the README spells it out (notes/R1.12-packs-0.2.md 8). No
 Roland credit (the owner). Fork: echo-names-dn2 0.1 committed (b8a688e). Tag v0.2.0 on this commit, the GitHub release
 with the app's zip; the body is docs/release/digiwerk-0.2.0.md.
+
+**2026-10-30: the spring builds stop the DSP on the unit; Digiwerk 0.2.1 withdraws them (the owner: "can we correct
+the 0.2.0 release? it's a big problem").** The device-test round (vault "Digiwerk 0.2 device tests.md"; the twelve
+untested builds made from the packs by the web core, each = its build_sha256, the brick-checked out/ID/ID.syx and the
+0.2.0 table, in `out/device-tests-0.2/`): **CFES and EFTS stop the DSP within a fraction of a second, even on an empty
+pattern**; the UI keeps running; silence, or a buzz if sound was playing (the owner: "the same crash as before when we
+had the dsp overflow issues", i.e. the CMP2/SC01 DSP stops). Their only common new part is SPNG v2 (SP02's DSP code,
+never flashed; v1 ran on the unit in SP01, 2026-10-26) and spring-names 0.2. Ruled out offline so far: encodings
+(`tools/dspsplice/audit.py` on SP01, SP02, EFTS, EEES, TE01, EETE: no findings), hardware stack depths (the reverb call
+1 PC / 1 loop level in v1 and v2; scratch probe), the register census (the same registers as v1 and the proven
+effects, no M, L or B), long-word, SIMD or short accesses (none), placement (inside the proven ranges; SpgSlot in the
+stock reverb's DDR region, which only init and the call setup address). Cause open. **0.2.0's release page** carries
+a warning (edited 30 Oct). **0.2.1** = the app with the eight other builds (`app/build.sh CFEE CFTE CETE EFTE CEEE EFEE
+EETE EEEE`; MARKETING_VERSION 0.2.1, build 3; test.sh: the 0.2.1 set as the release set, the fourteen kept as a test
+set; all pass, `make test` 45/45); the catalog unchanged, so the spring tile says "Not built yet" (screens checked).
+Signed Developer ID, **notarized from this session** (`notarytool --keychain-profile redeemer-notary` worked again),
+stapled, `out/release/0.2.1/Digiwerk-Patcher-0.2.1.zip` `2d6ae183...`. README, tools/patcher/README.md and
+docs/release (0.2.0 synced with its page, 0.2.1 new) changed.
