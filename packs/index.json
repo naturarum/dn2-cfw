@@ -1,0 +1,207 @@
+{
+ "packs": [
+  {
+   "id": "CFEE",
+   "title": "Compressor and flanger",
+   "description": "Base 0.3 with the 3-band compressor and the flanger; Elektron's delay and reverb.",
+   "record": "Brick check 12 of 12 · tested on a Digitone II, 4 Nov 2026",
+   "tested_on_unit": "4 Nov 2026",
+   "effects": [
+    "cmp3",
+    "flng"
+   ],
+   "base": [
+    "djvu",
+    "key",
+    "onehalf",
+    "arp",
+    "midiarp",
+    "intro",
+    "usb",
+    "overbridge"
+   ],
+   "build_sha256": "6c7d6dba3cdb5253b312c5116c0ee847f0f879dc4f8678373782493b9b13e19b",
+   "stock_sha256": "7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35",
+   "pack_sha256": "5c4cbe5a3f0460fa57cf04b5aedeb66194b67c30cab9d6f9f968c6815550be6b",
+   "pack_bytes": 1172990,
+   "dsp_code_bytes": 47932
+  },
+  {
+   "id": "CFTE",
+   "title": "Compressor, flanger and tape echo",
+   "description": "Base 0.3 with the 3-band compressor, the flanger and the tape echo; Elektron's reverb.",
+   "record": "Brick check 12 of 12 · tested on a Digitone II, 4 Nov 2026",
+   "tested_on_unit": "4 Nov 2026",
+   "effects": [
+    "cmp3",
+    "flng",
+    "tape"
+   ],
+   "base": [
+    "djvu",
+    "key",
+    "onehalf",
+    "arp",
+    "midiarp",
+    "intro",
+    "usb",
+    "overbridge"
+   ],
+   "build_sha256": "ff646e5e4ae9d007747a484cde20a6eabce8f42b700c6d1ba11388902953376d",
+   "stock_sha256": "7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35",
+   "pack_sha256": "f2aa1cc41b353efb1c545b4b4f073b768350a9022af100914a1155aa797f1930",
+   "pack_bytes": 1214309,
+   "dsp_code_bytes": 80404
+  },
+  {
+   "id": "CETE",
+   "title": "Compressor and tape echo",
+   "description": "Base 0.3 with the 3-band compressor and the tape echo; Elektron's chorus and reverb.",
+   "record": "Brick check 12 of 12 · tested on a Digitone II, 4 Nov 2026",
+   "tested_on_unit": "4 Nov 2026",
+   "effects": [
+    "cmp3",
+    "tape"
+   ],
+   "base": [
+    "djvu",
+    "key",
+    "onehalf",
+    "arp",
+    "midiarp",
+    "intro",
+    "usb",
+    "overbridge"
+   ],
+   "build_sha256": "79b22add2b3014bd25601d2ed810f9f76b44e45cb8c30dc96bdd32559b0e78a8",
+   "stock_sha256": "7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35",
+   "pack_sha256": "bb9753ce1986947ea85e45f35e79584da0833925644f1e46587549b993698d68",
+   "pack_bytes": 1196643,
+   "dsp_code_bytes": 66622
+  },
+  {
+   "id": "EFTE",
+   "title": "Flanger and tape echo",
+   "description": "Base 0.3 with the flanger and the tape echo; Elektron's compressor and reverb.",
+   "record": "Brick check 12 of 12 · tested on a Digitone II, 4 Nov 2026",
+   "tested_on_unit": "4 Nov 2026",
+   "effects": [
+    "flng",
+    "tape"
+   ],
+   "base": [
+    "djvu",
+    "key",
+    "onehalf",
+    "arp",
+    "midiarp",
+    "intro",
+    "usb",
+    "overbridge"
+   ],
+   "build_sha256": "334675bd05ec96a6656313143a4e2a0bab67d4fb7ecf985964d2819c158a3b26",
+   "stock_sha256": "7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35",
+   "pack_sha256": "cbfb3f18a70f8482cb0ce166256f19c5b3b4168ccbee0fc33c57b84986c11350",
+   "pack_bytes": 1166866,
+   "dsp_code_bytes": 47194
+  },
+  {
+   "id": "CEEE",
+   "title": "Compressor",
+   "description": "Base 0.3 with the 3-band compressor; Elektron's chorus, delay and reverb.",
+   "record": "Brick check 12 of 12 · tested on a Digitone II, 4 Nov 2026",
+   "tested_on_unit": "4 Nov 2026",
+   "effects": [
+    "cmp3"
+   ],
+   "base": [
+    "djvu",
+    "key",
+    "onehalf",
+    "arp",
+    "midiarp",
+    "intro",
+    "usb",
+    "overbridge"
+   ],
+   "build_sha256": "95550dc47df88d72b9d8a4e031d39323f0b74a0cb51940ae3e7b5df5dc8f5afe",
+   "stock_sha256": "7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35",
+   "pack_sha256": "486e7cd8dd778cde2cafcd073335752e95e3f9ee86df227c244a869e363fdd90",
+   "pack_bytes": 1155428,
+   "dsp_code_bytes": 34346
+  },
+  {
+   "id": "EFEE",
+   "title": "Flanger",
+   "description": "Base 0.3 with the flanger; Elektron's compressor, delay and reverb.",
+   "record": "Brick check 12 of 12 · tested on a Digitone II, 4 Nov 2026",
+   "tested_on_unit": "4 Nov 2026",
+   "effects": [
+    "flng"
+   ],
+   "base": [
+    "djvu",
+    "key",
+    "onehalf",
+    "arp",
+    "midiarp",
+    "intro",
+    "usb",
+    "overbridge"
+   ],
+   "build_sha256": "4a8db3692b0ecdc30148e91c5daed1e5079ce10b3b6fa2e51f05dd201e017c66",
+   "stock_sha256": "7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35",
+   "pack_sha256": "abb6bc1b84b724427235372b37516917e79e5bf1b45a7957e493f7234c439a35",
+   "pack_bytes": 1125493,
+   "dsp_code_bytes": 15048
+  },
+  {
+   "id": "EETE",
+   "title": "Tape echo",
+   "description": "Base 0.3 with the tape echo; Elektron's compressor, chorus and reverb.",
+   "record": "Brick check 12 of 12 · tested on a Digitone II, 4 Nov 2026",
+   "tested_on_unit": "4 Nov 2026",
+   "effects": [
+    "tape"
+   ],
+   "base": [
+    "djvu",
+    "key",
+    "onehalf",
+    "arp",
+    "midiarp",
+    "intro",
+    "usb",
+    "overbridge"
+   ],
+   "build_sha256": "3c8803758c633e15a6e7600f453738b370c97fe13299ffca7b616043fd69428b",
+   "stock_sha256": "7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35",
+   "pack_sha256": "a803a8415873b7b8c0cd7b0039cae54ade4e5cf576e5878e8aa661594e5a5a41",
+   "pack_bytes": 1149537,
+   "dsp_code_bytes": 33924
+  },
+  {
+   "id": "EEEE",
+   "title": "The base alone",
+   "description": "Base 0.3 with every effect Elektron's: compressor, chorus, delay and reverb as on Elektron's OS.",
+   "record": "Brick check 12 of 12 · tested on a Digitone II, 4 Nov 2026",
+   "tested_on_unit": "4 Nov 2026",
+   "effects": [],
+   "base": [
+    "djvu",
+    "key",
+    "onehalf",
+    "arp",
+    "midiarp",
+    "intro",
+    "usb",
+    "overbridge"
+   ],
+   "build_sha256": "95378fa9ed2d51cb8adf0d4075f80c3bd708e58626ec71452909858a210ec4d1",
+   "stock_sha256": "7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35",
+   "pack_sha256": "68c97062a146cf9b81dd41a2a366639188f4d8d593e2156ec2e2319ed5d86e29",
+   "pack_bytes": 809734,
+   "dsp_code_bytes": 0
+  }
+ ]
+}

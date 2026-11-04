@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Digiwerk Patcher</title>
+<meta name="description" content="Make your Digiwerk build, custom firmware for the Elektron Digitone II, in your browser from Elektron's own OS 1.12 file. Nothing is uploaded.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#141414">
+<link rel="icon" href="identity/mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<div id="app">
+  <header id="bar"></header>
+  <main id="page"></main>
+  <section id="status" aria-live="polite"></section>
+  <footer id="foot"></footer>
+</div>
+<input id="file" type="file" accept=".zip,.syx,application/zip" hidden>
+<noscript><p class="noscript">Digiwerk Patcher runs in your browser and needs JavaScript.</p></noscript>
+</body>
+</html>

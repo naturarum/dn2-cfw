@@ -1,0 +1,141 @@
+{
+ "about": "Our DSP code for each combination of the effects (bytes): for each one that is built, the build's own (its code sections as linked, tools/dspsplice/build.py); for the two that don't fit, the first-fit measure over the four proven regions (scripts/patcher_budget.py, DC02's compiler mode)",
+ "room": 83838,
+ "combos": [
+  {
+   "effects": [
+    "cmp3"
+   ],
+   "code": 34346,
+   "fits": true,
+   "build": "CEEE"
+  },
+  {
+   "effects": [
+    "flng"
+   ],
+   "code": 15048,
+   "fits": true,
+   "build": "EFEE"
+  },
+  {
+   "effects": [
+    "tape"
+   ],
+   "code": 33924,
+   "fits": true,
+   "build": "EETE"
+  },
+  {
+   "effects": [
+    "spng"
+   ],
+   "code": 18978,
+   "fits": true,
+   "build": "EEES"
+  },
+  {
+   "effects": [
+    "cmp3",
+    "flng"
+   ],
+   "code": 47932,
+   "fits": true,
+   "build": "CFEE"
+  },
+  {
+   "effects": [
+    "cmp3",
+    "tape"
+   ],
+   "code": 66622,
+   "fits": true,
+   "build": "CETE"
+  },
+  {
+   "effects": [
+    "cmp3",
+    "spng"
+   ],
+   "code": 52128,
+   "fits": true,
+   "build": "CEES"
+  },
+  {
+   "effects": [
+    "flng",
+    "tape"
+   ],
+   "code": 47194,
+   "fits": true,
+   "build": "EFTE"
+  },
+  {
+   "effects": [
+    "flng",
+    "spng"
+   ],
+   "code": 32832,
+   "fits": true,
+   "build": "EFES"
+  },
+  {
+   "effects": [
+    "tape",
+    "spng"
+   ],
+   "code": 51708,
+   "fits": true,
+   "build": "EETS"
+  },
+  {
+   "effects": [
+    "cmp3",
+    "flng",
+    "tape"
+   ],
+   "code": 80404,
+   "fits": true,
+   "build": "CFTE"
+  },
+  {
+   "effects": [
+    "cmp3",
+    "flng",
+    "spng"
+   ],
+   "code": 65718,
+   "fits": true,
+   "build": "CFES"
+  },
+  {
+   "effects": [
+    "cmp3",
+    "tape",
+    "spng"
+   ],
+   "code": 85714,
+   "fits": false
+  },
+  {
+   "effects": [
+    "flng",
+    "tape",
+    "spng"
+   ],
+   "code": 64980,
+   "fits": true,
+   "build": "EFTS"
+  },
+  {
+   "effects": [
+    "cmp3",
+    "flng",
+    "tape",
+    "spng"
+   ],
+   "code": 99330,
+   "fits": false
+  }
+ ]
+}
