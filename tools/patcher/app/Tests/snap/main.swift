@@ -81,5 +81,9 @@ let man = Model(packs: packs, catalog: catalog)
 let base = catalog.baseShown(packs.flatMap(\.base)).map(\.id)
 man.open(base.contains("arp") ? "arp" : base.last ?? catalog.entries[0].id)    // the arp's page has the most in it
 snap(man, "8-manual-base")
+if base.contains("usb") {                                                        // the USB page's channel list
+    man.open("usb")
+    snap(man, "8-manual-usb")
+}
 man.open(other?.effects.last ?? packs[0].effects.first ?? catalog.entries[0].id)
 snap(man, "9-manual-effect")

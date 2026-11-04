@@ -1,6 +1,6 @@
 {
  "title": "Compressor, flanger and spring",
- "description": "Base 0.2 with the 3-band compressor, the flanger and the spring reverb; Elektron's delay.",
+ "description": "Base 0.3 with the 3-band compressor, the flanger and the spring reverb; Elektron's delay.",
  "tested_on_unit": "",
  "effects": [
   "cmp3",
@@ -14,6 +14,7 @@
   "arp",
   "midiarp",
   "intro",
+  "usb",
   "overbridge"
  ],
  "dsp": {

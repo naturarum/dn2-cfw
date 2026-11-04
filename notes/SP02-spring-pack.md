@@ -112,3 +112,34 @@ New: `scripts/sp02_build.py`, `scripts/sp02_make_mod.py`, `scripts/sp02_emucheck
 `fx/render.c` (DIRT as a name), `fx/test_spring.c`, `tools/dspsplice/build.py` (recipe SP02; SP01 on its frozen
 sources), `tools/dspsplice/soak_cmp4.py` (SpgSlot's size from the DSP record), `scripts/sp01_build.py` and
 `scripts/sp01_make_mod.py` (the frozen paths); fork: `examples/spring-names-dn2/` (0.2).
+
+## 6. The stop on the unit, narrowed (2026-10-31)
+
+SX01 (CFEE's main OS + SP02's DSP) stops, SX02 (CFES's main OS + DC02's DSP) runs: the spring's DSP code. SX03 (the
+engine's additions gated by a stage on G): the stop at **exactly G 16**, stage 1, v2's engine with every addition off
+(linear reads, own returns, no wobble, DIRT off); stage 0 (all the glue and the knob code, the engine not called)
+runs. v1 (SP01) ran on 26 Oct; it was built on DT01, without DC02's peephole pass; v2 (SP02, SX03) on DC02, the pass
+over spring.c too (258 sites in SX03; the glue's 63 run in stage 0 without a stop). The code changes between v1 and
+stage 1 look harmless (sp_input reads all three springs' returns into rr[][] before mixing; DIRT's ramps moved to
+sp_interp); the state ends at 0x8000a944, far from the constants at 0x8000b000; the load is +2.1 %. **SX04**: SX03
+with the pass not run over spring.c (recipe key `peephole_skip`), code2 up to 0x3150ac (proven to 0x315f8c).
+
+**SX04 on the unit (2026-10-31): the reverb plays past G 16** (owner: "it works past 16! suddenly width goes up": the
+width jump is the diagnostic itself, stage 0 is silent and the spring comes in at 16 with WDTH fixed at 96). So the
+peephole pass's rewrites of spring.c are the cause; v2's engine itself runs. Not yet reported: G up to 127 (stage 5,
+the whole of v2 with DIRT 64).
+
+What is special about the spring's 258 sites, offline [verified: `out/SX03/SX03-dsp/build/peephole.json`, the
+final `.s` files]: nothing by form. With registers and numbers normalised, every rewrite form in the stage-1
+functions (spring_process, sp_control, sp_input, sp_interp, sp_ap2, sp_ap2x2, sp_targets, sp_coefs) also occurs at
+least three times in the compressor's, flanger's or glue's code, which runs on the unit; no compute-plus-access
+offset outside -32..31; a move into I4 followed directly by a 48-bit user of I4 occurs in mbcomp too (109) and
+cmp_glue (13). Nor is DDR: the tape echo's state is in DDR too (SeSlot at 0x8005912c) and its 499 rewritten sites
+run on the unit (CFTE). sharcvm runs SP02 bit for bit, so the rewritten code computes the right values there; on
+the chip something in one or more of the spring's rewrites does not hold [cause open]. Only the unit can split it
+further: a build with the pass over some of the stage-1 functions only, about three flashes to the function, five
+more to the site.
+
+**For 0.3.0 [proposed]:** the spring builds with `peephole_skip=["spring"]` (exactly SX04's way of building the
+spring), the pass kept for the compressor, flanger and glue as in every build that runs. SX04's code2 ends at
+0x3150ac, inside the proven 0x310000-0x315f8c.

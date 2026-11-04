@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""The packs of Digiwerk 0.2.0 (notes/R1.12-packs-0.2.md): base 0.2 (BA05's main OS without its effects' mods) with each
-combination of our four effects that fits. A pack is named by the four FX slots in order, compressor, chorus, delay,
+"""The packs of Digiwerk 0.3.0 (notes/R1.12-packs-0.2.md; 0.2.0's in git at v0.2.0): base 0.3 (BA05's main OS without
+its effects' mods, plus usb-multi 0.4, UM04's: USB MULTI/MIDI, the fourth USB CONFIG choice) with each combination of
+our four effects that fits. A pack is named by the four FX slots in order, compressor, chorus, delay,
 reverb: C, F, T, S where ours runs, E where Elektron's does (EEEE: the base alone).
 
     venv/bin/python tools/dspsplice/build.py NAME         first, for the ten new DSP sections (build.py PACKS)
     venv/bin/python scripts/pack_build.py NAME [NAME ...] | --all
 
-The DSP: EEEE Elektron's section 7; CFEE DC02's (BA05's, on the unit), CFTE TE01's, CFES SP02's, each as built; the
-other ten from build.py's pack recipes. The main OS: base 0.2's mods (core, os-version, lfo-dejavu 0.2, arp-modes 0.3,
-boot-mark 0.2, arp-midi 0.1) and each effect's own (C: param-grow, param-rows, comp-ui, comp-link; F: flanger-names,
-flanger-sync; T: echo-names; S: spring-names), every .elemod file sha256-pinned to the build that made it (BA05, TE01,
-SP02), in BA05's order, then echo-names, then spring-names; elekloader.patch --version NAME.
+The DSP: EEEE Elektron's section 7; CFEE DC02's (BA05's, on the unit), CFTE TE01's, each as built; the other eleven
+from build.py's pack recipes (since 0.3.0 CFES too, the spring's code without the peephole pass). The main OS: base
+0.3's mods (core, os-version, lfo-dejavu 0.2, arp-modes 0.3, boot-mark 0.2, arp-midi 0.1, usb-multi 0.4) and each
+effect's own (C: param-grow, param-rows, comp-ui, comp-link; F: flanger-names, flanger-sync; T: echo-names; S:
+spring-names), every .elemod file sha256-pinned to the build that made it (BA05, TE01, SP02, UM04), in BA05's order,
+then echo-names, then spring-names, then usb-multi; elekloader.patch --version NAME.
 
 Writes out/NAME/NAME.syx (+ .sha256), NAME.main.bin, build-NAME.json, build/. Checks (all must hold, or no .syx is
 written):
@@ -24,7 +26,7 @@ written):
     section 3 as elekloader packed it; the main OS depacks to the patcher's image and rebuilds from its .elemod files,
     layout and map byte for byte;
   - the stock part of the main OS: every byte that differs from Elektron's lies in one of the linked mods' sites;
-  - CFEE and CFTE: the main OS BA05's and TE01's byte for byte (they differ in the version field only).
+  - CFTE: the main OS UM04's byte for byte (they differ in the version field only).
 """
 import argparse
 import hashlib
@@ -43,17 +45,16 @@ LOAD, STOCK_END = T.LOAD, T.STOCK_END
 OUT = os.path.join(ROOT, 'out')
 BA05_SYX_SHA = '1a345a94270797bf3e6e43f4b52bdf1b2303294b3f62e0b60714cae8a968eaf8'
 PACKS = ('EEEE', 'CEEE', 'EFEE', 'EETE', 'EEES', 'CFEE', 'CETE', 'CEES', 'EFTE', 'EFES', 'EETS', 'CFTE', 'CFES', 'EFTS')
-BASE = ['core', 'os-version', 'lfo-dejavu', 'arp-modes', 'boot-mark', 'arp-midi']
+BASE = ['core', 'os-version', 'lfo-dejavu', 'arp-modes', 'boot-mark', 'arp-midi', 'usb-multi']
 FX_MODS = {'C': ['param-grow', 'param-rows', 'comp-ui', 'comp-link'], 'F': ['flanger-names', 'flanger-sync'],
            'T': ['echo-names'], 'S': ['spring-names']}
 # the DSP sections built before the packs, as built (the build that made them and its record)
 REUSED = {'CFEE': ('DC02', '9fd315f922f4ea71952d3e0074132ac3df50ae532ba058da39bf032e677b1026'),
-          'CFTE': ('TE01', '48993b82e1b6eccfaba02ca1dc4929ab69ced0646e2299527fe31b62b80ba458'),
-          'CFES': ('SP02', 'a00d7461066dddd2636ab4dde543f868f033561356e287987f19d525de58ee95')}
-SAME_MAIN = {'CFEE': 'BA05', 'CFTE': 'TE01'}
+          'CFTE': ('TE01', '48993b82e1b6eccfaba02ca1dc4929ab69ced0646e2299527fe31b62b80ba458')}
+SAME_MAIN = {'CFTE': 'UM04'}
 # where each mod file comes from: the build whose manifest pins it, and the folders that hold the files
-MOD_SRC = [('BA05', None), ('TE01', 'echo-names'), ('SP02', 'spring-names')]
-WHERE = [os.path.join(OUT, d, 'mods') for d in ('BA05', 'TE01', 'SP02', 'DJ01', 'FL02', 'FL01', 'OB01')] + [
+MOD_SRC = [('BA05', None), ('TE01', 'echo-names'), ('SP02', 'spring-names'), ('UM04', 'usb-multi')]
+WHERE = [os.path.join(OUT, d, 'mods') for d in ('BA05', 'TE01', 'SP02', 'UM04', 'DJ01', 'FL02', 'FL01', 'OB01')] + [
     os.path.join(OUT, 'CMP4', 'main', 'mods')]
 log = T.log
 
@@ -127,7 +128,8 @@ def build(name, env):
     on = [k for k, ch in zip('CFTS', name) if ch != 'E']
     want = [m for m in json.load(open(os.path.join(OUT, 'BA05', 'build', 'BA05-main.syx.json')))['mods']
             if m['id'] in BASE + sum((FX_MODS[k] for k in on), [])]
-    ids = [m['id'] for m in want] + (['echo-names'] if 'T' in on else []) + (['spring-names'] if 'S' in on else [])
+    ids = [m['id'] for m in want] + (['echo-names'] if 'T' in on else []) + (['spring-names'] if 'S' in on else []) + [
+        'usb-multi']
     paths = [files[i][1] for i in ids]
     T.run([ELPY, '-m', 'elekloader.lint'] + paths + ['--stock', STOCK], cwd=EL, env=env)
     mainsyx = os.path.join(build_dir, name + '-main.syx')
@@ -137,7 +139,7 @@ def build(name, env):
     T.run(cmd + ['--version', name, '--out', mainsyx], cwd=EL, env=env)
     man = json.load(open(mainsyx + '.json'))
     mp = json.load(open(mainsyx + '.map.json'))
-    checks['mods: the base\'s and %s\'s, in BA05\'s order then echo-names, spring-names (%s)' % (
+    checks['mods: the base\'s and %s\'s, in BA05\'s order then echo-names, spring-names, usb-multi (%s)' % (
         name, ', '.join('%s %s' % (m['id'], m['version']) for m in man['mods']))] = (
         [m['id'] for m in man['mods']] == ids
         and all(m['version'] == files[m['id']][0] and m['sha256'] == files[m['id']][2] for m in man['mods']))

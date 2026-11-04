@@ -48,6 +48,12 @@
    "where": "Power-on."
   },
   {
+   "id": "usb", "kind": "base", "title": "Multitrack USB audio", "label": "Multitrack USB audio",
+   "text": ["A fourth USB CONFIG choice, USB MULTI/MIDI. With it the Digitone shows up as a class-compliant USB audio device (USB Audio Class 2.0) with 42 inputs, 48 kHz, 24-bit, no driver needed.", "Inputs 1-32 carry the 16 tracks as stereo pairs: track 1 on 1-2, track 2 on 3-4, and so on to track 16 on 31-32. 33-34 carry the main mix; 35-36, 37-38 and 39-40 the returns of the delay, reverb and chorus slots; 41-42 the Digitone's audio inputs."],
+   "where": "SETTINGS > SYSTEM > USB CONFIG > USB MULTI/MIDI.",
+   "notes": ["USB AUDIO/MIDI stays Elektron's stereo mode. OVERBRIDGE and USB MIDI are unchanged.", "Switching between USB AUDIO/MIDI and USB MULTI/MIDI restarts USB: the computer sees the Digitone leave and come back.", "Elektron's OS reads a saved USB MULTI/MIDI as USB MIDI. Before going back to it, pick one of Elektron's three choices."]
+  },
+  {
    "id": "cmp3", "kind": "effect", "title": "3-band compressor", "label": "3-band", "name": "compressor", "icon": "cmp3",
    "text": ["Elektron's master compressor, split into three bands at two crossovers. Each band follows the stock compressor's design: its detector, curve, attack and release, makeup."],
    "where": "The MIXER has a page per band, Compressor Low, Mid and High, each with a meter for its band's gain reduction.",
@@ -77,7 +83,7 @@
   },
   {
    "id": "checks", "kind": "about", "title": "What the checks mean",
-   "text": ["BRICK CHECK 12/12: the build passed all twelve checks of our brick checker. Everything but the main OS and the DSP program is Elektron's, byte for byte; the Digitone's own code accepts the build; in an emulator of the Digitone II it starts up to the main screen without writing to the flash; the STARTUP menu is still reachable.", "TESTED ON A DIGITONE II: we also played it on a real unit, on that date. NOT YET TESTED ON A UNIT: only the brick checker has run it so far.", "NOT BUILT YET: the effects fit, but we haven't built and checked that combination, so the patcher can't make it."]
+   "text": ["BRICK CHECK 12/12: the build passed all twelve checks of our brick checker. Everything but the main OS and the DSP program is Elektron's, byte for byte; the Digitone's own code accepts the build; in an emulator of the Digitone II it starts up to the main screen without writing to the flash; the STARTUP menu is still reachable.", "TESTED ON A DIGITONE II: we also played it on a real unit, on that date.", "NOT BUILT YET: the effects fit, but we haven't built and checked that combination, so the patcher can't make it."]
   },
   {
    "id": "room", "kind": "about", "title": "Why some won't fit",

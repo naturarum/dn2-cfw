@@ -1,7 +1,7 @@
 {
  "title": "Compressor and tape echo",
- "description": "Base 0.2 with the 3-band compressor and the tape echo; Elektron's chorus and reverb.",
- "tested_on_unit": "",
+ "description": "Base 0.3 with the 3-band compressor and the tape echo; Elektron's chorus and reverb.",
+ "tested_on_unit": "4 Nov 2026",
  "effects": [
   "cmp3",
   "tape"
@@ -13,6 +13,7 @@
   "arp",
   "midiarp",
   "intro",
+  "usb",
   "overbridge"
  ],
  "dsp": {

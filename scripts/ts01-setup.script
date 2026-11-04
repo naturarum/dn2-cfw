@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# TS01: a pattern for the slide on track 1, no audio clock (knob turns reach the firmware): SLIDE on (TRIG page 2, E),
+# trigs on steps 1, 5 and 9 (grid recording), on step 5 p-locks of the FLTR page's ATK (A, eight detents right) and
+# FREQ (E, twelve left). Saved at the end (--save) for scripts/ts01-play.script: from PLAY, slides 1 -> 5 (the first
+# trig is play start's) and 5 -> 9 (both words back), then 9 -> the next loop's 1 (the pattern is 128 steps long).
+wait-emu 0.5
+tap o                # TRIG
+wait-emu 0.5
+tap Down             # RTRG
+wait-emu 0.5
+tap 5                # SLD ON
+wait-emu 0.4
+png 001-sld-on
+tap 0                # RECORD: grid recording
+wait-emu 0.4
+tap q                # a trig on step 1
+wait-emu 0.3
+tap t                # step 5
+wait-emu 0.3
+tap a                # step 9
+wait-emu 0.3
+png 002-trigs
+tap bracketleft      # FLTR
+wait-emu 0.5
+png 003-fltr
+down t               # trig 5 held: p-locks
+wait-emu 0.3
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.3
+tap shift+5
+wait-emu 0.15
+tap shift+5
+wait-emu 0.15
+tap shift+5
+wait-emu 0.15
+tap shift+5
+wait-emu 0.15
+tap shift+5
+wait-emu 0.15
+tap shift+5
+wait-emu 0.15
+tap shift+5
+wait-emu 0.15
+tap shift+5
+wait-emu 0.15
+tap shift+5
+wait-emu 0.15
+tap shift+5
+wait-emu 0.15
+tap shift+5
+wait-emu 0.15
+tap shift+5
+wait-emu 0.3
+png 004-locks-held
+up t
+wait-emu 0.4
+png 005-locked
+tap 0                # grid recording off
+wait-emu 0.5
+png 006-done

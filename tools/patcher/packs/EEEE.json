@@ -1,7 +1,7 @@
 {
  "title": "The base alone",
- "description": "Base 0.2 with every effect Elektron's: compressor, chorus, delay and reverb as on Elektron's OS.",
- "tested_on_unit": "",
+ "description": "Base 0.3 with every effect Elektron's: compressor, chorus, delay and reverb as on Elektron's OS.",
+ "tested_on_unit": "4 Nov 2026",
  "effects": [],
  "base": [
   "djvu",
@@ -10,6 +10,7 @@
   "arp",
   "midiarp",
   "intro",
+  "usb",
   "overbridge"
  ],
  "dsp": {

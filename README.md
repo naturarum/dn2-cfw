@@ -7,7 +7,8 @@
 **Digiwerk** is custom firmware for the Elektron Digitone II, for OS 1.12. It adds a 3-band master compressor, a
 flanger that reaches from a phaser-like sweep to a chorus, a tape echo with three heads, LFO waves that play
 looping random melodies (one of them in the track's key), three arpeggiator modes, among them a Turing
-Machine loop, and the arpeggiator on MIDI tracks. You make it yourself: Digiwerk Patcher turns Elektron's own OS 1.12
+Machine loop, the arpeggiator on MIDI tracks, and multitrack USB audio: every track on its own pair of inputs, with
+no driver. You make it yourself: Digiwerk Patcher turns Elektron's own OS 1.12
 file into a Digiwerk build on your Mac, and you send that build to the Digitone with Elektron Transfer. No Elektron
 firmware is shared here.
 
@@ -15,8 +16,10 @@ Digiwerk is part of the [Modwerk](https://modwerk.app) effort, the community hub
 
 **Not made or supported by Elektron.**
 
-**Get it:** [Digiwerk Patcher 0.2.1](https://github.com/naturarum/dn2-cfw/releases/download/v0.2.1/Digiwerk-Patcher-0.2.1.zip), for macOS 13 or
+**Get it:** [Digiwerk Patcher 0.3.0](https://github.com/naturarum/dn2-cfw/releases/download/v0.3.0/Digiwerk-Patcher-0.3.0.zip), for macOS 13 or
 later. Then follow the [install steps](#install).
+
+**In your browser:** [Digiwerk Patcher on the web](https://naturarum.github.io/dn2-cfw/) does the same; nothing is uploaded.
 
 - [What's in it](#whats-in-it)
 - [Install](#install)
@@ -56,6 +59,19 @@ reverb are withdrawn (below).
 - **The arp on MIDI tracks.** The ARP key and menu work on MIDI-machine tracks. A MIDI track whose arp is on plays its
   trigs and the keys you play through the arp, out on the track's MIDI channel; SHUF, RAND and TM work there too.
 - **The Digiwerk intro.** At power-on, after Elektron's logo screen, the start-up animation shows DIGI over WERK.
+- **Multitrack USB audio.** A fourth USB CONFIG choice, **USB MULTI/MIDI** (SETTINGS > SYSTEM > USB CONFIG). With it
+  the Digitone shows up as a class-compliant USB audio device (USB Audio Class 2.0) with 42 inputs at 48 kHz and 24
+  bits, no driver needed: every track arrives on its own stereo pair (table below). We've used it with a Mac and
+  with AUM on an iPhone. USB AUDIO/MIDI stays Elektron's stereo mode, and OVERBRIDGE and USB MIDI are unchanged.
+
+| USB MULTI/MIDI's inputs | what |
+|---|---|
+| 1-32 | the 16 tracks as stereo pairs: track 1 on 1-2, track 2 on 3-4, and so on to track 16 on 31-32 |
+| 33-34 | the main mix |
+| 35-36 | the delay slot's return |
+| 37-38 | the reverb slot's return |
+| 39-40 | the chorus slot's return |
+| 41-42 | the Digitone's audio inputs |
 
 ### The effects
 
@@ -88,14 +104,14 @@ Each build is named after its four slots, in the order compressor, chorus, delay
 
 | build | compressor | chorus slot | delay slot | reverb slot | played on a Digitone II |
 |---|---|---|---|---|---|
-| **EEEE** | Elektron's | Elektron's | Elektron's | Elektron's | not yet |
-| **CEEE** | **3-band compressor** | Elektron's | Elektron's | Elektron's | not yet |
-| **EFEE** | Elektron's | **flanger** | Elektron's | Elektron's | not yet |
-| **EETE** | Elektron's | Elektron's | **tape echo** | Elektron's | not yet |
-| **CFEE** | **3-band compressor** | **flanger** | Elektron's | Elektron's | 29 Oct 2026 |
-| **CETE** | **3-band compressor** | Elektron's | **tape echo** | Elektron's | not yet |
-| **EFTE** | Elektron's | **flanger** | **tape echo** | Elektron's | not yet |
-| **CFTE** | **3-band compressor** | **flanger** | **tape echo** | Elektron's | 29 Oct 2026 |
+| **EEEE** | Elektron's | Elektron's | Elektron's | Elektron's | 4 Nov 2026 |
+| **CEEE** | **3-band compressor** | Elektron's | Elektron's | Elektron's | 4 Nov 2026 |
+| **EFEE** | Elektron's | **flanger** | Elektron's | Elektron's | 4 Nov 2026 |
+| **EETE** | Elektron's | Elektron's | **tape echo** | Elektron's | 4 Nov 2026 |
+| **CFEE** | **3-band compressor** | **flanger** | Elektron's | Elektron's | 4 Nov 2026 |
+| **CETE** | **3-band compressor** | Elektron's | **tape echo** | Elektron's | 4 Nov 2026 |
+| **EFTE** | Elektron's | **flanger** | **tape echo** | Elektron's | 4 Nov 2026 |
+| **CFTE** | **3-band compressor** | **flanger** | **tape echo** | Elektron's | 4 Nov 2026 |
 
 The six builds with the spring reverb, EEES, CEES, EFES, EETS, CFES and EFTS, were in 0.2.0 and are withdrawn: on a
 Digitone II, CFES and EFTS stop the sound within a second of starting (the screen keeps working, the audio goes
@@ -125,7 +141,7 @@ You need a Digitone II, a Mac with macOS 13 or later (Apple silicon or Intel), a
    **YES** on the Digitone and wait for **SUCCESS! REBOOTING**. The power-on screen shows the build's name at the top
    right.
 
-<img src="docs/images/patcher-0.2.0-done.png" width="100%" alt="Digiwerk Patcher 0.2.0 after the drop: the 3-band compressor, the flanger and the tape echo picked, with Elektron's reverb, which makes CFTE; 01 Get Elektron's OS 1.12 and 02 Drop it here ticked; 03 Send it to your Digitone with Show in Finder and Open Transfer; at the bottom, Checked: this is Elektron's original OS 1.12 file. Saved CFTE.syx next to Digitone_II_OS1.12_dist.zip.">
+<img src="docs/images/patcher-0.3.0-done.png" width="100%" alt="Digiwerk Patcher 0.3.0 after the drop: the 3-band compressor, the flanger and the tape echo picked, with Elektron's reverb, which makes CFTE; 01 Get Elektron's OS 1.12 and 02 Drop it here ticked; 03 Send it to your Digitone with Show in Finder and Open Transfer; at the bottom, Checked: this is Elektron's original OS 1.12 file. Saved CFTE.syx next to Digitone_II_OS1.12_dist.zip.">
 
 Keep the volume down the first time a new build plays.
 
@@ -134,11 +150,14 @@ The full guide, with what every message means: [tools/patcher/README.md](tools/p
 ## Going back, and recovery
 
 - **Back to Elektron's OS:** send Elektron's `Digitone_II_OS1.12.syx` (it's inside the .zip) with Transfer, the same
-  way.
+  way. If USB CONFIG is on USB MULTI/MIDI, pick one of Elektron's three choices first: Elektron's OS reads a saved
+  USB MULTI/MIDI as USB MIDI.
 - **If the Digitone doesn't start:** hold **FUNC** while you switch it on. The STARTUP menu appears. Press **TRIG 4**
   (OS UPGRADE). In Transfer, use **LEGACY OS UPGRADE mode** and send Elektron's `Digitone_II_OS1.12.syx` over a
   **DIN MIDI** cable (you need a MIDI interface with a DIN out). USB doesn't work in the STARTUP menu. It takes about
   13 minutes. We tested this on our own unit.
+- **If it stays on SUCCESS! REBOOTING** after a transfer and nothing responds, wait ten seconds, then switch it off
+  and on: by then the new OS is already written.
 - The STARTUP menu lives in the bootstrap, a part of the Digitone that Digiwerk never changes.
 
 ## Safety
@@ -181,6 +200,8 @@ Custom firmware is at your own risk. This is what we do to keep that risk low:
   - The delay values drive the tape echo: MODE from Pingpong (1 or 2), CNTR and BW from HPF and LPF, AGE clean.
   - The reverb values drive the spring; DIRT starts at the old GAIN's value.
 - **Overbridge** connects as with OS 1.12. **Transfer** works as usual.
+- **USB CONFIG:** OVERBRIDGE, USB MIDI and USB AUDIO/MIDI work as on OS 1.12. USB MULTI/MIDI is saved as a fourth
+  value, which Elektron's OS reads as USB MIDI.
 - **MIDI:** CC 106 (LFO 1 WAVE) values 7 to 16 pick the new waves (16 is KEY), and higher values give KEY (on stock
   they give RAND).
 - **dn2_firmware_explore's lfowaves mod** (OS 1.11) uses the same WAVE values for other waves, so a project made with
@@ -201,6 +222,8 @@ Custom firmware is at your own risk. This is what we do to keep that risk low:
   stock compressor's CCs for THR, ATK, REL, MUP, RAT and MIX (111 to 115, 118) now change only its hidden settings.
   The meters show the band's gain reduction before its MIX and makeup.
 - **Tape echo:** MODE and AGE can't be p-locked, and AGE has no MIDI CC.
+- **USB MULTI/MIDI:** 48 kHz and 24 bits only. All 42 inputs are always sent, whatever USB OUT is set to. The inputs
+  have numbers, not names.
 - **Arp:** TM plays from the lowest note held. The shuffle order and TM's loop aren't saved: each power-on makes new
   ones. While a MIDI track's arp is on, its trigs' MIDI p-locks (CC, pitch bend, aftertouch, program change) aren't
   sent.

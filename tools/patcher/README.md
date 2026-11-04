@@ -14,16 +14,18 @@ the 3-band compressor, the flanger and the tape echo, with Elektron's reverb.
 
 ## Step by step
 
-Download **Digiwerk Patcher**: [Digiwerk-Patcher-0.2.1.zip](https://github.com/naturarum/dn2-cfw/releases/download/v0.2.1/Digiwerk-Patcher-0.2.1.zip)
+Download **Digiwerk Patcher**: [Digiwerk-Patcher-0.3.0.zip](https://github.com/naturarum/dn2-cfw/releases/download/v0.3.0/Digiwerk-Patcher-0.3.0.zip)
 (or the newest version from [Releases](https://github.com/naturarum/dn2-cfw/releases/latest)). Double-click the .zip and open the app.
 Apple has checked the app (it's notarized), so it opens normally. The first time, macOS asks whether you want to
 open an app downloaded from the internet: click **Open**.
+
+**In your browser:** [Digiwerk Patcher on the web](https://naturarum.github.io/dn2-cfw/) does the same; nothing is uploaded.
 
 The window has two pages, **BUILD** and **MANUAL**. BUILD shows the base, the four slots, the build your choice makes,
 and the three steps side by side as 01, 02 and 03. It ticks each step when it's done. MANUAL explains every effect and
 base feature; the **?** on an effect opens its page.
 
-<img src="../../docs/images/patcher-0.2.0-start.png" width="100%" alt="Digiwerk Patcher 0.2.0 when it opens: the BASE line, the four slots with Elektron's effect and ours in each, the build the picks make with its checks and how much DSP room it takes, then 01 Get Elektron's OS 1.12, 02 Drop it here, 03 Send it to your Digitone.">
+<img src="../../docs/images/patcher-0.3.0-start.png" width="100%" alt="Digiwerk Patcher 0.3.0 when it opens: the BASE line, the four slots with Elektron's effect and ours in each, the build the picks make with its checks and how much DSP room it takes, then 01 Get Elektron's OS 1.12, 02 Drop it here, 03 Send it to your Digitone.">
 
 1. **Pick your effects.** In each slot, click Elektron's effect or ours. Under the slots, the patcher names the build
    your picks make, says how it was checked (see below) and how much of the DSP's room for our code it takes. A
@@ -36,7 +38,7 @@ base feature; the **?** on an effect opens its page.
    later the patcher says **Checked: this is Elektron's original OS 1.12 file** and saves the build next to the .zip,
    for example `CFTE.syx`. Pick other effects afterwards and it makes that build too, from the same file.
 
-   <img src="../../docs/images/patcher-0.2.0-done.png" width="100%" alt="After the drop: 01 and 02 ticked, 03 Send it to your Digitone with Show in Finder and Open Transfer; at the bottom, Checked: this is Elektron's original OS 1.12 file, and where the build was saved.">
+   <img src="../../docs/images/patcher-0.3.0-done.png" width="100%" alt="After the drop: 01 and 02 ticked, 03 Send it to your Digitone with Show in Finder and Open Transfer; at the bottom, Checked: this is Elektron's original OS 1.12 file, and where the build was saved.">
 4. **Send it to your Digitone.**
    1. Back up your projects with Elektron Transfer first.
    2. Connect the Digitone over USB and open **Elektron Transfer** (the **Open Transfer** button does it).
@@ -99,7 +101,7 @@ To check Elektron's file yourself (optional), open Terminal, type `shasum -a 256
 - A pack is one tested build. To add one, write `packs/ID.json` (or `out/ID/pack.json`), with `title`,
   `description`, `tested_on_unit` (a date like "23 Oct 2026", or "" until it ran on a unit), `effects` (the pack:
   ids from `cmp3`, `flng`, `tape`, `spng`, each with its icon in `docs/identity/`) and `base` (ids from mkpatch.py's
-  `BASE`: `djvu`, `key`, `onehalf`, `arp`, `midiarp`, `intro`, `overbridge`; each but `overbridge` has its entry in
+  `BASE`: `djvu`, `key`, `onehalf`, `arp`, `midiarp`, `intro`, `usb`, `overbridge`; each but `overbridge` has its entry in
   `catalog.json`; `[]` for none). mkpatch.py refuses an unknown id. The DSP fields (`dsp`: `code_bytes`,
   `state_bytes`, `load_percent`) may be null; the 0.2.0 packs carry their code bytes. Then run the
   brick checker on `out/ID/ID.syx`. mkpatch.py refuses a pack without an ACCEPT report for exactly that file

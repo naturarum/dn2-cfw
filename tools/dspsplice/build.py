@@ -625,6 +625,27 @@ RECIPES["SP02"] = dict(
                                                       "state, 0x80000018-0x8005912c"),
     outdir="out/SP02/SP02-dsp", syx="SP02-dsp.syx", version="SP2D")
 
+# SX03 (2026-10-31, diagnostic, HANDOFF 2026-10-30): SP02 with SPNG v2's additions to v1 gated by a stage on the G
+# knob (tools/dspsplice/src/sx03/: spring.c and spring.h are fx/spring.c's with Spring.dstage last, the glue SP02's with
+# the stage, WDTH fixed at 96, DIRT 64 from stage 5), to find which of them stops the DSP on the unit. Placed as SP02.
+RECIPES["SX03"] = dict(
+    RECIPES["SP02"],
+    what="SX03: SP02 with SPNG v2's additions (Catmull-Rom reads, cross-feed, wobble, DIRT) run from a stage on, the "
+         "stage set by the G knob (diagnostic)",
+    c2_tail=["tools/dspsplice/src/sx03/spring.c", "tools/dspsplice/src/sx03/spng_glue.c"],
+    inc=["tools/dspsplice/src/sx03"] + RECIPES["SP02"]["inc"],
+    h=[x for x in RECIPES["SP02"]["h"] if x != "fx/spring.h"] + ["tools/dspsplice/src/sx03/spring.h"],
+    outdir="out/SX03/SX03-dsp", syx="SX03-dsp.syx", version="SX3D")
+
+# SX04 (2026-10-31, diagnostic): SX03 with DC02's peephole not run over spring.c (the glue's and DC02's own code as in
+# SX03). On the unit SX03 stopped the DSP at G 16, stage 1: v2's engine without its additions; v1 (SP01, on DT01, no
+# peephole) ran. If SX04 runs at stage 1, the pass's rewrites of the engine are the cause.
+RECIPES["SX04"] = dict(
+    RECIPES["SX03"],
+    what="SX04: SX03 with the peephole not run over spring.c (diagnostic): the stage on G as SX03's",
+    peephole_skip=["spring"],
+    outdir="out/SX04/SX04-dsp", syx="SX04-dsp.syx", version="SX4D")
+
 # TE01 (2026-10-29, notes/TE01-tape-echo.md): DC02 with the tape echo (fx/spaceecho.c, SC02's FDBK shared by the playing
 # heads, and se_glue.c) in the stock delay slot, every byte of it where our code already ran on the unit: SC01 stopped the
 # DSP with the echo's knob code in L2, a place no code of ours had run (notes/SC02-plan.md). DC02's sections keep their
@@ -653,19 +674,21 @@ RECIPES["TE01"] = dict(
 
 # The packs of Digiwerk 0.2.0 (2026-10-29, notes/R1.12-packs-0.2.md): a build per combination of our four effects that
 # fits, named by the four FX slots in order, compressor, chorus, delay, reverb: C, F, T, S where ours runs, E where
-# Elektron's does (the owner's naming). CFEE, CFTE and CFES are the DSP sections of DC02, TE01 and SP02 as they are;
-# EEEE has Elektron's. pack_recipe makes the other ten: every hook stub in L1 block 1; the flanger and its glue after
+# Elektron's does (the owner's naming). CFEE and CFTE are the DSP sections of DC02 and TE01 as they are; EEEE has
+# Elektron's. pack_recipe makes the other eleven (since 0.3.0 CFES too: SP02's section stops the DSP on the unit): every hook stub in L1 block 1; the flanger and its glue after
 # them, flg_sync.c in code2 (as DC02 places them); the compressor in code3, its glue and tail reader in code4 (as
 # DC02); the spring and its glue in code2 after flg_sync.c, its constants and state in the stock reverb's DDR region
 # (as SP02); the tape echo fitted, one function at a time, into what the regions have left (as TE01). The diet as
 # DC02's (each effect's never-called functions dropped) with every fxmath.h helper that two files have in one copy,
 # the first file's (scripts/patcher_budget.py measured all fifteen combinations so); DC02's pass (ABs); every code
-# section where our code ran on the unit (proven); an absent effect's hooks stay stock.
+# section where our code ran on the unit (proven); an absent effect's hooks stay stock. Since 0.3.0 (2026-10-31) the
+# pass leaves the spring's code as selcc wrote it (key peephole_skip): SX03 stopped the DSP at its stage 1 with the pass
+# over spring.c, SX04 without it played every stage on the unit (notes/SP02-spring-pack.md section 6).
 PACK_CODE = dict(code=(0x2dd600, 0x2e1c36), code2=(0x310000, 0x315f8c), code3=(0x308400, 0x30ff76),
                  code4=(0x2e2900, 0x2e4f46))
 PACK_FIT = [("c2", "t38_code2", 0x310000, 0x315f8c), ("c3", "t38_code3", 0x308400, 0x30ff76),
             ("c1", "t38_code", 0x2dd600, 0x2e1c36), ("c4", "t38_code4", 0x2e2900, 0x2e4f46)]
-PACKS = ("CEEE", "EFEE", "EETE", "EEES", "CETE", "CEES", "EFTE", "EFES", "EETS", "EFTS")
+PACKS = ("CEEE", "EFEE", "EETE", "EEES", "CETE", "CEES", "EFTE", "EFES", "EETS", "EFTS", "CFES")
 
 
 def pack_recipe(name):
@@ -721,6 +744,8 @@ def pack_recipe(name):
                    ddr_slot=("spg_slot_bytes", 0x80000018, 0x59114, "SpgSlot (the spring and its glue) in the stock "
                                                                    "reverb's DDR state, 0x80000018-0x8005912c"))
         rec["h"] += ["fx/spring.h"]
+        rec["peephole_skip"] = ["spring"]
+        rec["what"] += " (the spring's code without the peephole pass)"
         rec["stubs"] += [("fxh_reverb", [("c", "spg_process", ["R8", "R12"])]),
                          ("fxh_reverb_init", [("c", "spg_init", [])])]
         rec["hooks"] += [(REVERB_CALL, REVERB, "fxh_reverb"), (REVERB_INIT_CALL, REVERB_INIT, "fxh_reverb_init")]
@@ -1105,8 +1130,10 @@ def compile_link(name, rec, bdir, log):
             # DC01: the peephole pass (tools/dspsplice/peephole.py) over every file after the diet; its report in
             # build/peephole.json
             import peephole
+            # key peephole_skip (SX04): files left as selcc wrote them (the pass still reads them for liveness)
             texts, rec["_peephole"] = peephole.run(texts, patterns=rec["peephole"], entries=peephole.stub_entries(
-                rec["stubs"] + rec.get("stubs2", []) + rec.get("stubs3", []), stub.SAVE_REGS))
+                rec["stubs"] + rec.get("stubs2", []) + rec.get("stubs3", []), stub.SAVE_REGS),
+                rewrite=[t for t in texts if t not in rec.get("peephole_skip", [])])
             (bdir / "peephole.json").write_text(json.dumps(rec["_peephole"], indent=1))
         for src in all_c(rec):
             stem = Path(src).stem

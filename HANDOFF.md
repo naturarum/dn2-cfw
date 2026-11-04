@@ -1569,3 +1569,75 @@ set; all pass, `make test` 45/45); the catalog unchanged, so the spring tile say
 Signed Developer ID, **notarized from this session** (`notarytool --keychain-profile redeemer-notary` worked again),
 stapled, `out/release/0.2.1/Digiwerk-Patcher-0.2.1.zip` `2d6ae183...`. README, tools/patcher/README.md and
 docs/release (0.2.0 synced with its page, 0.2.1 new) changed.
+
+**2026-10-31, night: 0.2.0's download removed; diagnostics for the morning.** The owner: "Remove the 0.2.0 download"
+(asset deleted, the old link 404; the page says so; `out/release/0.2.0/Digiwerk-Patcher-0.2.0.zip` `31f55595...` kept).
+The owner flashes in the morning, from `out/spring-diagnostics/`: **SX01** (CFEE's main OS + SP02's DSP, `06c7432b...`)
+and **SX02** (CFES's main OS + DC02's DSP, `9dd481cf...`), then **SX03** if SX01 stops and SX02 doesn't: CFES's main OS +
+SP02 with SPNG v2's additions gated by a stage on G (`tools/dspsplice/src/sx03/`, recipe SX03, `scripts/sx_build.py`;
+G 0-15 off (and until G has been below 16), 16 v2 without its additions, 32 + Catmull-Rom, 48 + cross-feed, 64 +
+wobble, 80 + DIRT 64), `1eb164a6...`. All three ACCEPT 12/12. SX03 in sharcvm: stage 5 = SP02 (DIRT 64, WDTH 96) bit
+for bit over 1,500 blocks (reverb output and mix); a G sweep 96 -> 0 -> 127 -> 0 steps 0, 1..5, 4..0 with nothing
+non-finite. Also ruled out offline since 10-30: the DDR load (memory accesses counted with sharcvm's fast path off:
+the spring v2 call 1,267 reads + 794 writes in DDR per block, the stock reverb's 4,087 + 2,776), the C stack (spring
+656 B, tape 1,104 B), uninitialized DDR before the init (garbage or NaN fill: outputs finite in v1 and v2). The web
+patcher (unpublished) carries 0.2.1's eight (build.mjs; test-model.mjs passes; test.mjs still all fourteen).
+
+**2026-10-31: UM01, the 42-channel USB test build** (owner: "You can start the test build for usb"; stereo pairs).
+CFTE + usb-multi-dn2 0.1 (notes/USB01 "UM01"): USB AUDIO/MIDI becomes a class-compliant 42-input device, 24-bit 48 kHz,
+tracks 1-16 on 1-32. The first build patched the descriptors in the stored image and the brick checker refused it
+(check 6, the tail after the panel MCU firmware); the descriptors are now written at run time by um_desc from
+0x4000677a's tail, as the stock writes its lengths there. `out/UM01/UM01.syx` `40ed9d0c...`, ACCEPT 12/12; host test
+scripts/um01/test_um.c all pass (ASan/UBSan). Guide out/UM01/FLASH-UM01.md (vault "UM01 USB multitrack test"). Trig
+slides: asked the owner whether a slide arrives at its step or starts there; study next.
+
+**2026-10-31: TS01, trig slides v1** (owner: "keep working on trig slides"; SLIDE on RTRG's E; slides start at the
+previous gate-off, across empty steps). CFTE + trig-slide-dn2 0.1 (notes/T2.9 "TS01"), eleven sites: the scheduler's
+queue call and play start's two (publish each trig, look ahead with the stock builder on a supplied event, the
+generator and preview PRE state put back), the five gate-off loads (a slide starts from the voice's row), the
+smoothing call (every slide written into row word and smoothing state, landing the block before its trig is taken),
+and SLIDE's storage (live k 100 <-> stored id 107). The emulator found two bugs the host model could not: the stock
+0x4002b1b6 is not the track's held voices (now the voice records' track bytes), and play start queues each track's
+first trig through its own loop (now hooked). `out/TS01/TS01.syx` `3d032cd2...`, ACCEPT 12/12 (out/brickcheck/
+TS01-2026-10-31); host test scripts/ts01/test_ts.c 14 scenarios (ASan/UBSan); emulator: scripts/ts01-ui.script
+(knob), ts01-setup + ts01-play with ts01_live.py and ts01_emucheck.py (two slides, 8,333 blocks, 0 problems),
+ts01_store.py (kit serializer and loader, 9/9). Guide out/TS01/FLASH-TS01.md (vault TS01/FLASH-TS01.md). Nothing
+committed (with 0.3.0).
+
+**2026-10-31 (later): UM01 tested, UM02; TS02.** The owner: SX01 doesn't work, SX02 works, SX03 no crash but no
+reverb heard (asked: was G taken above 16, up through the bands?): the crash is in the spring v2 DSP code. UM01: the
+42 channels arrive on the Mac, but the sequencer lags until unusable. Cause: OS 1.12 runs with the data cache off
+(CACR 0x000cc100 from the bootstrap; memory dn2-data-cache-off) and UM01 read every sample byte from DDR. UM02
+(usb-multi 0.2): 14 DDR reads a frame instead of 84, the same stream (`scripts/um01/test_um.c` passes),
+`out/UM02/UM02.syx` `780be2d3...`, brick check running, guide out/UM02/FLASH-UM02.md (vault UM02/). TS02 (trig-slide
+0.2, per-step SLIDE, its pattern locks stored as id 107: the stock serializer's map ends at k 99 and would store
+them as id 0): host 18 scenarios, emulator: one slide into the locked step only (8,345 blocks, 0 problems), kit
+storage, lock storage 6/6; brick check running. The owner: trig slides likely not in 0.3.0; asked whether a lean USB
+stream can be: likely, if UM02 is light enough; else measure, then eDMA. Nothing committed.
+**2026-10-31: UM02 on the unit: no lag** ("seems to handle anything without lag! even busy sequences with chords and
+more involved synthesis"). SX03: the stop at exactly G 16 (stage 1, v2's engine with no addition); SX04 built (SX03
+with DC02's peephole not over spring.c), brick check running.
+
+2026-10-31, evening: **correction**: the main OS does not run with the data cache off. Its start-up at 0x40000554
+(OS 1.11 and 1.12) writes CACR 0xa50ce100 and ACR0 0x4007e020: 0x40000000-0x47ffffff cached copyback, the rest
+(the SSI DMA buffers at 0x4e6e7100) uncached. I had checked only the bootstrap's CACR. UM01's lag stays explained (it
+read the uncached DMA buffers byte by byte; UM02 reads each slot once as a word). Corrected: memory dn2-cache-map
+(dn2-data-cache-off removed), notes/USB01, notes/T2.9, ROADMAP R1.14, um.c's comment (usb-multi 0.3's code and UM03.syx
+unchanged, 55fbd95f; the elemod's recorded um.c hash changed, so UM03's manifest pins the new one).
+
+**2026-11-04: 0.3.0 as eight builds.** The second set (usb-multi 0.4): CFTE 42 inputs, recording clean; EFES locks
+the DSP twice (UI alive, silence or a buzz; a pattern change, then 30-60 s of play with a feedback building). Offline:
+ring indexes masked, every feedback loop clipped; a latent selcc frame defect in fx_sin_q/fx_cos_q (a store one word
+below the frame), harmless as the code stands, to fix in the next DSP rebuild. The owner, worn out by the round, asked
+for "something that's cool and stable": **0.3.0 = 0.2.1's eight builds + usb-multi 0.4** (each one's DSP section is
+0.2.0's byte for byte, one mod added), the spring shelved. Release set switched (release_tables, app test/screens,
+web build/tests), notes and README without the spring; all tests pass. The owner's round: out/device-tests-0.3c/
+(CFTE a long session, the seven others a minute each). Details: notes/R1.17 section 7. Nothing committed.
+
+**2026-11-04, evening: Digiwerk 0.3.0 published** (the owner: "go, publish it all"). The owner played all eight
+(CFTE an hour with USB MULTI/MIDI on, no lock; the seven others a minute each), so every pack says "tested on a
+Digitone II, 4 Nov 2026" and the catalog's NOT YET TESTED sentence went. One transfer (to CFEE) stopped on Elektron's
+SUCCESS! REBOOTING: the stock restart spins, interrupts masked, on UART8's output counters (R1.17 section 7); a line in
+the README's recovery list and the release notes. App notarized, zip `79a28f4a...`; the web patcher live at
+https://naturarum.github.io/dn2-cfw/ (gh-pages). Details: notes/R1.17 section 8. Next: the out/ cleanup.
+

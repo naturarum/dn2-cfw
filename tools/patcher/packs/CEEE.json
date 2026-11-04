@@ -1,7 +1,7 @@
 {
  "title": "Compressor",
- "description": "Base 0.2 with the 3-band compressor; Elektron's chorus, delay and reverb.",
- "tested_on_unit": "",
+ "description": "Base 0.3 with the 3-band compressor; Elektron's chorus, delay and reverb.",
+ "tested_on_unit": "4 Nov 2026",
  "effects": [
   "cmp3"
  ],
@@ -12,6 +12,7 @@
   "arp",
   "midiarp",
   "intro",
+  "usb",
   "overbridge"
  ],
  "dsp": {

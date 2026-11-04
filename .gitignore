@@ -29,3 +29,6 @@ private/
 
 # The owner's offline PB01 sub-research (holds Elektron's firmware and third-party PDFs): never committed
 PB01-Sub-Research/
+
+# The owner's video kit for Digiwerk (screenshots of the patcher and of the Digitone's screen, the script): never committed
+video/

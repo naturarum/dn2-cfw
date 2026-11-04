@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# UM03, with USB CONFIG preset to 3 (--poke 405ce898=03): SETTINGS > SYSTEM > USB CONFIG, which box is ticked.
+wait-emu 0.3
+tap grave            # SETTINGS
+wait-emu 0.4
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Return           # SYSTEM
+wait-emu 0.5
+tap Return           # USB CONFIG
+wait-emu 0.5
+png 00-usbcfg-preset3

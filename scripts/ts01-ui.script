@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# TS01: the SLIDE knob. TRIG page 2 (RTRG): E is SLD (Param Slide), OFF; one detent right: ON; one left: OFF again.
+# Run with t63b_live (the drawn texts at every png), no audio clock.
+wait-emu 0.5
+png 000-main
+tap o                # TRIG
+wait-emu 0.5
+png 001-trig1
+tap Down             # page 2: RTRG
+wait-emu 0.5
+png 002-trig2
+tap 5                # E one detent right: ON
+wait-emu 0.4
+png 003-trig2-E+
+tap shift+5          # E one detent left: OFF
+wait-emu 0.4
+png 004-trig2-E-
+tap 5                # ON again, for the setup that follows
+wait-emu 0.4
+png 005-trig2-on

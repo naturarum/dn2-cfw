@@ -1,6 +1,6 @@
 {
  "title": "Tape echo and spring",
- "description": "Base 0.2 with the tape echo and the spring reverb; Elektron's compressor and chorus.",
+ "description": "Base 0.3 with the tape echo and the spring reverb; Elektron's compressor and chorus.",
  "tested_on_unit": "",
  "effects": [
   "tape",
@@ -13,6 +13,7 @@
   "arp",
   "midiarp",
   "intro",
+  "usb",
   "overbridge"
  ],
  "dsp": {

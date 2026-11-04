@@ -51,7 +51,7 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(ROOT / "tools/sharcvm/tests"))
 
-PACKS = ("CEEE", "EFEE", "EETE", "EEES", "CETE", "CEES", "EFTE", "EFES", "EETS", "EFTS")
+PACKS = ("CEEE", "EFEE", "EETE", "EEES", "CETE", "CEES", "EFTE", "EFES", "EETS", "EFTS", "CFES")   # CFES: since 0.3.0
 REFS = {"DC02": "CFEE", "TE01": "CFTE", "SP02": "CFES"}
 OUT = ROOT / "out/packs-verify"
 REV_CALL, REV_RET = 0x1c1d11, 0x1c1d18

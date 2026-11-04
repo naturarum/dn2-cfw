@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-2.0-or-later
-# The packs of Digiwerk 0.2.0 (scripts/pack_build.py): the brick checker on each, with its intended main OS and DSP
-# section (EEEE: Elektron's DSP, no --intended-dsp), J at a time (default 2), out/brickcheck/NAME-DATE/ and
-# out/NAME/brickcheck.log. Never talks to hardware.
+# The packs of Digiwerk 0.3.0 (scripts/pack_build.py; since 0.3.0 CFES has its own DSP section): the brick checker on
+# each, with its intended main OS and DSP section (EEEE: Elektron's DSP, no --intended-dsp), J at a time (default 2),
+# out/brickcheck/NAME-DATE/ and out/NAME/brickcheck.log. Never talks to hardware.
 #
 #   scripts/pack_brickcheck.sh [-j J] NAME [NAME ...]
 set -euo pipefail
@@ -16,7 +16,6 @@ one() {
     EEEE) dsp=() ;;
     CFEE) dsp=(--intended-dsp "$root/out/DC02/DC02-dsp/section7.bin") ;;
     CFTE) dsp=(--intended-dsp "$root/out/TE01/TE01-dsp/section7.bin") ;;
-    CFES) dsp=(--intended-dsp "$root/out/SP02/SP02-dsp/section7.bin") ;;
     *) dsp=(--intended-dsp "$root/out/$n/$n-dsp/section7.bin") ;;
   esac
   cd "$root"

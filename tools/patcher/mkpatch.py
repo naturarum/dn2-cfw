@@ -82,7 +82,7 @@ META = (('title', 63), ('description', 159), ('record', 159), ('tested_on_unit',
 EFFECTS = {'cmp3': '3-band compressor', 'flng': 'flanger', 'tape': 'tape echo', 'spng': 'spring reverb'}
 BASE = {'djvu': 'D\u00e9j\u00e0 vu LFO', 'key': 'KEY wave', 'onehalf': 'LFO ONE and HALF',
         'arp': 'Arp SHUF, RAND and TM', 'midiarp': 'Arp on MIDI tracks', 'intro': 'Digiwerk intro',
-        'overbridge': 'Overbridge works'}   # the base: light main-OS features (catalog.json has their manual entries)
+        'usb': 'Multitrack USB audio', 'overbridge': 'Overbridge works'}   # the base: light main-OS features (catalog.json has their manual entries)
 BASE_ICONS = ('djvu',)
 IDENTITY = os.path.join(ROOT, 'docs', 'identity')         # the effects' pixel icons (make_icons.py)
 BRICKCHECK = os.path.join(ROOT, 'out', 'brickcheck')

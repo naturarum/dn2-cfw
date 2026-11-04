@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# TS02: per-step SLIDE on track 1, no audio clock (knob turns reach the firmware): SLIDE left OFF on the sound; trigs
+# on steps 1, 5 and 9 (grid recording); on step 5 p-locks of the FLTR page's ATK (A, eight detents right) and of SLD
+# (TRIG page 2, E, one detent right: ON). Saved (--save) for scripts/ts01-play.script: from PLAY a slide 1 -> 5 only
+# (step 5 locks SLIDE on), none 5 -> 9 (step 9 follows the sound: off).
+wait-emu 0.5
+tap 0                # RECORD: grid recording
+wait-emu 0.4
+tap q                # a trig on step 1
+wait-emu 0.3
+tap t                # step 5
+wait-emu 0.3
+tap a                # step 9
+wait-emu 0.3
+png 001-trigs
+tap bracketleft      # FLTR
+wait-emu 0.5
+down t               # trig 5 held: ATK locked
+wait-emu 0.3
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+tap 1
+wait-emu 0.15
+wait-emu 0.2
+png 002-atk-held
+up t
+wait-emu 0.4
+tap o                # TRIG
+wait-emu 0.5
+tap Down             # RTRG
+wait-emu 0.5
+png 003-rtrg
+down t               # trig 5 held: SLD locked ON
+wait-emu 0.3
+tap 5                # the first detent makes the lock (at the current value)
+wait-emu 0.4
+tap 5                # the second turns it ON
+wait-emu 0.4
+png 004-sld-held
+up t
+wait-emu 0.4
+png 005-rtrg-after
+tap 0                # grid recording off
+wait-emu 0.5
+png 006-done

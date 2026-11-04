@@ -1,7 +1,7 @@
 {
  "title": "Flanger",
- "description": "Base 0.2 with the flanger; Elektron's compressor, delay and reverb.",
- "tested_on_unit": "",
+ "description": "Base 0.3 with the flanger; Elektron's compressor, delay and reverb.",
+ "tested_on_unit": "4 Nov 2026",
  "effects": [
   "flng"
  ],
@@ -12,6 +12,7 @@
   "arp",
   "midiarp",
   "intro",
+  "usb",
   "overbridge"
  ],
  "dsp": {

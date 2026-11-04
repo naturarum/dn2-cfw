@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# TS01: play scripts/ts01-setup.script's pattern (from its saved state) with the audio clock (--ssi0-hz --ips 150e6),
+# a loop and a half at the project's tempo, logged a block a line by ts01_live (--slide-log).
+wait-emu 0.3
+tap minus            # PLAY
+wait-emu 4.5
+tap equal            # STOP
+wait-emu 0.5
+png 001-stopped

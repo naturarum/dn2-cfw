@@ -1,6 +1,6 @@
 {
  "title": "Flanger and spring",
- "description": "Base 0.2 with the flanger and the spring reverb; Elektron's compressor and delay.",
+ "description": "Base 0.3 with the flanger and the spring reverb; Elektron's compressor and delay.",
  "tested_on_unit": "",
  "effects": [
   "flng",
@@ -13,6 +13,7 @@
   "arp",
   "midiarp",
   "intro",
+  "usb",
   "overbridge"
  ],
  "dsp": {

@@ -16,7 +16,9 @@ Two ways to get the modded code into the emulator:
     cd vendor/digikit && DT2_SECTIONS=out/sections/dn2-1.12 uv run python \\
        ../../scripts/t19_live.py SNAP --syx STOCK.syx [--hotpatch BUILD.syx] \\
        --ssi0-hz --ips 150e6 --script S --out DIR --midi-log DIR/midi.txt \\
-       [--read-syms BUILD.syx.map.json:hooktest_steps,hooktest_notes]
+       [--read-syms BUILD.syx.map.json:hooktest_steps,hooktest_notes] [--poke ADDR=HEX[,ADDR=HEX...]]
+
+--poke writes bytes into the emulator's memory once the snapshot is loaded (e.g. a saved setting, 2026-10-31).
 
 Every other argument is emu.live's. Read-only on digikit.
 """
@@ -111,6 +113,7 @@ def add_traces(m, spec):
 class Patched(live.LiveEmulator):
     build_syx = None
     traces = None
+    pokes = None
 
     def _setup(self):
         r = super()._setup()
@@ -119,6 +122,11 @@ class Patched(live.LiveEmulator):
             hotpatch(m, self.build_syx)
         if self.traces:
             add_traces(m, self.traces)
+        for item in (self.pokes or '').split(','):
+            if item:
+                a, h = item.split('=')
+                m.uc.mem_write(int(a, 16), bytes.fromhex(h))
+                print('[t19] poked 0x%08x = %s' % (int(a, 16), h), flush=True)
         return r
 
 
@@ -128,6 +136,7 @@ def main():
     read = pop_opt(argv, '--read-syms')
     Patched.build_syx = build_syx
     Patched.traces = pop_opt(argv, '--trace')
+    Patched.pokes = pop_opt(argv, '--poke')
     live.LiveEmulator = Patched
     # digikit identifies the panel by the .syx file's sha256, so a modded file is "unknown" and
     # emu.live then silently drops every key (LiveEmulator.device_error). The panel is the same

@@ -1,7 +1,7 @@
 {
  "title": "Tape echo",
- "description": "Base 0.2 with the tape echo; Elektron's compressor, chorus and reverb.",
- "tested_on_unit": "",
+ "description": "Base 0.3 with the tape echo; Elektron's compressor, chorus and reverb.",
+ "tested_on_unit": "4 Nov 2026",
  "effects": [
   "tape"
  ],
@@ -12,6 +12,7 @@
   "arp",
   "midiarp",
   "intro",
+  "usb",
   "overbridge"
  ],
  "dsp": {

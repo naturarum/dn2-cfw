@@ -1,6 +1,6 @@
 {
  "title": "Flanger, tape echo and spring",
- "description": "Base 0.2 with the flanger, the tape echo and the spring reverb; Elektron's compressor.",
+ "description": "Base 0.3 with the flanger, the tape echo and the spring reverb; Elektron's compressor.",
  "tested_on_unit": "",
  "effects": [
   "flng",
@@ -14,6 +14,7 @@
   "arp",
   "midiarp",
   "intro",
+  "usb",
   "overbridge"
  ],
  "dsp": {

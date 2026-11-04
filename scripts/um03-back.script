@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# UM03, after um03-usb.script (START=its end.snap): up one row to USB AUDIO/MIDI, YES: back to the stereo mode.
+wait-emu 0.3
+png 00-start
+tap Up
+wait-emu 0.3
+png 01-row3
+tap Return           # YES: USB AUDIO/MIDI
+wait-emu 1.0
+png 02-chosen
+wait-emu 1.0
+png 03-later

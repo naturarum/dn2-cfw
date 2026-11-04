@@ -2,6 +2,8 @@
 
 > [!WARNING]
 > **Withdrawn on 30 Oct 2026: the six builds with the spring reverb, EEES, CEES, EFES, EETS, CFES and EFTS.** On a Digitone II, CFES and EFTS stop the sound within a second of starting: the screen keeps working, the audio goes silent or buzzes. The four others run the same spring code. Don't use them. If you sent one to your Digitone, send another build or Elektron's `Digitone_II_OS1.12.syx` with Transfer, as usual.
+> 
+> **Use [Digiwerk 0.2.1](https://github.com/naturarum/dn2-cfw/releases/tag/v0.2.1)**: its patcher has the eight other builds, byte for byte these. The 0.2.0 app's download was removed on 31 Oct 2026.
 
 Digiwerk is custom firmware for the Elektron Digitone II on OS 1.12. 0.2.0 brings a new base and two new effects, a
 tape echo and a spring reverb, and you now pick the effects one FX slot at a time. **Not made or supported by
@@ -70,7 +72,7 @@ before it saves it.
 
 | file | what | sha256 |
 |---|---|---|
-| `Digiwerk-Patcher-0.2.0.zip` | Digiwerk Patcher, the app. macOS 13 or later, Apple silicon and Intel. Notarized | `31f555955bda2e5c8e588dbe5aa2759b1cb218500b34dfb4abfd052b8cd264be` |
+| `Digiwerk-Patcher-0.2.0.zip` | Digiwerk Patcher, the app. macOS 13 or later, Apple silicon and Intel. Notarized. **Removed on 31 Oct 2026: use 0.2.1** | `31f555955bda2e5c8e588dbe5aa2759b1cb218500b34dfb4abfd052b8cd264be` |
 
 To check a download, open Terminal, type `shasum -a 256 ` with a space at the end, drag the file onto the window and
 press Return. It must print the sha256 above.

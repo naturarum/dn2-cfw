@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""Digiwerk 0.2.0: the builds tables of README.md and docs/release/digiwerk-0.2.0.md, from the packs' hand-written
+"""Digiwerk 0.3.0: the builds tables of README.md and docs/release/digiwerk-0.3.0.md, from the packs' hand-written
 JSON (tools/patcher/packs/NAME.json: played on a unit or not) and their build records (out/NAME/build-NAME.json: the
 sha256 of the build the patcher makes) and brick checker reports (out/brickcheck/NAME-*/report.json).
 
@@ -14,7 +14,7 @@ import os
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PACKS = ('EEEE', 'CEEE', 'EFEE', 'EETE', 'EEES', 'CFEE', 'CETE', 'CEES', 'EFTE', 'EFES', 'EETS', 'CFTE', 'CFES', 'EFTS')
+PACKS = ('EEEE', 'CEEE', 'EFEE', 'EETE', 'CFEE', 'CETE', 'EFTE', 'CFTE')   # 0.3.0: the six spring builds stay out
 OURS = {'C': '**3-band compressor**', 'F': '**flanger**', 'T': '**tape echo**', 'S': '**spring reverb**'}
 
 
@@ -66,7 +66,7 @@ def main():
     rs = rows()
     stale = []
     for path, anchor, table in ((os.path.join(ROOT, 'README.md'), '### The builds', readme_table(rs)),
-                                (os.path.join(ROOT, 'docs', 'release', 'digiwerk-0.2.0.md'), '**The builds**',
+                                (os.path.join(ROOT, 'docs', 'release', 'digiwerk-0.3.0.md'), '**The builds**',
                                  notes_table(rs))):
         if not os.path.exists(path):
             continue
