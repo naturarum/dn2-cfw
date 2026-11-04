@@ -14,12 +14,13 @@ the 3-band compressor, the flanger and the tape echo, with Elektron's reverb.
 
 ## Step by step
 
-Download **Digiwerk Patcher**: [Digiwerk-Patcher-0.3.0.zip](https://github.com/naturarum/dn2-cfw/releases/download/v0.3.0/Digiwerk-Patcher-0.3.0.zip)
+**In your browser**, nothing to install: open [Digiwerk Patcher on the web](https://naturarum.github.io/dn2-cfw/). It works like the app below and
+gives you the build as a download; nothing is uploaded.
+
+**Or the Mac app:** download **Digiwerk Patcher**: [Digiwerk-Patcher-0.3.0.zip](https://github.com/naturarum/dn2-cfw/releases/download/v0.3.0/Digiwerk-Patcher-0.3.0.zip)
 (or the newest version from [Releases](https://github.com/naturarum/dn2-cfw/releases/latest)). Double-click the .zip and open the app.
 Apple has checked the app (it's notarized), so it opens normally. The first time, macOS asks whether you want to
 open an app downloaded from the internet: click **Open**.
-
-**In your browser:** [Digiwerk Patcher on the web](https://naturarum.github.io/dn2-cfw/) does the same; nothing is uploaded.
 
 The window has two pages, **BUILD** and **MANUAL**. BUILD shows the base, the four slots, the build your choice makes,
 and the three steps side by side as 01, 02 and 03. It ticks each step when it's done. MANUAL explains every effect and

@@ -3,6 +3,9 @@
 Digiwerk is custom firmware for the Elektron Digitone II on OS 1.12. 0.3.0 adds multitrack USB audio to every build.
 **Not made or supported by Elektron.**
 
+**New: make your build in the browser.** [Digiwerk Patcher on the web](https://naturarum.github.io/dn2-cfw/) does what the app does, with
+nothing to install, and nothing is uploaded. The Mac app is below.
+
 Digiwerk is part of the [Modwerk](https://modwerk.app) effort, the community hub for Elektron firmware mods.
 
 You make your Digiwerk build yourself, from Elektron's own OS 1.12 file, with Digiwerk Patcher. No Elektron firmware
@@ -77,8 +80,6 @@ before it saves it.
 
 To check a download, open Terminal, type `shasum -a 256 ` with a space at the end, drag the file onto the window and
 press Return. It must print the sha256 above.
-
-**In your browser:** [Digiwerk Patcher on the web](https://naturarum.github.io/dn2-cfw/) does the same; nothing is uploaded.
 
 ## How to install
 

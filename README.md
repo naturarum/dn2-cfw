@@ -8,18 +8,18 @@
 flanger that reaches from a phaser-like sweep to a chorus, a tape echo with three heads, LFO waves that play
 looping random melodies (one of them in the track's key), three arpeggiator modes, among them a Turing
 Machine loop, the arpeggiator on MIDI tracks, and multitrack USB audio: every track on its own pair of inputs, with
-no driver. You make it yourself: Digiwerk Patcher turns Elektron's own OS 1.12
-file into a Digiwerk build on your Mac, and you send that build to the Digitone with Elektron Transfer. No Elektron
-firmware is shared here.
+no driver. You make it yourself: Digiwerk Patcher turns Elektron's own OS 1.12 file into a Digiwerk build, in your
+browser or on your Mac, and you send that build to the Digitone with Elektron Transfer. No Elektron firmware is shared
+here.
+
+<h3 align="center"><a href="https://naturarum.github.io/dn2-cfw/">Make your Digiwerk in the browser →</a></h3>
+<p align="center">Nothing to install, and nothing is uploaded. Or get the Mac app:
+<a href="https://github.com/naturarum/dn2-cfw/releases/download/v0.3.0/Digiwerk-Patcher-0.3.0.zip">Digiwerk Patcher 0.3.0</a>, for macOS 13 or later.<br>
+Then follow the <a href="#install">install steps</a>.</p>
 
 Digiwerk is part of the [Modwerk](https://modwerk.app) effort, the community hub for Elektron firmware mods.
 
 **Not made or supported by Elektron.**
-
-**Get it:** [Digiwerk Patcher 0.3.0](https://github.com/naturarum/dn2-cfw/releases/download/v0.3.0/Digiwerk-Patcher-0.3.0.zip), for macOS 13 or
-later. Then follow the [install steps](#install).
-
-**In your browser:** [Digiwerk Patcher on the web](https://naturarum.github.io/dn2-cfw/) does the same; nothing is uploaded.
 
 - [What's in it](#whats-in-it)
 - [Install](#install)
@@ -120,23 +120,24 @@ build or Elektron's `Digitone_II_OS1.12.syx` with Transfer, as usual.
 
 ## Install
 
-You need a Digitone II, a Mac with macOS 13 or later (Apple silicon or Intel), a USB cable and
-[Elektron Transfer](https://www.elektron.se/support-downloads/transfer).
+You need a Digitone II, a USB cable, [Elektron Transfer](https://www.elektron.se/support-downloads/transfer), and a web
+browser or a Mac with macOS 13 or later (Apple silicon or Intel).
 
 1. **Back up** your projects and the +Drive with Elektron Transfer.
-2. **Download Digiwerk Patcher:** [Digiwerk-Patcher-0.2.1.zip](https://github.com/naturarum/dn2-cfw/releases/download/v0.2.1/Digiwerk-Patcher-0.2.1.zip).
-   It's also on the [release page](https://github.com/naturarum/dn2-cfw/releases/latest), where the "Source code" files
-   aren't the app. Double-click the .zip and open **Digiwerk Patcher**.
-   Apple has checked it (it's notarized). The first time, macOS asks whether to open an app from the internet: click
-   **Open**.
+2. **Open Digiwerk Patcher.** In your browser: [Digiwerk Patcher on the web](https://naturarum.github.io/dn2-cfw/), nothing to install. Or the
+   Mac app: [Digiwerk-Patcher-0.3.0.zip](https://github.com/naturarum/dn2-cfw/releases/download/v0.3.0/Digiwerk-Patcher-0.3.0.zip). It's also on the
+   [release page](https://github.com/naturarum/dn2-cfw/releases/latest), where the "Source code" files aren't the app.
+   Double-click the .zip and open **Digiwerk Patcher**. Apple has checked it (it's notarized). The first time, macOS
+   asks whether to open an app from the internet: click **Open**.
 3. **Get Elektron's OS 1.12.** On [Elektron's download page](https://elektron.se/support-downloads/digitone-ii)
    (the patcher's **OPEN DOWNLOAD PAGE** button opens it), download **Digitone II OS 1.12**. It arrives as
    `Digitone_II_OS1.12_dist.zip`. You don't need to unzip it. **Keep this .zip:** Elektron's page lists only the
    current OS, and you need this file to go back or to make another build.
 4. **Pick your effects** in the patcher's four slots: in each one, Elektron's effect or ours. The patcher shows the
    build that makes and whether we've played it on a Digitone II. **MANUAL** explains every effect and base feature.
-5. **Drop the file** on the patcher's window (or click **CHOOSE FILE**). The patcher checks that it's Elektron's
-   original file, makes the build and saves it next to the .zip, named after its slots, for example `CFTE.syx`.
+5. **Drop the file** on the patcher (or click **CHOOSE FILE**). The patcher checks that it's Elektron's original file
+   and makes the build, named after its slots, for example `CFTE.syx`. The app saves it next to the .zip; the web
+   patcher gives you a **DOWNLOAD** button.
 6. **Send it to the Digitone.** Connect it over USB and open Transfer. Drag the build onto **Drop files here**, answer
    **YES** on the Digitone and wait for **SUCCESS! REBOOTING**. The power-on screen shows the build's name at the top
    right.
