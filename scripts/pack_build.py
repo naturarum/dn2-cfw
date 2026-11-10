@@ -44,17 +44,21 @@ TOOL, STOCK, STOCK_SHA, EL, ELPY = T.TOOL, T.STOCK, T.STOCK_SHA, T.EL, T.ELPY
 LOAD, STOCK_END = T.LOAD, T.STOCK_END
 OUT = os.path.join(ROOT, 'out')
 BA05_SYX_SHA = '1a345a94270797bf3e6e43f4b52bdf1b2303294b3f62e0b60714cae8a968eaf8'
-PACKS = ('EEEE', 'CEEE', 'EFEE', 'EETE', 'EEES', 'CFEE', 'CETE', 'CEES', 'EFTE', 'EFES', 'EETS', 'CFTE', 'CFES', 'EFTS')
+PACKS = ('EEEE', 'CEEE', 'EFEE', 'EETE', 'EEES', 'CFEE', 'CETE', 'CEES', 'EFTE', 'EFES', 'EETS', 'CFTE', 'CFES', 'EFTS',
+         'EEEM')
 BASE = ['core', 'os-version', 'lfo-dejavu', 'arp-modes', 'boot-mark', 'arp-midi', 'usb-multi']
 FX_MODS = {'C': ['param-grow', 'param-rows', 'comp-ui', 'comp-link'], 'F': ['flanger-names', 'flanger-sync'],
-           'T': ['echo-names'], 'S': ['spring-names']}
+           'T': ['echo-names'], 'S': ['spring-names'], 'M': ['morph-names']}
+# MR03 (notes/MR03-eeem.md): the 4th letter M is MRB, the morphing reverb (the reverb slot, as S), with morph-names,
+# pinned by MR03's link record (scripts/mr03_names_build.py), and the DSP's fault tones (two park patches)
 # the DSP sections built before the packs, as built (the build that made them and its record)
 REUSED = {'CFEE': ('DC02', '9fd315f922f4ea71952d3e0074132ac3df50ae532ba058da39bf032e677b1026'),
           'CFTE': ('TE01', '48993b82e1b6eccfaba02ca1dc4929ab69ced0646e2299527fe31b62b80ba458')}
 SAME_MAIN = {'CFTE': 'UM04'}
 # where each mod file comes from: the build whose manifest pins it, and the folders that hold the files
-MOD_SRC = [('BA05', None), ('TE01', 'echo-names'), ('SP02', 'spring-names'), ('UM04', 'usb-multi')]
-WHERE = [os.path.join(OUT, d, 'mods') for d in ('BA05', 'TE01', 'SP02', 'UM04', 'DJ01', 'FL02', 'FL01', 'OB01')] + [
+MOD_SRC = [('BA05', None), ('TE01', 'echo-names'), ('SP02', 'spring-names'), ('UM04', 'usb-multi'),
+           ('MR03', 'morph-names')]
+WHERE = [os.path.join(OUT, d, 'mods') for d in ('BA05', 'TE01', 'SP02', 'UM04', 'DJ01', 'FL02', 'FL01', 'OB01', 'MR03')] + [
     os.path.join(OUT, 'CMP4', 'main', 'mods')]
 log = T.log
 
@@ -100,7 +104,7 @@ def dsp_of(name, checks):
     if name not in REUSED:
         on = {o for ch, o in zip(name, 'CFTS') if ch != 'E'}
         rec = BD.RECIPES[name]
-        hooks = {p['why'].split(':')[0] for p in js['patches']}
+        hooks = {p['why'].split(':')[0] for p in js['patches'] if not p['why'].startswith('fault tone')}
         checks['DSP %s: no layout problem, every code section where our code ran on the unit (%s), every function '
                'reached (%d), %d hooks patched (the effects it has), %d stock hooks kept (every other slot)' % (
                    name, ', '.join('%s %s' % (r['section'], r['core']) for r in js['proven_check']), len(js['reach']),
@@ -110,6 +114,22 @@ def dsp_of(name, checks):
             and len(js['stock_hooks'] or []) == 2 * (4 - len(on))
             and all(h['stock_bytes_kept'] for h in js['stock_hooks'] or [])
             and not js['l2_patched'])
+        if name[3] == 'M':
+            # MR03: the fault tones: exactly the two park points patched (IDLE; JUMP self -> JUMP to our code; NOP),
+            # each from the stock bytes to a JUMP at the symbol of its handler, both inside block 1's proven code
+            sym = {k: int(v, 16) for k, v in js['symbols'].items()}
+            parks = [p for p in js['patches'] if p['why'].startswith('fault tone')]
+            want = [('fault tone at SW %#x' % site, (b'\x81\x00' + BD.jump_bytes(site)).hex(),
+                     (BD.jump_bytes(sym[label]) + b'\x01\x00').hex()) for site, label, _ in BD.FAULT_PARKS]
+            got = [(p['why'].split(':')[0], p['old'], p['new']) for p in parks]
+            inside = all(any(lo <= BD.E.sw_to_byte(sym[label]) < hi for lo, hi, _ in BD.PROVEN)
+                         for _, label, _ in BD.FAULT_PARKS)
+            checks['DSP %s: the fault tones: the two park points (%s) patched from the stock IDLE; JUMP self to a JUMP '
+                   'to ft_fault / ft_abort and a NOP, the routine in proven code (%s)' % (
+                       name, ', '.join('SW %#x' % s_ for s_, _, _ in BD.FAULT_PARKS),
+                       ', '.join('%s %#x' % (l_, sym[l_]) for _, l_, _ in BD.FAULT_PARKS))] = (
+                sorted(got) == sorted(want) and len(parks) == 2 and inside
+                and rec.get('parks') == BD.FAULT_PARKS)
     return sec7, dsyx, js
 
 
@@ -125,11 +145,11 @@ def build(name, env):
         raise SystemExit('stock or BA05.syx: sha256 is not the expected one')
     files = mod_files(checks)
     sec7, dsyx, js = dsp_of(name, checks)
-    on = [k for k, ch in zip('CFTS', name) if ch != 'E']
+    on = [k for k, ch in zip('CFT', name[:3]) if ch != 'E'] + ([name[3]] if name[3] != 'E' else [])
     want = [m for m in json.load(open(os.path.join(OUT, 'BA05', 'build', 'BA05-main.syx.json')))['mods']
             if m['id'] in BASE + sum((FX_MODS[k] for k in on), [])]
-    ids = [m['id'] for m in want] + (['echo-names'] if 'T' in on else []) + (['spring-names'] if 'S' in on else []) + [
-        'usb-multi']
+    ids = [m['id'] for m in want] + (['echo-names'] if 'T' in on else []) + (['spring-names'] if 'S' in on else []) + (
+        ['morph-names'] if 'M' in on else []) + ['usb-multi']
     paths = [files[i][1] for i in ids]
     T.run([ELPY, '-m', 'elekloader.lint'] + paths + ['--stock', STOCK], cwd=EL, env=env)
     mainsyx = os.path.join(build_dir, name + '-main.syx')
@@ -139,7 +159,7 @@ def build(name, env):
     T.run(cmd + ['--version', name, '--out', mainsyx], cwd=EL, env=env)
     man = json.load(open(mainsyx + '.json'))
     mp = json.load(open(mainsyx + '.map.json'))
-    checks['mods: the base\'s and %s\'s, in BA05\'s order then echo-names, spring-names, usb-multi (%s)' % (
+    checks['mods: the base\'s and %s\'s, in BA05\'s order then echo-names, spring-names, morph-names, usb-multi (%s)' % (
         name, ', '.join('%s %s' % (m['id'], m['version']) for m in man['mods']))] = (
         [m['id'] for m in man['mods']] == ids
         and all(m['version'] == files[m['id']][0] and m['sha256'] == files[m['id']][2] for m in man['mods']))
@@ -201,7 +221,7 @@ def build(name, env):
     s = sha(open(syx, 'rb').read())
     open(syx + '.sha256', 'w').write('%s  %s\n' % (s, os.path.basename(syx)))
     open(os.path.join(out, name + '.main.bin'), 'wb').write(img)
-    info = {'name': name, 'effects': [{'C': 'cmp3', 'F': 'flng', 'T': 'tape', 'S': 'spng'}[k] for k in on],
+    info = {'name': name, 'effects': [{'C': 'cmp3', 'F': 'flng', 'T': 'tape', 'S': 'spng', 'M': 'mrb'}[k] for k in on],
             'syx': {'path': os.path.relpath(syx, ROOT), 'sha256': s, 'bytes': os.path.getsize(syx)},
             'main_sha256': sha(img),
             'section7': ({'path': os.path.relpath(sec7, ROOT), 'sha256': js['section7']['sha256']} if sec7

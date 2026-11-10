@@ -143,3 +143,92 @@ more to the site.
 **For 0.3.0 [proposed]:** the spring builds with `peephole_skip=["spring"]` (exactly SX04's way of building the
 spring), the pass kept for the compressor, flanger and glue as in every build that runs. SX04's code2 ends at
 0x3150ac, inside the proven 0x310000-0x315f8c.
+
+## 7. digikit's silicon rules, checked on every build (2026-11-06) [verified]
+
+digikit (m-dwyer/digikit main, PRs #220, #222, #224; findings 49 section 10 and 91) found code that the assembler and
+the emulators accept and the SHARC+ chip does not run: a VISA (16- or 32-bit) instruction in the last 11 of a hardware
+loop body (PRM 4-42; it stopped their freqshift on a Digitakt II, from selache's one loop-end slot in nested loops), a
+DM store of a DAG1 register (PM: DAG2) through an index register, a post-modify load of a register of the index
+register's DAG, and selache mis-encodings (immediate shifts, sub-word direct access, 32-bit `MODIFY(Ii, Mm)`).
+`tools/dspsplice/legal.py` (the first three, after patchkit's `sharc_legal.rs`) over CETE, EFTE, CEEE, EFEE, EETE,
+TE01, DC02, the six spring builds, SX03, SX04 and SP02: **no hit** (every loop's end found: EFES 13, CFES 26, TE01
+25 loops judged, none skipped; no VISA instruction in any loop body). The encodings: no Type 7 `MODIFY(Ii, Mm)`, no
+Type 14d sub-word access, no uncertain decode, no immediate shift in our code. So none of these explains 0.2's
+spring stop or EFES's locks; the cause stays open (the test plan: EFES on USB MIDI, then EFES-2).
+
+## 8. EFES on the unit, 6 Nov [owner]
+
+- **Correction (owner): USB MULTI/MIDI was on the whole session**, not USB MIDI as I first read. EFES played 30
+  minutes without a lock, then locked about 20 minutes later (after switching to USB AUDIO/MIDI and back while
+  playing, then left idle: no sound on PLAY, the synths silent). So EFES has locked in both sessions on 0.4 (twice
+  in a short one on 4 Nov, once after about 50 minutes on 6 Nov), all on USB MULTI/MIDI; it has never been run on
+  another USB mode. Nothing says the USB mode matters.
+- **CFTE on USB MULTI/MIDI:** 30 minutes, playing and idle, no lock (after its hour on 4 Nov). Our USB code does not
+  lock builds in general.
+- Checked offline (6 Nov): the fx_sin_q/fx_cos_q frame defect on EFES's final `.s`: no caller reads R14 or R15 after a
+  call that reaches them, so an interrupt landing in the defect changes nothing; digikit's silicon rules (section 7):
+  no hit; EFES's main-OS mods (flanger-names, flanger-sync, spring-names) change labels and pages only, no frame
+  layout; the stock reverb's DDR region is addressed only by its init and call setup (T3.4); EFES's load in sharcvm
+  67.6 / 68.6 % (CETE's is higher, and runs).
+- **Next: EEES** (the spring alone, whose spring runs only its own code, none of the borrowed helpers that went
+  through the pass), an hour or more. Locks -> the cause is in the spring; holds -> the spring with another effect:
+  EFES-2 (the spring with its own helpers, the frame defect fixed).
+- **EEES locks too [owner, 6 Nov]:** 20 minutes of playing, then the pattern stopped, and PLAY gave no sound. The
+  spring alone, running only its own code (no borrowed helpers): the cause is in the spring. Two locks now came at a
+  stop or while idle (EEES; EFES's third), one at a pattern change (EFES's first). Read so far: DIRT's make-up takes
+  log2 of the meters + 1e-12 (no 0/0), fx_log2 returns -126 for x <= 0, fx_exp2 clamps; no division in the tank.
+  Asked the owner to look at the USB inputs while frozen: the tracks (1-2) against the main mix (33-34) and the reverb
+  return (37-38), to tell a DSP that runs with a poisoned mix from a stopped DSP.
+
+- **Offline, the spring through silence [verified, 6 Nov]:** fx/spring.c on the host with denormals flushed (as the
+  chip), 40 trials of random knobs (every fourth with DIRT and DEC at 127): 20 s of noise bursts, then 5 minutes of
+  silence, a knob changed every 2 s: no non-finite output and no non-finite word in the Spring state (harness in the
+  session scratchpad, `silence.c`). So the C code itself does not poison its output when the sound stops.
+- **Reproducible on the unit [owner, 7 Nov]:** EEES, a pattern stopped for one or two minutes: PLAY gives no sound
+  (the tracks animate). Also with USB CONFIG on USB MIDI from a cold start (so not usb-multi). Entering the OS
+  UPGRADE menu also leaves it silent (whether CFTE does the same is asked: it may be the menu's own behaviour).
+- **sharcvm [verified, 7 Nov]:** EEES's whole image, 15 s of the soak's input with the hands walking, then 180 s of
+  silence with every knob held (`out/packs-verify/EEES-silence.json`, scratchpad `silence_soak.py`): 292,500
+  blocks, no fault, no anomaly, insns max 344,291, spring output finite, SpgSlot intact. So the compiled code runs
+  through silence correctly in the simulator: the stop is the chip's.
+- **FP underflow on the host [verified, 7 Nov]:** denormals flushed as on the chip, `fetestexcept(FE_UNDERFLOW)` per
+  block over 190 s of silence after 10 s of noise: the spring 148 blocks (the first as the silence starts), SX05's
+  spring 0; the tape echo 0; but the flanger (dt01, the unit's) about every block with FDBK off 64, and the flanger
+  builds have never stopped. So underflow alone does not explain it; SX05 tests the whole "after the sound stops"
+  state (no state of the spring decays to zero or to the underflow range).
+- **SX05 [built, 7 Nov]:** EEES's main OS (`049018f8`, byte for byte) + SX05's DSP (`2c5d43ba`; recipe SX05,
+  `tools/dspsplice/src/sx05/spring.c` = fx/spring.c with a -240 dB floor: a DC of 1e-12 into the input, +-1e-12 at
+  12 kHz into the pre-delay ring); code2 to 0x314cae (proven to 0x315f8c); legal.py ok. `out/SX05/SX05.syx`
+  `a1310a74`.
+- **SX05 on the unit [owner, 7 Nov]: no sound at all from power-on.** It differs from EEES (which plays) by three
+  immediates in sp_input, its frame +2 words, and t38_code2 +116 bytes (everything after sp_input shifted). So a
+  tiny change to the spring again flips the chip between "runs" and "silent at once", as the peephole pass did
+  (SX03/SX04). **SX06** built, not sent: SX05's code with the floor's immediates set to 0 (recipe key
+  `asm_subst`, build.py), section 7 `1cd9ce91`; it would split layout from values in one flash.
+- **No more blind device tests (owner, 7 Nov).** A full investigation started offline, in three parts, each
+  writing to `out/spring-stop-investigation/` (brief: `BRIEF.md`): reproduction in an emulator with interrupts
+  and timing (`emulator.md`), the chip's documented hazards checked against every build (`chip.md`), and what
+  Elektron's DSP and main OS do around the reverb at a stop, when idle, in OS UPGRADE and at a pattern change,
+  plus real time (`stock-flow.md`). The owner is open to rethinking the reverb.
+- **The offline investigation, 7-8 Nov [verified unless marked]: no cause found, a long list ruled out.** Summary
+  and reports in `out/spring-stop-investigation/SUMMARY.md`. Ruled out: an illegal instruction (107k instructions,
+  ADI's tables, two decoders), an illegal/misaligned/unpopulated access (wrong-path loads included), parity (the boot
+  ROM fills L1 with valid parity; same never-written reads in CFTE/CETE), FP exceptions (never unmasked), the stack
+  (Audio Task 4,000 B: EEES 1,256, CFTE 1,764), the anomaly list rev F and loop/BTB rules, Elektron's code (no idle
+  timer, no bypass, nothing else touches SpgSlot), a code path that runs only in silence (none), and interrupts and
+  timing (digikit's coupled emulator, stock bit-exact: SX05 plays, EEES survives 90 s of silence, FX kill and 8.4 M
+  forced interrupts in our code). **OS UPGRADE mutes stock too** (FX kill until the next kit load, sequencer halted)
+  [inferred from the main OS]. Left: caches, the real pipeline, interrupts during hardware loops, anomaly revs H/J.
+  Proposed: a diagnostic build with a tone per park point plus a heartbeat tick, or a rethink of the reverb.
+- **Correction and a lead (owner, 9 Nov).** "the upgrade menu crash is not just the silence caused by entering the
+  menu - going back out of the menu to SYN (for example) has no sound ever again either (until a reboot)". So the
+  OS UPGRADE silence is most likely the spring's stop, not Elektron's FX-kill mute, which leaves the synths alone
+  [inferred; the same menu on a 0.3.0 build settles it]. The timing lines up in sharcvm: the spring's output is
+  exactly 0 from 1.4 s into FX kill (the menu forces DEC 0) and from 78 s after a stop
+  (`out/spring-stop-investigation/coverage.md`) [verified in sharcvm]. Both match the unit's stops, so the stop
+  probably comes when the spring goes fully silent [inferred]. SX05 doesn't fit: its floor kept the spring off
+  exact zero, yet it was silent from power-on.
+- **0.3.0 needs no change for this:** its eight builds have no spring (Elektron's reverb, 4th letter E); the six
+  spring builds stayed out (R1.17 section 7). The spring is shelved; the owner proposed a 0.3.1 without it, which
+  0.3.0 already is.

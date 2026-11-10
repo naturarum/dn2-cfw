@@ -17,6 +17,9 @@ mods and the DSP chosen here rather than from the name.
 
 SX04 (2026-10-31), after SX03 stopped at G 16 (stage 1): SX03 with DC02's peephole pass not run over spring.c.
 
+SX05 (2026-11-07), after EEES's sound stopped for good one or two minutes after a pattern stop (0.3, usb-multi 0.4 or
+USB MIDI alike): EEES's main OS + SX05's DSP (EEES's with a -240 dB floor kept inside the spring).
+
     venv/bin/python scripts/sx_build.py SX01 SX02 SX03 SX04
 """
 import json
@@ -32,7 +35,8 @@ T, OB, sha = PB.T, PB.OB, PB.sha
 SX = {'SX01': (['C', 'F'], 'CFEE', 'SP02'),         # (the main OS's effects' mods, its reference, the DSP's build)
       'SX02': (['C', 'F', 'S'], 'CFES', 'DC02'),
       'SX03': (['C', 'F', 'S'], 'CFES', 'SX03'),
-      'SX04': (['C', 'F', 'S'], 'CFES', 'SX04')}
+      'SX04': (['C', 'F', 'S'], 'CFES', 'SX04'),
+      'SX05': (['S'], 'EEES', 'SX05')}             # base 0.3: EEES's main OS (usb-multi last, as pack_build.py)
 
 
 def build(name, env):
@@ -54,7 +58,7 @@ def build(name, env):
         js['section7']['sha256'] == sha(open(sec7, 'rb').read()) and js['syx']['sha256'] == sha(open(dsyx, 'rb').read()))
     want = [m for m in json.load(open(os.path.join(PB.OUT, 'BA05', 'build', 'BA05-main.syx.json')))['mods']
             if m['id'] in PB.BASE + sum((PB.FX_MODS[k] for k in on), [])]
-    ids = [m['id'] for m in want] + (['spring-names'] if 'S' in on else [])
+    ids = [m['id'] for m in want] + (['spring-names'] if 'S' in on else []) + (['usb-multi'] if name >= 'SX05' else [])
     paths = [files[i][1] for i in ids]
     T.run([PB.ELPY, '-m', 'elekloader.lint'] + paths + ['--stock', PB.STOCK], cwd=PB.EL, env=env)
     mainsyx = os.path.join(build_dir, name + '-main.syx')

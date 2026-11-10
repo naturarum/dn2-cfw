@@ -1641,3 +1641,43 @@ SUCCESS! REBOOTING: the stock restart spins, interrupts masked, on UART8's outpu
 the README's recovery list and the release notes. App notarized, zip `79a28f4a...`; the web patcher live at
 https://naturarum.github.io/dn2-cfw/ (gh-pages). Details: notes/R1.17 section 8. Next: the out/ cleanup.
 
+
+**2026-11-06 to 11-08: the spring's stop.** EFES locked again on the unit, then EEES (the spring alone, only its own
+code): the sound stops for good one or two minutes after a pattern stop, and in OS UPGRADE (and stays gone on SYN).
+SX05 (a -240 dB floor in the spring) was silent from power-on; SX06 built, not sent. The owner: no more blind device
+tests. The offline investigation (out/spring-stop-investigation/SUMMARY.md) found no cause and ruled out a long list
+(illegal instructions and accesses, parity, FP exceptions, the stack, the anomaly list, Elektron's code, timing in
+digikit's coupled emulator). `tools/dspsplice/legal.py` checks digikit's silicon rules on every build (no hit). The
+one lead: the spring's output is exactly 0 from 1.4 s into FX kill and 78 s after a stop, as at both unit stops
+[inferred]. Details: notes/SP02-spring-pack.md sections 7 and 8.
+
+**2026-11-09: MR01 and MR02, the owner's Beads morph reverb.** The full port (fx/morph.c, notes/MR01) matches the
+original but costs 87k-158k instructions a block. The owner: "aim to build a reverb that is around the stock reverb in
+cpu use". **MRB** (fx/mrb.c, notes/MR02): a 24 kHz tank, mono in, 4 lines, 6-stage dispersion on 2; 19.0k still,
+20.6-20.9k moving (stock 14.6k); sharcvm = Mac on 39 cases. A/B page out/morph/ab/index.html. Three more selcc
+miscompiles found and fixed: a stack float argument used in a loop, `p + a + (b & m)` unscaled, and a void function
+ending in a switch with no return. The owner: "it does sound good. we could try it. let's go".
+
+**2026-11-10: MR03, EEEM, the unit test build** (notes/MR03-eeem.md). Elektron's compressor, chorus and delay + MRB
+in the reverb slot, morph-names-dn2 0.1 (C CHAR, D SIZE, F TONE; new kit 0/64/64/64/0/70), and fault tones: the
+stock DSP parks (IDLE at 0x1c07c7 and 0x1c1431) now jump to faulttone.s, which fills the codec buffers with a square
+whose pitch names the fault. 1500 Hz is an illegal instruction, 3000 Hz parity, 6000 Hz EMUI or the default handler,
+1500 + 6000 Hz the abort or stack check. A ~750 Hz buzz or silence is a hang, not a park. `out/EEEM/EEEM.syx`
+`6133d6c5...`, ACCEPT 12/12. sharcvm: bit for bit the Mac, no store outside the slot, silence and FX kill clean, every
+fault path's tone checked. Coupled emulator: sound back after 90 s of exact-zero output. Worst block 49.4 % (EEEE
+48.1, EEES 51.1). The patcher makes it byte for byte. Guide out/EEEM/FLASH-EEEM.md (vault Digitone2/EEEM). It cost
+26 % -> 54 % of the weekly limit (quoted 8-12 %). **Next: the owner flashes EEEM and reports.** If it runs, MRB
+replaces the spring; a beep pitch names the fault.
+
+**2026-11-10: moving to another Mac.** Git carries the code and notes only. Copy these by hand, to the same path
+(`~/Documents/Claude/Elektron-CFW`, user `naturarum`, so the Claude memory folder keeps its name):
+- the whole project folder, best as one copy (`rsync -a` or an external disk). Untracked and needed: `out/` (14 GB;
+  builds, brick-check reports, the sharcvm snapshots, the coupled emulator in out/spring-stop-investigation/emu,
+  out/native), `vendor/` (the forks, with uncommitted local bits), `elektron-firmware/`, `private/` (its own
+  local repo, no remote: never push it), `ghidra/`, `PB01-Sub-Research/`, `video/`, `photos/`. `ele3_out/` is made
+  again by `ele3_unpack.py`. `venv/` is better made again (docs/DEVELOPERS.md, Getting started);
+- `~/.claude/CLAUDE.md` and `~/.claude/projects/-Users-naturarum-Documents-Claude-Elektron-CFW/` (the memory and the
+  session transcripts);
+- tools: Homebrew `ghidra`, `m68k-elf-binutils`, `openjdk@21`, the Xcode command line tools; the Developer ID
+  certificate (team CTWUYGFLF6) only for signing the patcher app.
+A fresh session starts from this file's last entries, ROADMAP.md (R1.18) and the memory.

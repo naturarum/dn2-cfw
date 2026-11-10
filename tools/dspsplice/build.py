@@ -688,16 +688,23 @@ PACK_CODE = dict(code=(0x2dd600, 0x2e1c36), code2=(0x310000, 0x315f8c), code3=(0
                  code4=(0x2e2900, 0x2e4f46))
 PACK_FIT = [("c2", "t38_code2", 0x310000, 0x315f8c), ("c3", "t38_code3", 0x308400, 0x30ff76),
             ("c1", "t38_code", 0x2dd600, 0x2e1c36), ("c4", "t38_code4", 0x2e2900, 0x2e4f46)]
-PACKS = ("CEEE", "EFEE", "EETE", "EEES", "CETE", "CEES", "EFTE", "EFES", "EETS", "EFTS", "CFES")
+PACKS = ("CEEE", "EFEE", "EETE", "EEES", "CETE", "CEES", "EFTE", "EFES", "EETS", "EFTS", "CFES", "EEEM")
+# MR03 (2026-11-10, notes/MR03-eeem.md): the 4th letter M: MRB (fx/mrb.c, notes/MR02), the morphing reverb on a
+# budget, in the reverb slot, with the fault tones (faulttone.s: Elektron's two park points jump to our code, which
+# fills the codec output buffers with a square wave naming the fault, then parks)
+FAULT_PARKS = [(0x1c07c7, "ft_fault", "the ILOPI, PARI, EMUI and default handlers' park (0x1c07c6: NOP; IDLE; JUMP)"),
+               (0x1c1431, "ft_abort", "the abort park (0x1c1430: NOP; IDLE; JUMP): FreeRTOS's stack-overflow hook "
+                                      "0x1cd96a -> 0xb8b538, and main's end")]
 
 
 def pack_recipe(name):
-    """the recipe of pack NAME (four letters: C or E, F or E, T or E, S or E)"""
-    if len(name) != 4 or any(ch not in (o, "E") for ch, o in zip(name, "CFTS")) or name == "EEEE":
+    """the recipe of pack NAME (four letters: C or E, F or E, T or E, S, M or E)"""
+    if (len(name) != 4 or any(ch not in (o, "E") for ch, o in zip(name[:3], "CFT")) or name[3] not in "SME"
+            or name == "EEEE"):
         raise SystemExit(f"{name}: not a pack name")
-    on = {o for ch, o in zip(name, "CFTS") if ch != "E"}
+    on = {o for ch, o in zip(name[:3], "CFT") if ch != "E"} | ({name[3]} if name[3] != "E" else set())
     what = [w for k, w in (("C", "the 3-band compressor"), ("F", "the flanger"), ("T", "the tape echo"),
-                           ("S", "the spring reverb")) if k in on]
+                           ("S", "the spring reverb"), ("M", "MRB, the morphing reverb")) if k in on]
     rec = dict(what=f"{name}: base 0.2's DSP pack with {', '.join(what)}; every other slot Elektron's",
                c=[], c2=[], c3=[], c4=[], inc=["tools/dspsplice/src/dt01", "fx", "tools/dspsplice/src"], h=[],
                stubs=[], hooks=[], stock_hooks=[], drop=[], fills=[], fills_sym=[], share={"mode": "first"},
@@ -751,6 +758,23 @@ def pack_recipe(name):
         rec["hooks"] += [(REVERB_CALL, REVERB, "fxh_reverb"), (REVERB_INIT_CALL, REVERB_INIT, "fxh_reverb_init")]
         rec["drop"] += ["spring_pre_ms", "spring_rt60_s", "spring_dirt_db", "spring_hpf_hz", "spring_tone_hz",
                         "spring_width", "spring_tens_ms"]
+    elif "M" in on:
+        # MRB (22.5 KB of code) and its glue fitted one function at a time into the proven regions, as the tape echo
+        # (after it, when both are on); their constant data in DDR after MrbSlot; mrb.c without the peephole pass (as
+        # the spring); the fault tones' code in block 1 and the two park patches (key parks)
+        rec.update(split=rec.get("split", []) + ["fx/mrb.c", "tools/dspsplice/src/mrb_glue.c"], split_default="c2",
+                   fit=PACK_FIT, dmda_ddr=(0x80058000, 0x80059000),
+                   dmda_ddr_src=["fx/mrb.c", "tools/dspsplice/src/mrb_glue.c"],
+                   ddr_slot=("mrb_slot_bytes", 0x80000018, 0x59114, "MrbSlot (MRB and its glue) in the stock "
+                                                                    "reverb's DDR state, 0x80000018-0x8005912c"))
+        rec["h"] += ["fx/mrb.h"]
+        rec["peephole_skip"] = ["mrb"]
+        rec["what"] += " (MRB's code without the peephole pass), with the fault tones"
+        rec["stubs"] += [("fxh_reverb", [("c", "mrb_glue_process", ["R8", "R12"])]),
+                         ("fxh_reverb_init", [("c", "mrb_glue_init", [])])]
+        rec["hooks"] += [(REVERB_CALL, REVERB, "fxh_reverb"), (REVERB_INIT_CALL, REVERB_INIT, "fxh_reverb_init")]
+        rec["asm2"] = ["tools/dspsplice/src/faulttone.s"]
+        rec["parks"] = list(FAULT_PARKS)
     else:
         rec["stock_hooks"] += [(REVERB_CALL, REVERB, "the stock reverb"),
                                (REVERB_INIT_CALL, REVERB_INIT, "the stock reverb's init")]
@@ -759,6 +783,28 @@ def pack_recipe(name):
 
 for _n in PACKS:
     RECIPES[_n] = pack_recipe(_n)
+
+# SX05 (2026-11-07, diagnostic): EEES's DSP with a floor of 1e-12 (-240 dB) kept inside the spring (a DC into its input,
+# +-1e-12 at 12 kHz into the pre-delay ring), so that no state of it decays to zero or to the underflow range after the
+# sound stops. On the unit EEES's sound stops for good after one or two minutes of a stopped pattern (2026-11-06); sharcvm
+# runs EEES's code through three minutes of silence without a fault. tools/dspsplice/src/sx05/spring.c is fx/spring.c
+# with the three lines of the floor.
+RECIPES["SX05"] = dict(
+    RECIPES["EEES"],
+    what="SX05: EEES's DSP with a -240 dB floor kept inside the spring (diagnostic for the stop after silence)",
+    c2_tail=["tools/dspsplice/src/sx05/spring.c", "tools/dspsplice/src/spng_glue.c"],
+    outdir="out/SX05/SX05-dsp", syx="SX05-dsp.syx", version="SX5D")
+
+# SX06 (2026-11-07), after SX05 made no sound at all on the unit: SX05's code, with the floor's three immediates
+# (+1e-12 into the pre-delay ring and the input, +-1e-12 alternating) set to 0, so the layout and every instruction
+# stay SX05's and only the values are EEES's. Plays -> the floor's values silenced SX05; silent -> its code did.
+RECIPES["SX06"] = dict(
+    RECIPES["SX05"],
+    what="SX06: SX05's DSP with the floor's immediates set to 0 (SX05's code, EEES's values)",
+    asm_subst={"spring": [("    R7 = 0x2B8CBCCC;\n", "    R7 = 0x0;\n", 1),
+                          ("    R1 = 0x2B8CBCCC;\n", "    R1 = 0x0;\n", 1),
+                          ("    R1 = -0x54734334;\n", "    R1 = 0x0;\n", 1)]},
+    outdir="out/SX06/SX06-dsp", syx="SX06-dsp.syx", version="SX6D")
 
 LDF = """ARCHITECTURE(ADSP-21569)
 $OBJECTS = $COMMAND_LINE_OBJECTS;
@@ -825,6 +871,14 @@ def run(cmd, log):
     return r
 
 
+def jump_bytes(target_sw):
+    """MR03: memory bytes of the 48-bit Type 8a `JUMP target` (non-delayed, absolute; stock: 0x063e00 << 24 | target, as
+    at 0x1c07c8 and 0x1c1432)"""
+    raw = (0x063e00 << 24) | (target_sw & 0xffffff)
+    parcels = [(raw >> 32) & 0xffff, (raw >> 16) & 0xffff, raw & 0xffff]
+    return b"".join(struct.pack("<H", p) for p in parcels)
+
+
 def cjump_bytes(target_sw):
     """memory bytes of the 48-bit Type 25a `CJUMP target (DB)` (stock: 0x180400 << 24 | target)"""
     raw = (0x180400 << 24) | (target_sw & 0xffffff)
@@ -888,7 +942,8 @@ def dmda_ddr_of(rec, src, text):
     """SP01: a c2_tail source's constant data (selcc's seg_dmda) renamed to seg_t38dd, which the LDF puts in the
     recipe's dmda_ddr range (DDR): brickcheck's shift scan decodes every load block in an executable L1 range as code,
     and spring.c's tables decode as a mis-encoded shift there (a false positive on data); a DDR block is not decoded"""
-    if rec.get("dmda_ddr") and src in rec.get("c2_tail", []):
+    if rec.get("dmda_ddr") and src in rec.get("c2_tail", []) + rec.get("dmda_ddr_src", []):
+        # MR03: key dmda_ddr_src, split sources whose constant data goes to DDR too (MRB's)
         return text.replace(".SECTION/DOUBLE32 seg_dmda;", ".SECTION/DOUBLE32 seg_t38dd;")
     return text
 
@@ -1121,6 +1176,11 @@ def compile_link(name, rec, bdir, log):
             seg = seg_of(rec, src)
             s = (bdir / f"{stem}.s").read_text()
             (bdir / f"{stem}.sel.s").write_text(s)          # selcc's own output, kept for review
+            for old, new, count in rec.get("asm_subst", {}).get(stem, []):
+                # key asm_subst (SX06): exact text swaps in selcc's output (same-size immediates), each counted
+                if s.count(old) != count:
+                    raise SystemExit(f"{stem}.s: asm_subst {old!r} found {s.count(old)} times, not {count}")
+                s = s.replace(old, new)
             if s.count(".SECTION/SW seg_swco;") != 1 or ".SECTION/" in s.replace(".SECTION/SW seg_swco;", "").replace(
                     ".SECTION/DOUBLE32 seg_dmda;", ""):
                 raise SystemExit(f"{stem}.s: unexpected sections")
@@ -1637,6 +1697,11 @@ def build(name, out_root=ROOT / "out/T3.8", odir=None):
         new = sym[label]
         st.patch(2 * site, cjump_bytes(old), cjump_bytes(new),
                  why=f"CJUMP at SW {site:#x}: {old:#x} -> {label} {new:#x}")
+    for site, label, what in rec.get("parks", []):
+        # MR03: a park point (IDLE 0x0081; JUMP to that IDLE) -> JUMP to our code; NOP over the old JUMP's last parcel
+        old = b"\x81\x00" + jump_bytes(site)
+        new = jump_bytes(sym[label]) + b"\x01\x00"
+        st.patch(2 * site, old, new, why=f"fault tone at SW {site:#x}: park -> {label} {sym[label]:#x} ({what})")
     l2_patched = []
     for addr, n, s in ranges_of(e):
         if s.kind == "bss":
@@ -1721,6 +1786,7 @@ def build(name, out_root=ROOT / "out/T3.8", odir=None):
             raise SystemExit(f"brickcheck's shift scan flags {bads}")
     diffs = diff_images(final_image(stock7), final_image(stream))
     allowed = [(ldr.loader_addr(2 * site), ldr.loader_addr(2 * site) + 6) for site, _, _ in rec["hooks"]]
+    allowed += [(ldr.loader_addr(2 * site), ldr.loader_addr(2 * site) + 8) for site, _, _ in rec.get("parks", [])]
     allowed += [(ldr.loader_addr(CODE[0]), ldr.loader_addr(L1B1_LIMIT)),
                 (ldr.loader_addr(state[0]), ldr.loader_addr(state[1]))]
     if not rec.get("code2_unused"):
@@ -1815,7 +1881,8 @@ def function_table(rec, bdir, e):
     fm = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(fm)
     stem = lambda xs: [bdir / f"{Path(s).stem}.s" for s in xs]   # noqa: E731
-    order = {"t38_code": [bdir / "stubs.s"] + stem(rec["c"]),
+    asm1 = [ROOT / a for a in rec.get("asm2", []) if ".SECTION/SW seg_swco;" in (ROOT / a).read_text()]
+    order = {"t38_code": [bdir / "stubs.s"] + stem(rec["c"]) + asm1,      # MR03: block-1 assembly (faulttone.s)
              "t38_code2": stem(rec.get("c2", [])) + stem(rec.get("c2_tail", []))
              + ([bdir / "stubs2.s"] if rec.get("stubs2") else []),
              "t38_code3": stem(rec.get("c3", [])) + ([bdir / "stubs3.s"] if rec.get("stubs3") else []),

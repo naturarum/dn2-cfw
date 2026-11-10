@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# MR03: from mr03-upgrade-in's end (START=its end.snap): leave OS UPGRADE with NO, back to SYN, PLAY, STOP
+wait-emu 0.3
+png 00-start
+tap BackSpace        # NO
+wait-emu 0.6
+png 01-no1
+tap BackSpace
+wait-emu 0.6
+png 02-no2
+tap BackSpace
+wait-emu 0.6
+png 03-no3
+tap p                # SYN (SRC)
+wait-emu 0.8
+png 04-syn
+tap minus            # PLAY
+wait-emu 2.0
+png 05-playing
+wait-emu 2.0
+png 06-playing-4s
+tap equal            # STOP
+wait-emu 0.8
+png 07-stopped

@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# MR03: SETTINGS > SYSTEM, each row in turn (to find OS UPGRADE), then back out.
+wait-emu 0.3
+tap grave            # SETTINGS
+wait-emu 0.4
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+tap Down
+wait-emu 0.2
+png 00-settings-system
+tap Return           # SYSTEM
+wait-emu 0.5
+png 01-system-row1
+tap Down
+wait-emu 0.3
+png 02-row2
+tap Down
+wait-emu 0.3
+png 03-row3
+tap Down
+wait-emu 0.3
+png 04-row4
+tap Down
+wait-emu 0.3
+png 05-row5
+tap Down
+wait-emu 0.3
+png 06-row6
+tap Down
+wait-emu 0.3
+png 07-row7
+tap Down
+wait-emu 0.3
+png 08-row8
