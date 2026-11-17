@@ -45,7 +45,7 @@ LOAD, STOCK_END = T.LOAD, T.STOCK_END
 OUT = os.path.join(ROOT, 'out')
 BA05_SYX_SHA = '1a345a94270797bf3e6e43f4b52bdf1b2303294b3f62e0b60714cae8a968eaf8'
 PACKS = ('EEEE', 'CEEE', 'EFEE', 'EETE', 'EEES', 'CFEE', 'CETE', 'CEES', 'EFTE', 'EFES', 'EETS', 'CFTE', 'CFES', 'EFTS',
-         'EEEM')
+         'EEEM', 'CFEM', 'CEEM', 'EFEM', 'EETM', 'EFTM')   # 0.4.0: MRB in every combination that fits
 BASE = ['core', 'os-version', 'lfo-dejavu', 'arp-modes', 'boot-mark', 'arp-midi', 'usb-multi']
 FX_MODS = {'C': ['param-grow', 'param-rows', 'comp-ui', 'comp-link'], 'F': ['flanger-names', 'flanger-sync'],
            'T': ['echo-names'], 'S': ['spring-names'], 'M': ['morph-names']}

@@ -688,7 +688,8 @@ PACK_CODE = dict(code=(0x2dd600, 0x2e1c36), code2=(0x310000, 0x315f8c), code3=(0
                  code4=(0x2e2900, 0x2e4f46))
 PACK_FIT = [("c2", "t38_code2", 0x310000, 0x315f8c), ("c3", "t38_code3", 0x308400, 0x30ff76),
             ("c1", "t38_code", 0x2dd600, 0x2e1c36), ("c4", "t38_code4", 0x2e2900, 0x2e4f46)]
-PACKS = ("CEEE", "EFEE", "EETE", "EEES", "CETE", "CEES", "EFTE", "EFES", "EETS", "EFTS", "CFES", "EEEM")
+PACKS = ("CEEE", "EFEE", "EETE", "EEES", "CETE", "CEES", "EFTE", "EFES", "EETS", "EFTS", "CFES", "EEEM",
+         "CFEM", "CEEM", "EFEM", "EETM", "EFTM")   # 0.4.0 (2026-11-17): MRB in every combination that fits
 # MR03 (2026-11-10, notes/MR03-eeem.md): the 4th letter M: MRB (fx/mrb.c, notes/MR02), the morphing reverb on a
 # budget, in the reverb slot, with the fault tones (faulttone.s: Elektron's two park points jump to our code, which
 # fills the codec output buffers with a square wave naming the fault, then parks)

@@ -1670,7 +1670,7 @@ fault path's tone checked. Coupled emulator: sound back after 90 s of exact-zero
 replaces the spring; a beep pitch names the fault.
 
 **2026-11-10: moving to another Mac.** Git carries the code and notes only. Copy these by hand, to the same path
-(`~/Documents/Claude/Elektron-CFW`, user `naturarum`, so the Claude memory folder keeps its name):
+(`~/Developer/Elektron-CFW`, user `naturarum`, so the Claude memory folder keeps its name):
 - the whole project folder, best as one copy (`rsync -a` or an external disk). Untracked and needed: `out/` (14 GB;
   builds, brick-check reports, the sharcvm snapshots, the coupled emulator in out/spring-stop-investigation/emu,
   out/native), `vendor/` (the forks, with uncommitted local bits), `elektron-firmware/`, `private/` (its own
@@ -1681,3 +1681,31 @@ replaces the spring; a beep pitch names the fault.
 - tools: Homebrew `ghidra`, `m68k-elf-binutils`, `openjdk@21`, the Xcode command line tools; the Developer ID
   certificate (team CTWUYGFLF6) only for signing the patcher app.
 A fresh session starts from this file's last entries, ROADMAP.md (R1.18) and the memory.
+
+**2026-11-16: the new Mac's tools, and UF01, the upstream fit check** (notes/UF01-upstream-fit.md). Homebrew `rust`
+and `m68k-elf-gcc` 16.2.0 installed, selache built; `build.py EEEM --outdir` gives section 7 `61c0e921...` bit for
+bit, sharcvm self-test 8/8, fx 861/861. The owner (11-15): the goal is "to get my dn2 to a place where im happy with
+it and share that with people", and a 6-operator FM machine that takes DX7 presets. Upstream elekloader now has
+`machines-dn2` 0.5 on OS 1.12 (SHARC synths and filters in the machine selector, core 0.4); dnfw is moving to 1.12.
+UF01, a paper check of upstream against ours: three clashes, the rest disjoint. (1) the core's 7 shared sites;
+(2) DSP memory, both from L1 `0x2dd600` (their bridge, stacks and peek to `0x2e0800`); (3) the parameter table,
+machines-dn2 against param-grow (112 sites, rows from 321), which only our compressor builds use. MRB alone can clear
+(2) inside the proven map: its 15,014 B fit the tape delay's home `0x310000-0x315f8c` [inferred]. **Next: the owner
+flashes EEEM; then the owner's call on a combined build** (upstream core + machines-dn2 + base mods + MRB).
+
+**2026-11-17: EEEM on the unit: "works fine over 15min of building a track. sounds quite good too!"** MRB replaces
+the spring. Fit dry-run of every MRB combination (build.py's pack recipe, PACKS widened in a temporary copy, nothing
+kept): CFEM 72,342 B, CEEM 58,758, EFEM 39,458, EETM 58,338, EFTM 71,608 all fit the proven regions; CETM (the tape's
+`se_crackle_plan` 724 B, 452 B left) and CFTM (`se_mix_targets` 1,684 B) don't, as with the spring. DSP load not
+measured for the five. Next: the owner picks what goes in 0.4.0.
+
+**2026-11-17: the five other MRB builds for 0.4.0** (owner: "as many reverb builds as possible"; the tape combinations
+matter less to them). CFEM `8ff0e5f2...`, EFEM `f443d749...`, CEEM `059ac630...`, EFTM `66a2003d...`, EETM
+`4daa0577...`: build.py and pack_build.py PACKS widened, every pack_build check ok, **brickcheck ACCEPT 12/12 each**
+(EEEM rerun as a control: ACCEPT). verify_packs.py learned M (MRB locked against EEEM, MrbSlot's magic, its stores, a
+soak walking its six knobs): **PASS** on all five, every MRB lockstep case nonzero and bit for bit (76,800 samples
+each). Worst block: EFEM 341,057 (51.2 %), CEEM 368,517 (55.3 %), CFEM 373,917 (56.1 %), EETM 390,920 (58.6 %),
+EFTM 392,926 (58.9 %); CFTE, shipped, 418,507. The new Mac needed digikit's patched Unicorn
+(`vendor/digikit/tools/install-patched-unicorn.sh`): without it the brick checker refuses at checks 4, 5, 8, 9 and 12.
+Device-test files out/device-tests-0.4/ (01-CFEM ... 05-EETM, SHA256SUMS); guide in the vault, "Digiwerk 0.4 device
+tests". **Next: the owner plays them**; then 0.4.0 (packs, the patcher and web patcher, notes).

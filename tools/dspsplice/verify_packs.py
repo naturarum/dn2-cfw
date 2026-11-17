@@ -51,8 +51,9 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(ROOT / "tools/sharcvm/tests"))
 
-PACKS = ("CEEE", "EFEE", "EETE", "EEES", "CETE", "CEES", "EFTE", "EFES", "EETS", "EFTS", "CFES")   # CFES: since 0.3.0
-REFS = {"DC02": "CFEE", "TE01": "CFTE", "SP02": "CFES"}
+PACKS = ("CEEE", "EFEE", "EETE", "EEES", "CETE", "CEES", "EFTE", "EFES", "EETS", "EFTS", "CFES",   # CFES: since 0.3.0
+         "CFEM", "CEEM", "EFEM", "EETM", "EFTM")   # 0.4.0 (2026-11-17): MRB (M), proven in EEEM (on the unit 11-17)
+REFS = {"DC02": "CFEE", "TE01": "CFTE", "SP02": "CFES", "EEEM": "EEEM"}
 OUT = ROOT / "out/packs-verify"
 REV_CALL, REV_RET = 0x1c1d11, 0x1c1d18
 REV_OUT = (0x25b368, 0x25b3e8)
@@ -68,6 +69,11 @@ SPRING_INIT = (0, 64, 64, 64, 0, 127, 96)        # PRE DEC MODE DIRT HPF TONE WD
 FORBID = (0x315f8c, 0x318000)
 PROVEN = [(0x2dd600, 0x2e1c36, "c1"), (0x2e2900, 0x2e4f46, "c4"), (0x308400, 0x30ff76, "c3"), (0x310000, 0x315f8c, "c2")]
 SPRING_MAX = 2.0
+# MRB (verify_eeem.py): MrbSlot in the stock reverb's DDR state, its magic first; its constants in DDR; no clip in MRB,
+# so its output gate is the spring's 2.0 (EEEM's lockstep cases peaked at 0.06)
+MRB, MRB_BYTES, MRB_MAGIC = 0x80000018, 104484, 0x4d524231
+MRB_INIT = (0, 64, 64, 64, 0, 70)                # PRE DEC CHAR SIZE HPF TONE: morph-names' new kit
+MRB_MAX = 2.0
 G = {}
 
 
@@ -382,6 +388,19 @@ def check_lock(pack, q):
             inputs("drums", nb, 0), nb, "rev", k48=127, prime=True)
         run("spring: every reverb knob and k 48 jumping each 7 blocks, tempo changes, noise", "SP02", rv, VC.ROUTE_INFX,
             inputs("noise", nb, 17), nb, "rev", each=jumper(7, every=7, chr_=False, dly=False), k48=96, prime=True)
+    if "M" in has:
+        x = cross("EEEM")
+        names = REV_WORDS
+        rv = dict(VC.BASE, IN_REV_L=100, IN_REV_R=100, REV_VOL=110, IN_CHR_L=100, IN_CHR_R=100, IN_DEL_L=100,
+                  IN_DEL_R=100, CHR_VOL=90, DEL_VOL=100, **x, **dict(zip(names, MRB_INIT)))
+        if not x["DEL_REV"]:
+            rv["CHR_DEL"] = 0
+        run("MRB: the new kit, the mix, cross-sends %s" % x, "EEEM", rv, VC.ROUTE_INFX, inputs("mix", nb, 0), nb,
+            "rev", prime=True)
+        run("MRB: every knob 127, drums", "EEEM", dict(rv, **dict(zip(names, (127,) * 6))), VC.ROUTE_INFX,
+            inputs("drums", nb, 0), nb, "rev", prime=True)
+        run("MRB: every reverb knob jumping each 7 blocks, tempo changes, noise", "EEEM", rv, VC.ROUTE_INFX,
+            inputs("noise", nb, 17), nb, "rev", each=jumper(7, every=7, chr_=False, dly=False), prime=True)
     res["ok"] = all(v["ok"] for v in res.values() if isinstance(v, dict))
     res["comparable"] = ("CMP3: handler output, gain reductions, meter words with every FX slot silent (sends and VOLs "
                          "0; each slot's output checked 0 in both); the rest of the reply pages carries the FX slots' "
@@ -429,7 +448,7 @@ def check_mix(name, q):
         run.prime()
         inp = inputs(kind, nb, seed)
         e = {"blocks": nb, "out_peak": 0.0, "out_nan_inf": 0, "del_peak": 0.0, "del_nan_inf": 0, "rev_peak": 0.0,
-             "rev_nan_inf": 0, "spg_magic_bad_blocks": 0}
+             "rev_nan_inf": 0, "spg_magic_bad_blocks": 0, "mrb_magic_bad_blocks": 0}
         for b in range(nb):
             if each:
                 each(b, run.fr)
@@ -440,6 +459,8 @@ def check_mix(name, q):
                 e[k + "_nan_inf"] += bad
             if "S" in has and run.vm.rd32(SPG) != SPG_MAGIC:
                 e["spg_magic_bad_blocks"] += 1
+            if "M" in has and run.vm.rd32(MRB) != MRB_MAGIC:
+                e["mrb_magic_bad_blocks"] += 1
         pb = run.per_block[1:]
         e.update(insns_mean=round(sum(pb) / len(pb)), insns_max=max(pb), stack_bytes=run.stack,
                  est_load_max_pct=round(100 * VC.LOAD(max(pb)), 1))
@@ -451,6 +472,8 @@ def check_mix(name, q):
                 and e["se_magic_ok"]
         if "S" in has:
             ok = ok and e["rev_nan_inf"] == 0 and e["rev_peak"] <= SPRING_MAX and e["spg_magic_bad_blocks"] == 0
+        if "M" in has:
+            ok = ok and e["rev_nan_inf"] == 0 and e["rev_peak"] <= MRB_MAX and e["mrb_magic_bad_blocks"] == 0
         if name in PACKS:
             e.update(placement(run.vm, info))
             ok = ok and not e["executed_in_regions_outside_placed_functions"]
@@ -514,7 +537,7 @@ def check_stores(pack, q):
                        (V.CHR_OUT[1], V.CHR_OUT[1] + 0x80, "out R")],
                "del": [stack, save, (SE_SLOT, SE_SLOT + SE_BYTES, "SeSlot"), (V.DEL_OUT[0], V.DEL_OUT[0] + 0x80, "out L"),
                        (V.DEL_OUT[1], V.DEL_OUT[1] + 0x80, "out R")],
-               "rev": [stack, save, (SPG, SPG + SPG_BYTES, "SpgSlot"), (REV_OUT[0], REV_OUT[0] + 0x80, "out L"),
+               "rev": [stack, save, (MRB, MRB + MRB_BYTES, "MrbSlot") if "M" in has else (SPG, SPG + SPG_BYTES, "SpgSlot"), (REV_OUT[0], REV_OUT[0] + 0x80, "out L"),
                        (REV_OUT[1], REV_OUT[1] + 0x80, "out R")]}
     if "C" in has:
         allowed["comp"] = [stack, save, (S1.SLOT, S1.SLOT + sb["cmp_slot_bytes"], "CmpSlot"),
@@ -522,7 +545,7 @@ def check_stores(pack, q):
                            (0x25bae8, 0x25bae8 + 0x80, "out R"), (VC.GR_Y2, VC.GR_Y2 + 4, "0x257c1c"),
                            (VC.TX[0] + 0x10, VC.TX[0] + 0x18, "reply page 0 meters"),
                            (VC.TX[1] + 0x10, VC.TX[1] + 0x18, "reply page 1 meters")]
-    calls = {"C": "comp", "F": "chr", "T": "del", "S": "rev"}
+    calls = {"C": "comp", "F": "chr", "T": "del", "S": "rev", "M": "rev"}
     words = dict(VC.BASE, **ALLFX, **VC.comp(32, 24, 32, 64, 3, 64), DEL_X=6, DEL_FDBK=100)
     nbk = 80 if not q else 20
     inp = inputs("mix", nbk, 0)
@@ -589,7 +612,8 @@ def check_soak(pack, seconds, q):
     cfg = dict(ST.recipes(1.0)["R4a"], seconds=seconds, seed=900 + PACKS.index(pack))
     ctl = ST.Control(cfg)
     r = random.Random(cfg["seed"] + 3)
-    rev_h = [ST.Hand(r, v, 0, 127, "walk", period=(0.5, 6), jump=0.15) for v in SPRING_INIT]
+    rev_h = [ST.Hand(r, v, 0, 127, "walk", period=(0.5, 6), jump=0.15)
+             for v in (MRB_INIT + (96,) if "M" in has else SPRING_INIT)]
     rev_s = [256.0 * h.v for h in rev_h]
     vm = new_vm(pack)
     vm.lib.vm_set_profile(vm.h, 1)
@@ -703,6 +727,13 @@ def check_soak(pack, seconds, q):
                     note("spring_out", b, {"peak": p, "nan_inf": bad})
                 if vm.rd32(SPG) != SPG_MAGIC:
                     note("spgslot_magic", b, {"magic": "%#x" % vm.rd32(SPG)})
+            if "M" in has:
+                p, bad = peak(probes_d.get("rev", ()))
+                res["peaks"]["rev"] = max(res["peaks"]["rev"], p)
+                if bad or p > MRB_MAX:
+                    note("mrb_out", b, {"peak": p, "nan_inf": bad})
+                if vm.rd32(MRB) != MRB_MAGIC:
+                    note("mrbslot_magic", b, {"magic": "%#x" % vm.rd32(MRB)})
             if b % BPS == BPS - 1:
                 G["memguard"].check(3072)
             res["blocks_run"] = b + 1
@@ -763,7 +794,8 @@ def main():
     import build as BD
     packs = a.packs.split(",")
     checks = a.only.split(",")
-    names = packs + ["DC02", "TE01", "SP02"]
+    refs = ["DC02", "TE01", "SP02"] + (["EEEM"] if any("M" in p for p in packs) else [])
+    names = packs + refs
     srcs = {}
     for n in names:
         st, info, cache = S1.load_image(ROOT / f"out/{n}/{n}-dsp", n)
@@ -778,7 +810,7 @@ def main():
         raise SystemExit("the packs' fx/spaceecho.h is not TE01's (the SpaceEcho offsets used here)")
     diff = {}
     for p in packs:
-        for ref in ("DC02", "TE01", "SP02"):
+        for ref in refs:
             d = [s for s in srcs[p] if s in srcs[ref] and srcs[p][s] != srcs[ref][s]]
             if d:
                 diff[f"{p}/{ref}"] = d
@@ -791,6 +823,8 @@ def main():
             jobs += [(c, p, off, a.quick, a.soak_seconds) for p in packs]
     if "mix" in checks:
         jobs += [("mix", "DC02", off, a.quick, 0), ("mix", "EEEE", off, a.quick, 0)]
+        if "EEEM" in refs:
+            jobs.append(("mix", "EEEM", off, a.quick, 0))
     print(f"{len(jobs)} jobs on {a.workers} workers; sources that differ from a reference image: {diff or 'none'}",
           flush=True)
     t0 = time.time()
