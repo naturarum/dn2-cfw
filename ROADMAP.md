@@ -20,7 +20,7 @@ Custom firmware for the Digitone II (OS 1.12), built on the community's tools (e
 
 ## Release: Digiwerk (owner, 2026-10-22/23)
 
-Public name **Digiwerk** (the repo stays dn2-cfw), meant as part of the Modwerk effort. Effects get pixel identities
+Public name **Digiwerk** (the repo stays dn2-cfw), with pieces offered to Modwerk as modules. Effects get pixel identities
 (docs/identity/, `make_icons.py`): **CMP3** (3-band compressor), **FLNG** (flanger with TIME), **TAPE** (tape echo;
 never the tape echo's trademarked name in public: it is Roland's), **SPNG** (spring reverb). Releases ship as **a base plus packs** (owner 2026-10-24): the base = light main-OS features in every build
 (the Déjà vu LFO, the Overbridge fix); packs = the memory-heavy DSP effect sets, complete

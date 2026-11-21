@@ -9,7 +9,7 @@ Digiwerk is custom firmware for the Elektron Digitone II on OS 1.12. 0.2.0 bring
 tape echo and a spring reverb, and you now pick the effects one FX slot at a time. **Not made or supported by
 Elektron.**
 
-Digiwerk is part of the [Modwerk](https://modwerk.app) effort, the community hub for Elektron firmware mods.
+Digiwerk is a separate project from [Modwerk](https://modwerk.app), the community hub for Elektron firmware mods, and a contributor to it.
 
 You make your Digiwerk build yourself, from Elektron's own OS 1.12 file, with Digiwerk Patcher. No Elektron firmware
 is in this release.

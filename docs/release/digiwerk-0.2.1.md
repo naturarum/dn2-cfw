@@ -10,7 +10,7 @@ yet". The eight other builds are byte for byte 0.2.0's.
 If you sent a spring build to your Digitone, send another build or Elektron's `Digitone_II_OS1.12.syx` with Transfer,
 as usual.
 
-Digiwerk is part of the [Modwerk](https://modwerk.app) effort, the community hub for Elektron firmware mods.
+Digiwerk is a separate project from [Modwerk](https://modwerk.app), the community hub for Elektron firmware mods, and a contributor to it.
 
 You make your Digiwerk build yourself, from Elektron's own OS 1.12 file, with Digiwerk Patcher. No Elektron firmware
 is in this release.

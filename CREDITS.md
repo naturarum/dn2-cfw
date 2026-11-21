@@ -156,5 +156,5 @@ below. For each one: who made it, its licence, and what we use from it.
 
 ### The Modwerk community
 
-- **What:** <https://modwerk.app>, the community hub for Elektron firmware mods. Digiwerk is part of the Modwerk effort.
+- **What:** <https://modwerk.app>, the community hub for Elektron firmware mods.
 - **Facts.** Shared knowledge about Elektron firmware.

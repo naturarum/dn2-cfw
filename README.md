@@ -17,7 +17,7 @@ here.
 <a href="https://github.com/naturarum/dn2-cfw/releases/download/v0.3.0/Digiwerk-Patcher-0.3.0.zip">Digiwerk Patcher 0.3.0</a>, for macOS 13 or later.<br>
 Then follow the <a href="#install">install steps</a>.</p>
 
-Digiwerk is part of the [Modwerk](https://modwerk.app) effort, the community hub for Elektron firmware mods.
+Digiwerk is a separate project from [Modwerk](https://modwerk.app), the community hub for Elektron firmware mods, and a contributor to it.
 
 **Not made or supported by Elektron.**
 
